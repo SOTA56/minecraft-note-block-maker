@@ -22,6 +22,11 @@ const playTone = (ctx: AudioContext, pitch: number, at: number, volume: number, 
   oscillator.stop(at + 0.24)
 }
 
+export async function previewTone(pitch: number, volume: number, instrument: string) {
+  const ctx = await getContext()
+  playTone(ctx, pitch, ctx.currentTime + 0.008, volume, instrument)
+}
+
 export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void) {
   const ctx = await getContext()
   const token = ++stopAt
