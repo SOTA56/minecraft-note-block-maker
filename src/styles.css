@@ -82,3 +82,8 @@
 
 /* Raise frequently used icon glyphs without enlarging their text labels */
 .edit-tools button{font-size:18px}.dock button{font-size:22px}.edit-tools small,.dock small{font-size:7px}
+
+/* Final specificity guards for pitch glyphs, note fills, and fine grid lines */
+.pitch-head .sharp{display:inline!important;color:inherit!important;background:transparent!important;writing-mode:inherit!important;text-orientation:inherit!important;font-size:1.22em!important;font-weight:700!important}.pitch-head .pitch-toggle span{color:inherit!important;background:transparent!important}
+.step button.white-key{background:#494f4a}.step button.white-key.selected-cell:not(.note){background:color-mix(in srgb,#f3c84a 17%,#494f4a)}.step button.white-key.note,.step button.black-key.note{background:var(--note)!important}.step button.note.selected-cell{background:color-mix(in srgb,#f3c84a 18%,var(--note))!important}.step:not(.beat-end):not(.bar-end)>.step-label{border-bottom:1px solid #555d55!important}.step.beat-end>.step-label{border-bottom:2px solid #858c84!important}.step.bar-end>.step-label{border-bottom:3px solid #b8bdb7!important}
+.language{font-size:9px!important}@media(max-width:599px){.language{font-size:9px!important}}
