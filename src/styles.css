@@ -46,3 +46,6 @@
 
 /* Give the mixer fader useful travel without sacrificing one-row density */
 .mixer-list .track-row{grid-template-columns:minmax(0,1fr) 145px 84px}.mixer-list .track-volume{grid-template-columns:18px minmax(0,1fr) 18px;padding-inline:4px}
+
+/* Balance the ghost silhouette with the surrounding compact controls */
+.track-strip>button>.ghost-icon{width:14px;height:19px}.mixer-list .ghost-icon{width:11px;height:15px}
