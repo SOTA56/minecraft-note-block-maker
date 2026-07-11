@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
 
@@ -33,7 +33,13 @@ const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   return {...source, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
-const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /><i /></span>
+const GhostIcon = () => {
+  const maskId = `ghost-${useId().replace(/:/g,'')}`
+  return <svg className="ghost-icon" viewBox="0 0 64 88" aria-hidden="true" focusable="false">
+    <defs><mask id={maskId}><rect width="64" height="88" fill="black" /><path fill="white" d="M32 1C17 1 9 12 9 29c0 11-3 17-9 21-2 2-1 8 5 9 6 1 9-2 12 8 3 9 9 12 15 17 4 3 5 7 3 12-1 3 1 5 4 3 13-9 25-27 23-40-1-5 2-1 8-1 7 0 9-7 4-11-6-4-9-9-9-18C55 12 47 1 32 1Z" /><ellipse cx="23" cy="30" rx="4.5" ry="7" fill="black" /><ellipse cx="41" cy="30" rx="4.5" ry="7" fill="black" /><ellipse cx="32" cy="46" rx="4.5" ry="7" fill="black" /></mask></defs>
+    <rect width="64" height="88" fill="currentColor" mask={`url(#${maskId})`} />
+  </svg>
+}
 
 function App() {
   const [project, setProject] = useState<Project>(() => { try { return normalizeProject(JSON.parse(localStorage.getItem(STORAGE) || '')) } catch { return INITIAL } })
