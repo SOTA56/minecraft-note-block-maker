@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
 
-const COLORS = ['#ef5b3d', '#e9b949', '#68c3a3', '#58a6d6', '#a78bca', '#ef83ad', '#8ec45b', '#e68245']
+const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
 const INSTRUMENTS = [
   { id: 'Harp', ja: 'ハープ', en: 'Harp', blockJa: 'その他', blockEn: 'Other blocks', texture: 'earth' },
   { id: 'Bass', ja: 'ベース', en: 'Bass', blockJa: '木材', blockEn: 'Wood', texture: 'wood' },
@@ -26,12 +26,17 @@ const INSTRUMENTS = [
   { id: 'Trumpet Oxidized', ja: 'トランペット（酸化）', en: 'Trumpet (oxidized)', blockJa: '酸化した銅ブロック', blockEn: 'Oxidized copper block', texture: 'copper-oxidized' },
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
-const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: INSTRUMENTS[i].id, volume: .8, pan: 0, color: COLORS[i], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const INITIAL: Project = { format: 'note-block-maker', version: 1, title: 'NEW CIRCUIT', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 8 }, (_, i) => makeTrack(i)) }
+const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: INSTRUMENTS[i % INSTRUMENTS.length].id, volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
+const INITIAL: Project = { format: 'note-block-maker', version: 1, title: 'NEW CIRCUIT', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) }
 const STORAGE = 'note-block-maker:autosave:v1'
+const normalizeProject = (source:Project):Project => {
+  const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
+  return {...source, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+}
+const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /><i /></span>
 
 function App() {
-  const [project, setProject] = useState<Project>(() => { try { const saved = JSON.parse(localStorage.getItem(STORAGE) || ''); return { ...saved, tracks:saved.tracks.map((track:Partial<Track>) => ({ ...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true })) } } catch { return INITIAL } })
+  const [project, setProject] = useState<Project>(() => { try { return normalizeProject(JSON.parse(localStorage.getItem(STORAGE) || '')) } catch { return INITIAL } })
   const [activeId, setActiveId] = useState(project.tracks[0].id)
   const [ghosts, setGhosts] = useState(true)
   const [playingStep, setPlayingStep] = useState(-1)
@@ -160,7 +165,7 @@ function App() {
     if (play || playingStep >= 0) void playFrom(boundary)
   }
   const save = () => { const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.title || 'untitled'}.nbm`; a.click(); URL.revokeObjectURL(a.href) }
-  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); const migrated = {...data, tracks:data.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true}))} as Project; setProject(migrated); setActiveId(migrated.tracks[0].id) }
+  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); const migrated = normalizeProject(data); setProject(migrated); setActiveId(migrated.tracks[0].id) }
   const clearAll = () => {
     const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
     if (saveFirst) save()
@@ -186,16 +191,16 @@ function App() {
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
       <button className="track-main" onClick={() => setPanel(panel === 'tracks' ? null : 'tracks')}><span className={`block-chip ${instrument.texture}`}>{String(project.tracks.indexOf(active) + 1).padStart(2, '0')}</span><span><small>{t.activeTrack}</small><strong>{active.name}</strong></span><b>{panel === 'tracks' ? '⌃' : '⌄'}</b></button>
       <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')}><span>☷</span><small>{language === 'ja' ? 'トラック設定' : 'TRACK SET'}</small></button>
-      <button className={ghosts ? 'on' : ''} onClick={() => setGhosts(!ghosts)}><span>◉</span><small>{t.ghost}</small></button>
+      <button className={ghosts ? 'on' : ''} onClick={() => setGhosts(!ghosts)}><GhostIcon /><small>{t.ghost}</small></button>
     </section>
 
-    {panel === 'tracks' && <div className="drawer track-list">{project.tracks.map((track, i) => {
+    {panel === 'tracks' && <div className="drawer mixer-list">{project.tracks.map((track, i) => {
       const trackInstrument = INSTRUMENTS.find(item => item.id === track.instrument) ?? INSTRUMENTS[0]
       const patchTrack = (patch:Partial<Track>) => setProject(p => ({...p, tracks:p.tracks.map(item => item.id === track.id ? {...item,...patch}:item)}))
       return <div key={track.id} className={`track-row ${track.id === activeId ? 'selected' : ''}`} style={{'--row-color':track.color} as React.CSSProperties}>
         <button className="track-select" onClick={() => setActiveId(track.id)}><b className={`track-number ${trackInstrument.texture}`}>{String(i + 1).padStart(2, '0')}</b><span><strong>{track.name}</strong><small>{language === 'ja' ? trackInstrument.ja : trackInstrument.en}</small></span></button>
-        <div className="track-switches"><button className={track.ghostEnabled ? 'on' : ''} onClick={() => patchTrack({ghostEnabled:!track.ghostEnabled})} title="Ghost">◉</button><button className={track.muted ? 'danger' : ''} onClick={() => patchTrack({muted:!track.muted})} title="Mute">M</button><button className={track.solo ? 'solo' : ''} onClick={() => patchTrack({solo:!track.solo})} title="Solo">S</button></div>
-        <label className="track-volume">VOL <input type="range" min="0" max="1" step=".01" value={track.volume} onChange={e => patchTrack({volume:+e.target.value})} /></label>
+        <div className="track-switches"><button className={track.ghostEnabled ? 'on' : ''} onClick={() => patchTrack({ghostEnabled:!track.ghostEnabled})} title="Ghost"><GhostIcon /></button><button className={track.muted ? 'danger' : ''} onClick={() => patchTrack({muted:!track.muted})} title="Mute">M</button><button className={track.solo ? 'solo' : ''} onClick={() => patchTrack({solo:!track.solo})} title="Solo">S</button></div>
+        <label className="track-volume"><span>VOL</span><input type="range" min="0" max="1" step=".01" value={track.volume} onChange={e => patchTrack({volume:+e.target.value})} /><b>{Math.round(track.volume*100)}</b></label>
       </div>
     })}</div>}
     {panel === 'settings' && <div className="drawer settings"><label>{t.trackName}<input value={active.name} onChange={e => updateTrack({ name: e.target.value.toUpperCase() })} /></label><label>{t.instrument}<select value={active.instrument} onChange={e => updateTrack({ instrument: e.target.value })}>{INSTRUMENTS.map(x => <option key={x.id} value={x.id}>{language === 'ja' ? x.ja : x.en} — {language === 'ja' ? x.blockJa : x.blockEn}</option>)}</select></label><div className="block-guide"><i className={`block-preview ${instrument.texture}`} /><span><small>{t.block}</small><b>{language === 'ja' ? instrument.blockJa : instrument.blockEn}</b></span></div><label>{t.volume} <b>{Math.round(active.volume * 100)}</b><input type="range" min="0" max="1" step=".01" value={active.volume} onChange={e => updateTrack({ volume: +e.target.value })} /></label><label>PAN <b>{Math.round(active.pan * 100)}</b><input type="range" min="-1" max="1" step=".01" value={active.pan} onChange={e => updateTrack({ pan: +e.target.value })} /></label><div className="setting-switches"><button className={active.muted ? 'danger' : ''} onClick={() => updateTrack({muted:!active.muted})}>M {c[19]}</button><button className={active.solo ? 'solo' : ''} onClick={() => updateTrack({solo:!active.solo})}>S SOLO</button></div></div>}
