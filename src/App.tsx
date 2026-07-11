@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
@@ -28,20 +28,14 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'note-block-maker', version: 1, title: 'NEW CIRCUIT', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
+const createInitialProject = ():Project => ({ format: 'note-block-maker', version: 1, title: 'TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   return {...source, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
-const GhostIcon = () => {
-  const maskId = `ghost-${useId().replace(/:/g,'')}`
-  return <svg className="ghost-icon" viewBox="0 0 64 88" aria-hidden="true" focusable="false">
-    <defs><mask id={maskId}><rect width="64" height="88" fill="black" /><path fill="white" d="M32 1C17 1 9 12 9 29c0 11-3 17-9 21-2 2-1 8 5 9 6 1 9-2 12 8 3 9 9 12 15 17 4 3 5 7 3 12-1 3 1 5 4 3 13-9 25-27 23-40-1-5 2-1 8-1 7 0 9-7 4-11-6-4-9-9-9-18C55 12 47 1 32 1Z" /><ellipse cx="23" cy="30" rx="4.5" ry="7" fill="black" /><ellipse cx="41" cy="30" rx="4.5" ry="7" fill="black" /><ellipse cx="32" cy="46" rx="4.5" ry="7" fill="black" /></mask></defs>
-    <rect width="64" height="88" fill="currentColor" mask={`url(#${maskId})`} />
-  </svg>
-}
+const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 
 function App() {
   const [project, setProject] = useState<Project>(() => { try { return normalizeProject(JSON.parse(localStorage.getItem(STORAGE) || '')) } catch { return INITIAL } })
@@ -58,7 +52,8 @@ function App() {
   const [copiedNotes, setCopiedNotes] = useState<{ step: number; pitch: number }[]>([])
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [barsDraft, setBarsDraft] = useState(() => project.steps / 16)
+  const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
+  const [bpmDraft, setBpmDraft] = useState(() => String(Math.round(project.tickRate * 7.5)))
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
@@ -171,21 +166,29 @@ function App() {
     if (play || playingStep >= 0) void playFrom(boundary)
   }
   const save = () => { const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.title || 'untitled'}.nbm`; a.click(); URL.revokeObjectURL(a.href) }
-  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); const migrated = normalizeProject(data); setProject(migrated); setActiveId(migrated.tracks[0].id); setBarsDraft(migrated.steps / 16) }
+  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); const migrated = normalizeProject(data); setProject(migrated); setActiveId(migrated.tracks[0].id); setBarsDraft(String(migrated.steps / 16)); setBpmDraft(String(Math.round(migrated.tickRate * 7.5))) }
   const clearAll = () => {
     const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
     if (saveFirst) save()
     if (!window.confirm(language === 'ja' ? 'すべてのノートを削除します。この操作は取り消せません。よろしいですか？' : 'Delete every note? This cannot be undone.')) return
     const fresh = createInitialProject()
-    setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes([]); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft(4); setMenuOpen(false)
+    setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes([]); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setMenuOpen(false)
   }
-  const applyBars = () => {
-    const bars = Math.max(1, Math.min(999, Math.round(Number(barsDraft) || 1)))
+  const applyBars = (raw = barsDraft) => {
+    const requested = Number(raw)
+    if (!Number.isFinite(requested) || requested < 1) { setBarsDraft(String(project.steps / 16)); return }
+    const bars = Math.max(1, Math.min(999, Math.round(requested)))
     const nextSteps = bars * 16
     const outside = project.tracks.reduce((count,track) => count + track.notes.filter(note => note.step >= nextSteps).length, 0)
-    if (outside && !window.confirm(language === 'ja' ? `${bars}小節へ短縮すると、範囲外のノート${outside}個が削除されます。続行しますか？` : `Shortening to ${bars} bars will delete ${outside} notes outside the new range. Continue?`)) { setBarsDraft(project.steps / 16); return }
+    if (outside && !window.confirm(language === 'ja' ? `${bars}小節へ短縮すると、範囲外のノート${outside}個が削除されます。続行しますか？` : `Shortening to ${bars} bars will delete ${outside} notes outside the new range. Continue?`)) { setBarsDraft(String(project.steps / 16)); return }
     setProject(p => ({...p,steps:nextSteps,tracks:p.tracks.map(track=>({...track,notes:track.notes.filter(note=>note.step<nextSteps)}))}))
-    setPlayhead(step => Math.min(step,nextSteps-1)); setBarsDraft(bars)
+    setPlayhead(step => Math.min(step,nextSteps-1)); setBarsDraft(String(bars))
+  }
+  const commitBpm = (raw = bpmDraft) => {
+    const requested = Number(raw)
+    if (!Number.isFinite(requested) || requested < 8) { setBpmDraft(String(bpm)); return }
+    const next = Math.min(7500, Math.round(requested))
+    setProject(p => ({...p,tickRate:next / 7.5})); setBpmDraft(String(next))
   }
   const zoomSteps = (delta:number) => {
     const next = Math.max(6,Math.min(30,stepHeight+delta))
@@ -210,8 +213,9 @@ function App() {
     <section className="transport">
       <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}>{playingStep >= 0 ? '■' : '▶'}</button>
       <button onClick={() => { stopPlayback(); setPlayingStep(-1); setPlayhead(0) }} aria-label="先頭へ">┃◀</button>
-      <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="number" min="8" max="7500" value={bpm} onChange={e => setProject(p => ({ ...p, tickRate: Math.max(.1, +e.target.value / 7.5) }))} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
+      <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
+      <label className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><input type="text" inputMode="numeric" value={barsDraft} onChange={e => setBarsDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => applyBars(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>{language === 'ja' ? '小節' : 'BARS'}</span></label>
     </section>
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
@@ -262,7 +266,7 @@ function App() {
       <button onClick={() => setMenuOpen(!menuOpen)}>•••<small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
     </footer>
-    {menuOpen && <div className="more-menu"><label className="bars-setting"><span>{language === 'ja' ? '小節数' : 'BARS'}</span><input type="number" min="1" max="999" value={barsDraft} onChange={e=>setBarsDraft(+e.target.value)} /><button onClick={applyBars}>{language === 'ja' ? '適用' : 'APPLY'}</button></label><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
+    {menuOpen && <div className="more-menu"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
   </main>
 }
 export default App

@@ -64,3 +64,21 @@
 .step-label{place-items:center;padding:0;overflow:visible;line-height:1}.step.beat-end>.step-label{border-bottom:2px solid #858c84}.step.bar-end>.step-label{border-bottom:3px solid #b8bdb7}
 
 .bars-setting{display:grid;grid-template-columns:1fr 70px 58px;align-items:center;gap:6px;margin-bottom:8px;color:#aab2a8;font-size:9px}.bars-setting input{width:100%;min-width:0;padding:10px 6px;border:1px solid #424a42;background:#0f120f;color:#f3c84a;text-align:center}.bars-setting button{height:36px;border:1px solid #675b2a;background:#332d18;color:#f3c84a;font-size:8px}
+
+/* Keep pitch glyphs visually clean inside their key cells */
+.pitch-head .sharp,.pitch-head .pitch-toggle span{background:transparent!important;writing-mode:horizontal-tb!important}.pitch-head .pitch-toggle span{display:block!important}
+
+/* Return ghost controls to the original double-circle language */
+.ghost-icon{position:relative;display:grid!important;place-items:center;width:14px;height:14px;border:2px solid currentColor;border-radius:50%;background:transparent!important;color:currentColor}.ghost-icon::after{display:none!important}.ghost-icon i{display:block!important;position:static;width:5px;height:5px;border-radius:50%;background:currentColor}.track-strip>button>.ghost-icon{width:14px;height:14px;margin:0 auto}.mixer-list .ghost-icon{width:11px;height:11px;border-width:1.5px}.mixer-list .ghost-icon i{width:4px;height:4px}
+
+/* Put tempo, polyphony, and bars side by side in the transport strip */
+.transport{grid-template-columns:52px 42px 1.2fr .85fr .9fr}.tick.bars{background:#1b201b}.tick.bars input{width:42px;color:#e7e5dc}.tick.bars span{font-size:7px;white-space:nowrap}
+
+/* iOS Safari does not zoom focused form controls when their type is 16px or larger */
+@media(max-width:599px){input:not([type=range]),select{font-size:16px!important}.brand input{font-size:16px!important}.tick input{font-size:16px!important}}
+
+/* Make the piano-roll key contrast gentler while retaining the black-key cue */
+.step button.white-key{background:#3d443e}.step button.white-key.selected-cell{background:color-mix(in srgb,#f3c84a 17%,#3d443e)}
+
+/* Raise frequently used icon glyphs without enlarging their text labels */
+.edit-tools button{font-size:18px}.dock button{font-size:22px}.edit-tools small,.dock small{font-size:7px}
