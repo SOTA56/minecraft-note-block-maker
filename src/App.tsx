@@ -20,7 +20,10 @@ const INSTRUMENTS = [
   { id: 'Bit', ja: 'ビット', en: 'Bit', blockJa: 'エメラルド', blockEn: 'Emerald block', texture: 'emerald' },
   { id: 'Banjo', ja: 'バンジョー', en: 'Banjo', blockJa: '干し草の俵', blockEn: 'Hay bale', texture: 'hay' },
   { id: 'Pling', ja: 'プリン', en: 'Pling', blockJa: 'グロウストーン', blockEn: 'Glowstone', texture: 'glow' },
-  { id: 'Trumpet', ja: 'トランペット', en: 'Trumpet', blockJa: '銅ブロック', blockEn: 'Copper block', texture: 'copper' },
+  { id: 'Trumpet', ja: 'トランペット（銅）', en: 'Trumpet (copper)', blockJa: '銅ブロック', blockEn: 'Copper block', texture: 'copper' },
+  { id: 'Trumpet Exposed', ja: 'トランペット（風化）', en: 'Trumpet (exposed)', blockJa: '風化した銅ブロック', blockEn: 'Exposed copper block', texture: 'copper-exposed' },
+  { id: 'Trumpet Weathered', ja: 'トランペット（錆び）', en: 'Trumpet (weathered)', blockJa: '錆びた銅ブロック', blockEn: 'Weathered copper block', texture: 'copper-weathered' },
+  { id: 'Trumpet Oxidized', ja: 'トランペット（酸化）', en: 'Trumpet (oxidized)', blockJa: '酸化した銅ブロック', blockEn: 'Oxidized copper block', texture: 'copper-oxidized' },
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: INSTRUMENTS[i].id, volume: .8, color: COLORS[i], muted: false, solo: false, notes: [] })
@@ -32,6 +35,7 @@ function App() {
   const [activeId, setActiveId] = useState(project.tracks[0].id)
   const [ghosts, setGhosts] = useState(true)
   const [playingStep, setPlayingStep] = useState(-1)
+  const [playhead, setPlayhead] = useState(0)
   const [panel, setPanel] = useState<'tracks' | 'settings' | null>(null)
   const [language, setLanguage] = useState(() => navigator.language.toLowerCase().startsWith('ja') ? 'ja' : 'en')
   const [stepHeight, setStepHeight] = useState(30)
@@ -39,15 +43,23 @@ function App() {
   const [editMode, setEditMode] = useState<'input' | 'select'>('input')
   const [selection, setSelection] = useState<{ startStep: number; endStep: number; startPitch: number; endPitch: number } | null>(null)
   const [copiedNotes, setCopiedNotes] = useState<{ step: number; pitch: number }[]>([])
+  const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
+  const [menuOpen, setMenuOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
-  const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
+  const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
-  const t = language === 'ja' ? {
-    autosaved: '自動保存済み', delay: '遅延', tickRate: 'ティックレート', maxPoly: '最大同時発音', notes: '音', activeTrack: '選択中のトラック', ghost: 'ゴースト', trackName: 'トラック名', instrument: '音色', volume: '音量', block: '下に置くブロック', bar: '小節'
-  } : {
-    autosaved: 'AUTOSAVED', delay: 'DELAY', tickRate: 'TICK RATE', maxPoly: 'MAX POLY', notes: 'NOTES', activeTrack: 'ACTIVE TRACK', ghost: 'GHOST', trackName: 'TRACK NAME', instrument: 'INSTRUMENT', volume: 'VOLUME', block: 'BLOCK BELOW', bar: 'BAR'
-  }
+  const copy = {
+    ja: ['自動保存済み','BPM','最大同時発音','音','選択中のトラック','ゴースト','トラック名','音色','音量','下に置くブロック','入力','範囲','コピー','貼付','削除','縮小','拡大','メニュー','全削除','ミュート'],
+    en: ['AUTOSAVED','BPM','MAX POLY','NOTES','ACTIVE TRACK','GHOST','TRACK NAME','INSTRUMENT','VOLUME','BLOCK BELOW','DRAW','SELECT','COPY','PASTE','DELETE','ZOOM OUT','ZOOM IN','MENU','CLEAR ALL','MUTE'],
+    es: ['GUARDADO','BPM','POLIFONÍA','NOTAS','PISTA ACTIVA','FANTASMA','NOMBRE','INSTRUMENTO','VOLUMEN','BLOQUE INFERIOR','DIBUJAR','SELECCIÓN','COPIAR','PEGAR','BORRAR','ALEJAR','ACERCAR','MENÚ','BORRAR TODO','SILENCIAR'],
+    fr: ['ENREGISTRÉ','BPM','POLYPHONIE','NOTES','PISTE ACTIVE','FANTÔME','NOM','INSTRUMENT','VOLUME','BLOC INFÉRIEUR','DESSINER','SÉLECTION','COPIER','COLLER','SUPPRIMER','RÉDUIRE','AGRANDIR','MENU','TOUT EFFACER','MUET'],
+    de: ['GESPEICHERT','BPM','POLYPHONIE','NOTEN','AKTIVE SPUR','GHOST','SPURNAME','INSTRUMENT','LAUTSTÄRKE','BLOCK DARUNTER','ZEICHNEN','AUSWAHL','KOPIEREN','EINFÜGEN','LÖSCHEN','VERKLEINERN','VERGRÖSSERN','MENÜ','ALLES LÖSCHEN','STUMM'],
+    zh: ['已自动保存','BPM','最大复音数','音符','当前音轨','重影','音轨名称','音色','音量','下方方块','输入','选择','复制','粘贴','删除','缩小','放大','菜单','全部清除','静音'],
+    ko: ['자동 저장됨','BPM','최대 동시 발음','음','선택 트랙','고스트','트랙 이름','악기','음량','아래 블록','입력','선택','복사','붙여넣기','삭제','축소','확대','메뉴','전체 삭제','음소거'],
+  }[language] ?? null
+  const c = copy ?? ['AUTOSAVED','BPM','MAX POLY','NOTES','ACTIVE TRACK','GHOST','TRACK NAME','INSTRUMENT','VOLUME','BLOCK BELOW','DRAW','SELECT','COPY','PASTE','DELETE','ZOOM OUT','ZOOM IN','MENU','CLEAR ALL','MUTE']
+  const t = { autosaved:c[0], bpm:c[1], maxPoly:c[2], notes:c[3], activeTrack:c[4], ghost:c[5], trackName:c[6], instrument:c[7], volume:c[8], block:c[9] }
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(() => () => stopPlayback(), [])
@@ -64,24 +76,24 @@ function App() {
   const normalizedSelection = selection && { minStep: Math.min(selection.startStep, selection.endStep), maxStep: Math.max(selection.startStep, selection.endStep), minPitch: Math.min(selection.startPitch, selection.endPitch), maxPitch: Math.max(selection.startPitch, selection.endPitch) }
   const isSelected = (step: number, pitch: number) => Boolean(normalizedSelection && step >= normalizedSelection.minStep && step <= normalizedSelection.maxStep && pitch >= normalizedSelection.minPitch && pitch <= normalizedSelection.maxPitch)
   const handlePointerDown = (event: React.PointerEvent, step: number, pitch: number) => {
-    event.currentTarget.setPointerCapture(event.pointerId)
     if (editMode === 'select') {
+      event.currentTarget.setPointerCapture(event.pointerId)
       if (selection && isSelected(step, pitch) && active.notes.some(n => n.step === step && n.pitch === pitch)) {
-        dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseSelection: selection }
+        dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseSelection: selection }
         return
       }
       setSelection({ startStep: step, endStep: step, startPitch: pitch, endPitch: pitch })
-      dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: false, selecting: true }
+      dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: false, startX:event.clientX, startY:event.clientY, selecting: true }
       return
     }
     const existed = active.notes.some(n => n.step === step && n.pitch === pitch)
-    dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed }
-    if (!existed) setDraggedNote(step, pitch, step, pitch)
-    previewTone(pitch, active.volume, active.instrument)
+    if (existed) event.currentTarget.setPointerCapture(event.pointerId)
+    dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed, startX:event.clientX, startY:event.clientY }
   }
   const handlePointerMove = (event: React.PointerEvent) => {
     const drag = dragRef.current
     if (!drag) return
+    if (!drag.existed && !drag.selecting && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 7) { drag.moved = true; return }
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-step][data-pitch]')
     if (!target) return
     const step = Number(target.dataset.step)
@@ -111,6 +123,10 @@ function App() {
   const handlePointerUp = () => {
     const drag = dragRef.current
     if (drag?.existed && !drag.moved && !drag.selecting) changeActiveNotes(notes => notes.filter(n => n.step !== drag.originStep || n.pitch !== drag.originPitch))
+    if (drag && !drag.existed && !drag.moved && !drag.selecting) {
+      setDraggedNote(drag.originStep, drag.originPitch, drag.originStep, drag.originPitch)
+      previewTone(drag.originPitch, active.volume, active.instrument)
+    }
     dragRef.current = null
   }
   const copySelection = () => {
@@ -122,26 +138,48 @@ function App() {
     changeActiveNotes(notes => [...notes, ...copiedNotes.map(n => ({ step: Math.min(project.steps - 1, normalizedSelection.minStep + n.step), pitch: Math.min(24, normalizedSelection.minPitch + n.pitch) }))])
   }
   const deleteSelection = () => normalizedSelection && changeActiveNotes(notes => notes.filter(n => !isSelected(n.step, n.pitch)))
-  const pitchNames = language === 'ja'
-    ? ['ファ♯3','ソ3','ソ♯3','ラ3','ラ♯3','シ3','ド4','ド♯4','レ4','レ♯4','ミ4','ファ4','ファ♯4','ソ4','ソ♯4','ラ4','ラ♯4','シ4','ド5','ド♯5','レ5','レ♯5','ミ5','ファ5','ファ♯5']
-    : ['F♯3','G3','G♯3','A3','A♯3','B3','C4','C♯4','D4','D♯4','E4','F4','F♯4','G4','G♯4','A4','A♯4','B4','C5','C♯5','D5','D♯5','E5','F5','F♯5']
+  const pitchSets: Record<string,string[]> = {
+    ja:['ファ♯','ソ','ソ♯','ラ','ラ♯','シ','ド','ド♯','レ','レ♯','ミ','ファ'],
+    es:['Fa♯','Sol','Sol♯','La','La♯','Si','Do','Do♯','Re','Re♯','Mi','Fa'],
+    fr:['Fa♯','Sol','Sol♯','La','La♯','Si','Do','Do♯','Ré','Ré♯','Mi','Fa'],
+    de:['Fis','G','Gis','A','Ais','H','C','Cis','D','Dis','E','F'],
+    zh:['升Fa','Sol','升Sol','La','升La','Si','Do','升Do','Re','升Re','Mi','Fa'],
+    ko:['파♯','솔','솔♯','라','라♯','시','도','도♯','레','레♯','미','파'],
+    en:['F♯','G','G♯','A','A♯','B','C','C♯','D','D♯','E','F'],
+  }
+  const pitchBase = pitchSets[language] ?? pitchSets.en
+  const pitchNames = PITCHES.map(p => pitchBase[p % 12])
   const isBlack = (pitch: number) => [0, 2, 4, 7, 9].includes(pitch % 12)
   const isDo = (pitch: number) => pitch % 12 === 6
-  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1) } else await playProject(project, 0, setPlayingStep) }
+  const playFrom = async (step:number) => { stopPlayback(); setPlayhead(step); await playProject(project, step, current => { setPlayingStep(current); if (current >= 0) setPlayhead(current) }) }
+  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1) } else await playFrom(playhead) }
+  const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const boundary = Math.min(project.steps - 1, step + (event.clientY - rect.top > rect.height / 2 ? 1 : 0))
+    setPlayhead(boundary)
+    if (play || playingStep >= 0) void playFrom(boundary)
+  }
   const save = () => { const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.title || 'untitled'}.nbm`; a.click(); URL.revokeObjectURL(a.href) }
   const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); setProject(data); setActiveId(data.tracks[0].id) }
+  const clearAll = () => {
+    const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
+    if (saveFirst) save()
+    if (!window.confirm(language === 'ja' ? 'すべてのノートを削除します。この操作は取り消せません。よろしいですか？' : 'Delete every note? This cannot be undone.')) return
+    setProject(p => ({ ...p, tracks:p.tracks.map(track => ({...track, notes:[]})) })); setSelection(null); setPlayhead(0); setMenuOpen(false)
+  }
+  const bpm = Math.round(project.tickRate * 7.5)
 
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
-      <div className="brand"><span className="brand-mark">♪</span><div><small>REDSTONE SEQUENCER</small><input value={project.title} onChange={e => setProject(p => ({ ...p, title: e.target.value.toUpperCase() }))} aria-label="曲名" /></div></div>
+      <div className="brand"><span className="brand-mark">♪</span><div><small>{language === 'ja' ? '音ブロジック' : 'NOTE BLOGIC'}</small><input value={project.title} onChange={e => setProject(p => ({ ...p, title: e.target.value.toUpperCase() }))} aria-label="曲名" /></div></div>
       <div className="top-actions"><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select><div className="status"><span className="live-dot" /> {t.autosaved}</div></div>
     </header>
 
     <section className="transport">
       <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}>{playingStep >= 0 ? '■' : '▶'}</button>
-      <button onClick={() => { stopPlayback(); setPlayingStep(-1) }} aria-label="先頭へ">┃◀</button>
-      <label className="tick"><small>{t.tickRate}</small><input type="number" min="1" max="1000" value={project.tickRate} onChange={e => setProject(p => ({ ...p, tickRate: Math.max(1, +e.target.value) }))} /><span>TPS</span></label>
+      <button onClick={() => { stopPlayback(); setPlayingStep(-1); setPlayhead(0) }} aria-label="先頭へ">┃◀</button>
+      <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="number" min="8" max="7500" value={bpm} onChange={e => setProject(p => ({ ...p, tickRate: Math.max(.1, +e.target.value / 7.5) }))} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
     </section>
 
@@ -149,40 +187,42 @@ function App() {
       <button className="track-main" onClick={() => setPanel(panel === 'tracks' ? null : 'tracks')}><span className={`block-chip ${instrument.texture}`}>{String(project.tracks.indexOf(active) + 1).padStart(2, '0')}</span><span><small>{t.activeTrack}</small><strong>{active.name}</strong></span><b>⌄</b></button>
       <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')}><span>♫</span><small>{language === 'ja' ? instrument.ja : instrument.en}</small></button>
       <button className={ghosts ? 'on' : ''} onClick={() => setGhosts(!ghosts)}><span>◉</span><small>{t.ghost}</small></button>
+      <button onClick={() => updateTrack({ muted: !active.muted })} className={active.muted ? 'danger' : ''}><span>{active.muted ? '×' : '●'}</span><small>{c[19]}</small></button>
     </section>
 
-    {panel === 'tracks' && <div className="drawer track-list">{project.tracks.map((track, i) => <button key={track.id} className={track.id === activeId ? 'selected' : ''} onClick={() => { setActiveId(track.id); setPanel(null) }}><i style={{ background: track.color }} /> <b>{String(i + 1).padStart(2, '0')}</b><span>{track.name}</span><small>{track.notes.length} NOTES</small></button>)}</div>}
+    {panel === 'tracks' && <div className="drawer track-list">{project.tracks.map((track, i) => <button key={track.id} className={track.id === activeId ? 'selected' : ''} onClick={() => { setActiveId(track.id); setPanel(null) }}><i style={{ background: track.color }} /> <b>{String(i + 1).padStart(2, '0')}</b><span>{track.name}</span><small>{track.notes.length} NOTES {track.muted ? ' · MUTE' : ''}</small></button>)}</div>}
     {panel === 'settings' && <div className="drawer settings"><label>{t.trackName}<input value={active.name} onChange={e => updateTrack({ name: e.target.value.toUpperCase() })} /></label><label>{t.instrument}<select value={active.instrument} onChange={e => updateTrack({ instrument: e.target.value })}>{INSTRUMENTS.map(x => <option key={x.id} value={x.id}>{language === 'ja' ? x.ja : x.en} — {language === 'ja' ? x.blockJa : x.blockEn}</option>)}</select></label><div className="block-guide"><i className={`block-preview ${instrument.texture}`} /><span><small>{t.block}</small><b>{language === 'ja' ? instrument.blockJa : instrument.blockEn}</b></span></div><label>{t.volume} <b>{Math.round(active.volume * 100)}</b><input type="range" min="0" max="1" step=".01" value={active.volume} onChange={e => updateTrack({ volume: +e.target.value })} /></label></div>}
     <button className="panel-toggle" onClick={() => setControlsOpen(!controlsOpen)} aria-label={controlsOpen ? '操作パネルを収納' : '操作パネルを表示'}>{controlsOpen ? '⌃' : '⌄'}</button>
     <nav className="edit-tools">
-      <button className={editMode === 'input' ? 'active' : ''} onClick={() => setEditMode('input')}>✎<small>{language === 'ja' ? '入力' : 'DRAW'}</small></button>
-      <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}>▧<small>{language === 'ja' ? '範囲' : 'SELECT'}</small></button>
-      <button onClick={copySelection} disabled={!normalizedSelection}>⧉<small>{language === 'ja' ? 'コピー' : 'COPY'}</small></button>
-      <button onClick={pasteSelection} disabled={!copiedNotes.length || !normalizedSelection}>⎘<small>{language === 'ja' ? '貼付' : 'PASTE'}</small></button>
-      <button onClick={deleteSelection} disabled={!normalizedSelection}>⌫<small>{language === 'ja' ? '削除' : 'DELETE'}</small></button>
-      <button onClick={() => setStepHeight(h => Math.max(22, h - 4))}>−<small>{language === 'ja' ? '縮小' : 'ZOOM'}</small></button>
-      <button onClick={() => setStepHeight(h => Math.min(64, h + 4))}>+<small>{language === 'ja' ? '拡大' : 'ZOOM'}</small></button>
+      <button className={editMode === 'input' ? 'active' : ''} onClick={() => setEditMode('input')}>✎<small>{c[10]}</small></button>
+      <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}>▧<small>{c[11]}</small></button>
+      <button onClick={copySelection} disabled={!normalizedSelection}>⧉<small>{c[12]}</small></button>
+      <button onClick={pasteSelection} disabled={!copiedNotes.length || !normalizedSelection}>⎘<small>{c[13]}</small></button>
+      <button onClick={deleteSelection} disabled={!normalizedSelection}>⌫<small>{c[14]}</small></button>
+      <button onClick={() => setStepHeight(h => Math.max(6, h - 4))}>−<small>{c[15]}</small></button>
+      <button onClick={() => setStepHeight(h => Math.min(30, h + 4))}>+<small>{c[16]}</small></button>
     </nav>
 
-    <div className="pitch-head">{PITCHES.map(p => <b key={p} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchNames[p]}</b>)}<span>{t.bar}</span></div>
+    <div className="pitch-head">{PITCHES.map(p => <b key={p} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchNames[p] : p}</b>)}<button onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替">{pitchDisplay === 'name' ? '↔ 0–24' : '↔ ♪'}</button></div>
     </div>
     <section className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
-      {Array.from({ length: project.steps }, (_, step) => <div className={`step ${step % 16 === 0 ? 'bar' : step % 4 === 0 ? 'beat' : ''} ${playingStep === step ? 'playing' : ''}`} key={step}>
+      {Array.from({ length: project.steps }, (_, step) => <div className={`step ${step % 16 === 0 ? 'bar' : step % 4 === 0 ? 'beat' : ''} ${playingStep === step ? 'playing' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {PITCHES.map(pitch => {
           const own = active.notes.some(n => n.step === step && n.pitch === pitch)
           const ghost = ghosts && project.tracks.find(t => t.id !== activeId && t.notes.some(n => n.step === step && n.pitch === pitch))
-          return <button key={pitch} data-step={step} data-pitch={pitch} onPointerDown={e => handlePointerDown(e, step, pitch)} className={`${isBlack(pitch) ? 'black-key' : 'white-key'} ${isDo(pitch) ? 'do' : ''} ${own ? 'note' : ghost ? 'ghost' : ''} ${isSelected(step,pitch) ? 'selected-cell' : ''}`} style={own ? { '--note': active.color } as React.CSSProperties : ghost ? { '--note': ghost.color } as React.CSSProperties : undefined} aria-label={`${pitchNames[pitch]}, ${t.bar} ${Math.floor(step / 16) + 1}`} />
+          return <button key={pitch} data-step={step} data-pitch={pitch} onPointerDown={e => handlePointerDown(e, step, pitch)} className={`${isBlack(pitch) ? 'black-key' : 'white-key'} ${isDo(pitch) ? 'do' : ''} ${own ? 'note' : ghost ? 'ghost' : ''} ${isSelected(step,pitch) ? 'selected-cell' : ''}`} style={own ? { '--note': active.color } as React.CSSProperties : ghost ? { '--note': ghost.color } as React.CSSProperties : undefined} aria-label={`${pitchNames[pitch]}, ${language === 'ja' ? '小節' : 'bar'} ${Math.floor(step / 16) + 1}`} />
         })}
-        <span className="step-label">{step % 16 === 0 ? `${step / 16 + 1}` : step % 4 === 0 ? '•' : ''}</span>
+        <button className="step-label" onPointerDown={e => seekFromLabel(e, step)} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : step % 4 === 0 ? '•' : ''}</button>
       </div>)}
     </section>
 
     <footer className="dock">
       <button aria-label="元に戻す" disabled>↶<small>UNDO</small></button><button aria-label="やり直す" disabled>↷<small>REDO</small></button>
       <button onClick={save}>⇩<small>SAVE .NBM</small></button><button onClick={() => fileRef.current?.click()}>⇧<small>OPEN</small></button>
-      <button onClick={() => updateTrack({ muted: !active.muted })} className={active.muted ? 'danger' : ''}>{active.muted ? '×' : '●'}<small>MUTE</small></button>
+      <button onClick={() => setMenuOpen(!menuOpen)}>•••<small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
     </footer>
+    {menuOpen && <div className="more-menu"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
   </main>
 }
 export default App
