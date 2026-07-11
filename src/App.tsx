@@ -245,7 +245,7 @@ function App() {
       <button onClick={() => zoomSteps(4)}>+<small>{c[16]}</small></button>
     </nav>
 
-    <div className="pitch-head">{PITCHES.map(p => <b key={p} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
+    <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onClick={() => previewTone(p,active.volume,active.instrument)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void previewTone(p,active.volume,active.instrument) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
     <section ref={rollRef} className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {Array.from({ length: project.steps }, (_, step) => <div className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playingStep === step ? 'playing' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
@@ -265,6 +265,7 @@ function App() {
       <button onClick={save}>⇩<small>SAVE .NBM</small></button><button onClick={() => fileRef.current?.click()}>⇧<small>OPEN</small></button>
       <button onClick={() => setMenuOpen(!menuOpen)}>•••<small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
+      <div className="copyright">© 2026 Note Blogick · Powered by SOTA56</div>
     </footer>
     {menuOpen && <div className="more-menu"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
   </main>

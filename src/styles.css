@@ -90,3 +90,18 @@
 
 /* Tighten key contrast, center transport glyphs, and render ghosts as outlines */
 .step button.white-key{background:#2c312d}.step button.white-key.selected-cell:not(.note){background:color-mix(in srgb,#f3c84a 17%,#2c312d)}.transport>button{display:grid;place-items:center;padding:0;line-height:1}.transport>button>span{display:block;transform:translateY(-1px);line-height:1}.step.first-step.playhead::before{display:none}.step button{position:relative}.step button.ghost::after{content:'';position:absolute;inset:1px;width:auto;height:auto;margin:0;border:1px solid var(--note);border-radius:0;background:transparent;box-shadow:none;transform:none;pointer-events:none}
+
+/* Blue interaction accent and optically centered transport glyphs */
+.transport .play{background:#318cca;color:#0c1417}.edit-tools button.active{background:#318cca;color:#0c1417}.track-strip{border-bottom-color:#318cca}.drawer{border-bottom-color:#318cca}.transport>button>span{transform:translateY(-3px)}
+
+/* Strong vertical division between the highest F-sharp and measure numbers */
+.step>.step-label{border-left:4px solid #8b958c!important}.pitch-head>.pitch-toggle{border-left:4px solid #8b958c}
+
+/* Pitch labels are playable controls */
+.pitch-head b[role=button]{cursor:pointer;-webkit-tap-highlight-color:transparent}.pitch-head b[role=button]:focus-visible{outline:2px solid #318cca;outline-offset:-2px}
+
+/* Compact copyright strip below the five dock actions */
+.app{padding-bottom:calc(88px + env(safe-area-inset-bottom))}.dock{height:calc(78px + env(safe-area-inset-bottom));grid-template-rows:60px 18px}.dock>button{height:60px}.copyright{grid-column:1/-1;display:grid;place-items:center;height:18px;border-top:1px solid #303630;color:#6f786f;background:#151915;font-size:7px;letter-spacing:.03em;white-space:nowrap}.more-menu{bottom:calc(84px + env(safe-area-inset-bottom))}
+
+/* Compact transport: BPM value and TPS conversion share one line */
+.transport{height:56px}.meter,.tick,.poly{padding:6px 7px}.tick.bpm{display:grid;grid-template-columns:48px minmax(0,1fr);grid-template-rows:11px 24px;align-content:center}.tick.bpm small{grid-column:1/-1}.tick.bpm input{grid-column:1;grid-row:2;align-self:center}.tick.bpm span{grid-column:2;grid-row:2;align-self:center;display:block;margin:0;white-space:nowrap;font-size:7px}.tick.bars{padding-block:6px}.poly{display:grid;align-content:center}
