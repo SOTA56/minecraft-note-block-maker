@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
 
@@ -26,8 +27,9 @@ const INSTRUMENTS = [
   { id: 'Trumpet Oxidized', ja: 'トランペット（酸化）', en: 'Trumpet (oxidized)', blockJa: '酸化した銅ブロック', blockEn: 'Oxidized copper block', texture: 'copper-oxidized' },
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
-const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: INSTRUMENTS[i % INSTRUMENTS.length].id, volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const INITIAL: Project = { format: 'note-block-maker', version: 1, title: 'NEW CIRCUIT', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) }
+const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
+const createInitialProject = ():Project => ({ format: 'note-block-maker', version: 1, title: 'NEW CIRCUIT', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
+const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
@@ -56,7 +58,9 @@ function App() {
   const [copiedNotes, setCopiedNotes] = useState<{ step: number; pitch: number }[]>([])
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [barsDraft, setBarsDraft] = useState(() => project.steps / 16)
   const fileRef = useRef<HTMLInputElement>(null)
+  const rollRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
@@ -149,17 +153,13 @@ function App() {
     changeActiveNotes(notes => [...notes, ...copiedNotes.map(n => ({ step: Math.min(project.steps - 1, normalizedSelection.minStep + n.step), pitch: Math.min(24, normalizedSelection.minPitch + n.pitch) }))])
   }
   const deleteSelection = () => normalizedSelection && changeActiveNotes(notes => notes.filter(n => !isSelected(n.step, n.pitch)))
-  const pitchSets: Record<string,string[]> = {
+  const pitchSets = {
     ja:['ファ♯','ソ','ソ♯','ラ','ラ♯','シ','ド','ド♯','レ','レ♯','ミ','ファ'],
-    es:['Fa♯','Sol','Sol♯','La','La♯','Si','Do','Do♯','Re','Re♯','Mi','Fa'],
-    fr:['Fa♯','Sol','Sol♯','La','La♯','Si','Do','Do♯','Ré','Ré♯','Mi','Fa'],
-    de:['Fis','G','Gis','A','Ais','H','C','Cis','D','Dis','E','F'],
-    zh:['升Fa','Sol','升Sol','La','升La','Si','Do','升Do','Re','升Re','Mi','Fa'],
-    ko:['파♯','솔','솔♯','라','라♯','시','도','도♯','레','레♯','미','파'],
-    en:['F♯','G','G♯','A','A♯','B','C','C♯','D','D♯','E','F'],
+    abc:['F♯','G','G♯','A','A♯','B','C','C♯','D','D♯','E','F'],
   }
-  const pitchBase = pitchSets[language] ?? pitchSets.en
+  const pitchBase = language === 'ja' ? pitchSets.ja : pitchSets.abc
   const pitchNames = PITCHES.map(p => pitchBase[p % 12])
+  const pitchLabel = (name:string) => { const [base, sharp] = name.split('♯'); return <>{base}{sharp !== undefined && <span className="sharp">♯</span>}</> }
   const isBlack = (pitch: number) => [0, 2, 4, 7, 9].includes(pitch % 12)
   const isDo = (pitch: number) => pitch % 12 === 6
   const playFrom = async (step:number) => { stopPlayback(); setPlayhead(step); await playProject(project, step, setPlayingStep) }
@@ -171,12 +171,32 @@ function App() {
     if (play || playingStep >= 0) void playFrom(boundary)
   }
   const save = () => { const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.title || 'untitled'}.nbm`; a.click(); URL.revokeObjectURL(a.href) }
-  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); const migrated = normalizeProject(data); setProject(migrated); setActiveId(migrated.tracks[0].id) }
+  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); const migrated = normalizeProject(data); setProject(migrated); setActiveId(migrated.tracks[0].id); setBarsDraft(migrated.steps / 16) }
   const clearAll = () => {
     const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
     if (saveFirst) save()
     if (!window.confirm(language === 'ja' ? 'すべてのノートを削除します。この操作は取り消せません。よろしいですか？' : 'Delete every note? This cannot be undone.')) return
-    setProject(p => ({ ...p, tracks:p.tracks.map(track => ({...track, notes:[]})) })); setSelection(null); setPlayhead(0); setMenuOpen(false)
+    const fresh = createInitialProject()
+    setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes([]); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft(4); setMenuOpen(false)
+  }
+  const applyBars = () => {
+    const bars = Math.max(1, Math.min(999, Math.round(Number(barsDraft) || 1)))
+    const nextSteps = bars * 16
+    const outside = project.tracks.reduce((count,track) => count + track.notes.filter(note => note.step >= nextSteps).length, 0)
+    if (outside && !window.confirm(language === 'ja' ? `${bars}小節へ短縮すると、範囲外のノート${outside}個が削除されます。続行しますか？` : `Shortening to ${bars} bars will delete ${outside} notes outside the new range. Continue?`)) { setBarsDraft(project.steps / 16); return }
+    setProject(p => ({...p,steps:nextSteps,tracks:p.tracks.map(track=>({...track,notes:track.notes.filter(note=>note.step<nextSteps)}))}))
+    setPlayhead(step => Math.min(step,nextSteps-1)); setBarsDraft(bars)
+  }
+  const zoomSteps = (delta:number) => {
+    const next = Math.max(6,Math.min(30,stepHeight+delta))
+    if (next === stepHeight) return
+    const head = document.querySelector('.pitch-head')?.getBoundingClientRect()
+    const anchorY = head?.bottom ?? 0
+    const anchorStep = document.elementFromPoint(Math.min(100,window.innerWidth / 2),anchorY + 1)?.closest<HTMLElement>('.step')
+    const oldTop = anchorStep?.getBoundingClientRect().top ?? anchorY
+    flushSync(() => setStepHeight(next))
+    const newTop = anchorStep?.getBoundingClientRect().top ?? oldTop
+    window.scrollBy({top:newTop-oldTop,behavior:'auto'})
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
@@ -212,23 +232,25 @@ function App() {
     {panel === 'settings' && <div className="drawer settings"><label>{t.trackName}<input value={active.name} onChange={e => updateTrack({ name: e.target.value.toUpperCase() })} /></label><label>{t.instrument}<select value={active.instrument} onChange={e => updateTrack({ instrument: e.target.value })}>{INSTRUMENTS.map(x => <option key={x.id} value={x.id}>{language === 'ja' ? x.ja : x.en} — {language === 'ja' ? x.blockJa : x.blockEn}</option>)}</select></label><div className="block-guide"><i className={`block-preview ${instrument.texture}`} /><span><small>{t.block}</small><b>{language === 'ja' ? instrument.blockJa : instrument.blockEn}</b></span></div><label>{t.volume} <b>{Math.round(active.volume * 100)}</b><input type="range" min="0" max="1" step=".01" value={active.volume} onChange={e => updateTrack({ volume: +e.target.value })} /></label><label>PAN <b>{Math.round(active.pan * 100)}</b><input type="range" min="-1" max="1" step=".01" value={active.pan} onChange={e => updateTrack({ pan: +e.target.value })} /></label><div className="setting-switches"><button className={active.muted ? 'danger' : ''} onClick={() => updateTrack({muted:!active.muted})}>M {c[19]}</button><button className={active.solo ? 'solo' : ''} onClick={() => updateTrack({solo:!active.solo})}>S SOLO</button></div></div>}
     <button className="panel-toggle" onClick={() => setControlsOpen(!controlsOpen)} aria-label={controlsOpen ? '操作パネルを収納' : '操作パネルを表示'}>{controlsOpen ? '⌃' : '⌄'}</button>
     <nav className="edit-tools">
-      <button className={editMode === 'input' ? 'active' : ''} onClick={() => setEditMode('input')}>✎<small>{c[10]}</small></button>
+      <button className={editMode === 'input' ? 'active' : ''} onClick={() => { setEditMode('input'); setSelection(null) }}>✎<small>{c[10]}</small></button>
       <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}>▧<small>{c[11]}</small></button>
       <button onClick={copySelection} disabled={!normalizedSelection}>⧉<small>{c[12]}</small></button>
       <button onClick={pasteSelection} disabled={!copiedNotes.length || !normalizedSelection}>⎘<small>{c[13]}</small></button>
       <button onClick={deleteSelection} disabled={!normalizedSelection}>⌫<small>{c[14]}</small></button>
-      <button onClick={() => setStepHeight(h => Math.max(6, h - 4))}>−<small>{c[15]}</small></button>
-      <button onClick={() => setStepHeight(h => Math.min(30, h + 4))}>+<small>{c[16]}</small></button>
+      <button onClick={() => zoomSteps(-4)}>−<small>{c[15]}</small></button>
+      <button onClick={() => zoomSteps(4)}>+<small>{c[16]}</small></button>
     </nav>
 
-    <div className="pitch-head">{PITCHES.map(p => <b key={p} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchNames[p] : p}</b>)}<button onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替">{pitchDisplay === 'name' ? '↔ 0–24' : '↔ ♪'}</button></div>
+    <div className="pitch-head">{PITCHES.map(p => <b key={p} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
-    <section className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+    <section ref={rollRef} className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {Array.from({ length: project.steps }, (_, step) => <div className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playingStep === step ? 'playing' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {PITCHES.map(pitch => {
           const own = active.notes.some(n => n.step === step && n.pitch === pitch)
           const ghost = ghosts && project.tracks.find(t => t.id !== activeId && t.ghostEnabled !== false && t.notes.some(n => n.step === step && n.pitch === pitch))
-          return <button key={pitch} data-step={step} data-pitch={pitch} onPointerDown={e => handlePointerDown(e, step, pitch)} className={`${isBlack(pitch) ? 'black-key' : 'white-key'} ${isDo(pitch) ? 'do' : ''} ${own ? 'note' : ghost ? 'ghost' : ''} ${isSelected(step,pitch) ? 'selected-cell' : ''}`} style={own ? { '--note': active.color } as React.CSSProperties : ghost ? { '--note': ghost.color } as React.CSSProperties : undefined} aria-label={`${pitchNames[pitch]}, ${language === 'ja' ? '小節' : 'bar'} ${Math.floor(step / 16) + 1}`} />
+          const selected = isSelected(step,pitch)
+          const edges = selected && normalizedSelection ? `${step === normalizedSelection.minStep ? ' selection-top' : ''}${step === normalizedSelection.maxStep ? ' selection-bottom' : ''}${pitch === normalizedSelection.minPitch ? ' selection-left' : ''}${pitch === normalizedSelection.maxPitch ? ' selection-right' : ''}` : ''
+          return <button key={pitch} data-step={step} data-pitch={pitch} onPointerDown={e => handlePointerDown(e, step, pitch)} className={`${isBlack(pitch) ? 'black-key' : 'white-key'} ${isDo(pitch) ? 'do' : ''} ${own ? 'note' : ghost ? 'ghost' : ''} ${selected ? `selected-cell${edges}` : ''}`} style={own ? { '--note': active.color } as React.CSSProperties : ghost ? { '--note': ghost.color } as React.CSSProperties : undefined} aria-label={`${pitchNames[pitch]}, ${language === 'ja' ? '小節' : 'bar'} ${Math.floor(step / 16) + 1}`} />
         })}
         <button className="step-label" onPointerDown={e => seekFromLabel(e, step)} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : ''}</button>
       </div>)}
@@ -240,7 +262,7 @@ function App() {
       <button onClick={() => setMenuOpen(!menuOpen)}>•••<small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
     </footer>
-    {menuOpen && <div className="more-menu"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
+    {menuOpen && <div className="more-menu"><label className="bars-setting"><span>{language === 'ja' ? '小節数' : 'BARS'}</span><input type="number" min="1" max="999" value={barsDraft} onChange={e=>setBarsDraft(+e.target.value)} /><button onClick={applyBars}>{language === 'ja' ? '適用' : 'APPLY'}</button></label><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
   </main>
 }
 export default App
