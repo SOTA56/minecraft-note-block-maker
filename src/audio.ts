@@ -2,6 +2,16 @@ import type { Project } from './types'
 
 let context: AudioContext | null = null
 let stopAt = 0
+const buffers = new Map<string, AudioBuffer>()
+const loading = new Map<string, Promise<AudioBuffer>>()
+
+const SOUND_FILES: Record<string, string> = {
+  Harp: 'harp', Bass: 'bass', 'Bass Drum': 'bd', Snare: 'snare', Hat: 'hat', Guitar: 'guitar',
+  Flute: 'flute', Bell: 'bell', Chime: 'icechime', Xylophone: 'xylobone', 'Iron Xylophone': 'iron_xylophone',
+  'Cow Bell': 'cow_bell', Didgeridoo: 'didgeridoo', Bit: 'bit', Banjo: 'banjo', Pling: 'pling',
+  Trumpet: 'trumpet', 'Trumpet Exposed': 'trumpet_exposed', 'Trumpet Weathered': 'trumpet_weathered',
+  'Trumpet Oxidized': 'trumpet_oxidized',
+}
 
 const getContext = async () => {
   context ??= new AudioContext({ latencyHint: 'interactive' })
@@ -9,37 +19,48 @@ const getContext = async () => {
   return context
 }
 
-const playTone = (ctx: AudioContext, pitch: number, at: number, volume: number, instrument: string, pan = 0) => {
-  const oscillator = ctx.createOscillator()
+const loadBuffer = async (ctx: AudioContext, instrument: string) => {
+  const cached = buffers.get(instrument)
+  if (cached) return cached
+  const pending = loading.get(instrument)
+  if (pending) return pending
+  const file = SOUND_FILES[instrument] ?? SOUND_FILES.Harp
+  const request = fetch(`/assets/note-block-sounds/${file}.mp3`)
+    .then(response => { if (!response.ok) throw new Error(`Sound load failed: ${file}`); return response.arrayBuffer() })
+    .then(data => ctx.decodeAudioData(data))
+    .then(buffer => { buffers.set(instrument, buffer); loading.delete(instrument); return buffer })
+  loading.set(instrument, request)
+  return request
+}
+
+const playTone = (ctx: AudioContext, buffer: AudioBuffer, pitch: number, at: number, volume: number, pan = 0) => {
+  const source = ctx.createBufferSource()
   const gain = ctx.createGain()
-  oscillator.type = instrument === 'Bass' ? 'square' : instrument === 'Bell' ? 'sine' : 'triangle'
-  oscillator.frequency.value = 185 * 2 ** (pitch / 12)
-  gain.gain.setValueAtTime(0, at)
-  gain.gain.linearRampToValueAtTime(volume * 0.13, at + 0.006)
-  gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.22)
   const panner = ctx.createStereoPanner()
+  source.buffer = buffer
+  source.playbackRate.value = 2 ** ((pitch - 12) / 12)
+  gain.gain.value = volume
   panner.pan.value = pan
-  oscillator.connect(gain).connect(panner).connect(ctx.destination)
-  oscillator.start(at)
-  oscillator.stop(at + 0.24)
+  source.connect(gain).connect(panner).connect(ctx.destination)
+  source.start(at)
 }
 
 export async function previewTone(pitch: number, volume: number, instrument: string) {
   const ctx = await getContext()
-  playTone(ctx, pitch, ctx.currentTime + 0.008, volume, instrument)
+  const buffer = await loadBuffer(ctx, instrument)
+  playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume)
 }
 
 export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void) {
   const ctx = await getContext()
   const token = ++stopAt
+  const audible = project.tracks.filter(track => !track.muted && (!project.tracks.some(item => item.solo) || track.solo))
+  const loaded = new Map(await Promise.all([...new Set(audible.map(track => track.instrument))].map(async instrument => [instrument, await loadBuffer(ctx, instrument)] as const)))
+  if (stopAt !== token) return
   const stepSeconds = 2 / project.tickRate
   const start = ctx.currentTime + 0.08
-  const soloed = project.tracks.some((track) => track.solo)
-  project.tracks.forEach((track) => {
-    if (track.muted || (soloed && !track.solo)) return
-    track.notes.filter((note) => note.step >= fromStep).forEach((note) =>
-      playTone(ctx, note.pitch, start + (note.step - fromStep) * stepSeconds, track.volume, track.instrument, track.pan ?? 0))
-  })
+  audible.forEach(track => track.notes.filter(note => note.step >= fromStep).forEach(note =>
+    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - fromStep) * stepSeconds, track.volume, track.pan ?? 0)))
   for (let step = fromStep; step < project.steps; step += 1) {
     window.setTimeout(() => { if (stopAt === token) onStep?.(step) }, 80 + (step - fromStep) * stepSeconds * 1000)
   }
