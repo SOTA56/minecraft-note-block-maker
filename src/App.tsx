@@ -20,7 +20,7 @@ const INSTRUMENTS = [
   { id: 'Didgeridoo', ja: 'ディジェリドゥ', en: 'Didgeridoo', blockJa: 'カボチャ', blockEn: 'Pumpkin', texture: 'pumpkin' },
   { id: 'Bit', ja: 'ビット', en: 'Bit', blockJa: 'エメラルド', blockEn: 'Emerald block', texture: 'emerald' },
   { id: 'Banjo', ja: 'バンジョー', en: 'Banjo', blockJa: '干し草の俵', blockEn: 'Hay bale', texture: 'hay' },
-  { id: 'Pling', ja: 'プリン', en: 'Pling', blockJa: 'グロウストーン', blockEn: 'Glowstone', texture: 'glow' },
+  { id: 'Pling', ja: 'プリング', en: 'Pling', blockJa: 'グロウストーン', blockEn: 'Glowstone', texture: 'glow' },
   { id: 'Trumpet', ja: 'トランペット（銅）', en: 'Trumpet (copper)', blockJa: '銅ブロック', blockEn: 'Copper block', texture: 'copper' },
   { id: 'Trumpet Exposed', ja: 'トランペット（風化）', en: 'Trumpet (exposed)', blockJa: '風化した銅ブロック', blockEn: 'Exposed copper block', texture: 'copper-exposed' },
   { id: 'Trumpet Weathered', ja: 'トランペット（錆び）', en: 'Trumpet (weathered)', blockJa: '錆びた銅ブロック', blockEn: 'Weathered copper block', texture: 'copper-weathered' },
@@ -28,13 +28,13 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'note-block-maker', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
+const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   const title = source.title === 'NEW CIRCUIT' || source.title === 'TITLE' ? 'SONG TITLE' : source.title
-  return {...source, title, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  return {...source, format:'oto-blogic', title, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 
@@ -50,7 +50,8 @@ function App() {
   const [controlsOpen, setControlsOpen] = useState(true)
   const [editMode, setEditMode] = useState<'input' | 'select'>('input')
   const [selection, setSelection] = useState<{ startStep: number; endStep: number; startPitch: number; endPitch: number } | null>(null)
-  const [copiedNotes, setCopiedNotes] = useState<{ step: number; pitch: number }[]>([])
+  const [copiedNotes, setCopiedNotes] = useState<{ notes:{step:number;pitch:number}[]; width:number } | null>(null)
+  const [copyFeedback, setCopyFeedback] = useState(false)
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
   const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
@@ -63,8 +64,11 @@ function App() {
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
   const edgeScrollRef = useRef<{ x:number; y:number; frame:number }>({x:0,y:0,frame:0})
   const playbackSwipeRef = useRef<{pointerId:number;x:number;y:number} | null>(null)
+  const labelGestureRef = useRef<{pointerId:number;x:number;y:number;moved:boolean} | null>(null)
   const followIdRef = useRef(0)
   const followPlaybackRef = useRef(false)
+  const historyRef = useRef<{past:Project[];future:Project[]}>({past:[],future:[]})
+  const copyFeedbackTimerRef = useRef(0)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -111,8 +115,30 @@ function App() {
     return Math.max(0, ...counts.values())
   }, [project])
 
-  const updateTrack = (patch: Partial<Track>) => setProject(p => ({ ...p, tracks: p.tracks.map(t => t.id === activeId ? { ...t, ...patch } : t) }))
-  const changeActiveNotes = (change: (notes: Track['notes']) => Track['notes']) => setProject(p => ({ ...p, tracks: p.tracks.map(track => track.id === activeId ? { ...track, notes: change(track.notes) } : track) }))
+  const commitProject = (change:(current:Project)=>Project) => setProject(current=>{
+    const next = change(current)
+    if (next === current) return current
+    historyRef.current.past.push(current)
+    if (historyRef.current.past.length > 100) historyRef.current.past.shift()
+    historyRef.current.future = []
+    return next
+  })
+  const syncProjectControls = (next:Project) => {
+    if (!next.tracks.some(track=>track.id===activeId)) setActiveId(next.tracks[0].id)
+    setBarsDraft(String(next.steps/16));setBpmDraft(String(Math.round(next.tickRate*7.5)))
+  }
+  const undo = () => {
+    const previous = historyRef.current.past.pop()
+    if (!previous) return
+    historyRef.current.future.push(project);setProject(previous);syncProjectControls(previous)
+  }
+  const redo = () => {
+    const next = historyRef.current.future.pop()
+    if (!next) return
+    historyRef.current.past.push(project);setProject(next);syncProjectControls(next)
+  }
+  const updateTrack = (patch: Partial<Track>) => commitProject(p => ({ ...p, tracks: p.tracks.map(t => t.id === activeId ? { ...t, ...patch } : t) }))
+  const changeActiveNotes = (change: (notes: Track['notes']) => Track['notes']) => commitProject(p => ({ ...p, tracks: p.tracks.map(track => track.id === activeId ? { ...track, notes: change(track.notes) } : track) }))
   const setDraggedNote = (fromStep: number, fromPitch: number, step: number, pitch: number) => changeActiveNotes(notes => [...notes.filter(n => !(n.step === fromStep && n.pitch === fromPitch) && !(n.step === step && n.pitch === pitch)), { step, pitch }])
   const normalizedSelection = selection && { minStep: Math.min(selection.startStep, selection.endStep), maxStep: Math.max(selection.startStep, selection.endStep), minPitch: Math.min(selection.startPitch, selection.endPitch), maxPitch: Math.max(selection.startPitch, selection.endPitch) }
   const isSelected = (step: number, pitch: number) => Boolean(normalizedSelection && step >= normalizedSelection.minStep && step <= normalizedSelection.maxStep && pitch >= normalizedSelection.minPitch && pitch <= normalizedSelection.maxPitch)
@@ -213,11 +239,16 @@ function App() {
   }
   const copySelection = () => {
     if (!normalizedSelection) return
-    setCopiedNotes(active.notes.filter(n => isSelected(n.step, n.pitch)).map(n => ({ step: n.step - normalizedSelection.minStep, pitch: n.pitch - normalizedSelection.minPitch })))
+    setCopiedNotes({notes:active.notes.filter(n => isSelected(n.step,n.pitch)).map(n=>({step:n.step-normalizedSelection.minStep,pitch:n.pitch})),width:normalizedSelection.maxStep-normalizedSelection.minStep+1})
+    setCopyFeedback(true)
+    window.clearTimeout(copyFeedbackTimerRef.current)
+    copyFeedbackTimerRef.current=window.setTimeout(()=>setCopyFeedback(false),700)
   }
   const pasteSelection = () => {
-    if (!normalizedSelection || !copiedNotes.length) return
-    changeActiveNotes(notes => [...notes, ...copiedNotes.map(n => ({ step: Math.min(project.steps - 1, normalizedSelection.minStep + n.step), pitch: Math.min(24, normalizedSelection.minPitch + n.pitch) }))])
+    if (!copiedNotes?.notes.length) return
+    const pasted = copiedNotes.notes.map(note=>({step:playhead+note.step,pitch:note.pitch})).filter(note=>note.step<project.steps)
+    changeActiveNotes(notes=>[...notes.filter(note=>!pasted.some(item=>item.step===note.step&&item.pitch===note.pitch)),...pasted])
+    setPlayhead(Math.min(project.steps-1,playhead+copiedNotes.width))
   }
   const deleteSelection = () => normalizedSelection && changeActiveNotes(notes => notes.filter(n => !isSelected(n.step, n.pitch)))
   const pitchSets = {
@@ -240,15 +271,18 @@ function App() {
     setPlayhead(boundary)
     if (play || playingStep >= 0) void playFrom(boundary)
   }
-  const save = () => { const blob = new Blob([JSON.stringify(project, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.title || 'untitled'}.nbm`; a.click(); URL.revokeObjectURL(a.href) }
-  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (data.format !== 'note-block-maker' || data.version !== 1) throw new Error('対応していない.nbmファイルです'); const migrated = normalizeProject(data); setProject(migrated); setActiveId(migrated.tracks[0].id); setBarsDraft(String(migrated.steps / 16)); setBpmDraft(String(Math.round(migrated.tickRate * 7.5))) }
+  const handleLabelDown = (event:React.PointerEvent) => {labelGestureRef.current={pointerId:event.pointerId,x:event.clientX,y:event.clientY,moved:false}}
+  const handleLabelMove = (event:React.PointerEvent) => {const gesture=labelGestureRef.current;if(gesture?.pointerId===event.pointerId&&Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)>8)gesture.moved=true}
+  const handleLabelUp = (event:React.PointerEvent,step:number) => {const gesture=labelGestureRef.current;labelGestureRef.current=null;if(gesture?.pointerId===event.pointerId&&!gesture.moved)seekFromLabel(event,step)}
+  const save = () => { const exportProject={...project,format:'oto-blogic'};const blob = new Blob([JSON.stringify(exportProject, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.title || 'untitled'}.obg`; a.click(); URL.revokeObjectURL(a.href) }
+  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (!['oto-blogic','note-block-maker'].includes(data.format) || data.version !== 1) throw new Error('対応していない.obg/.nbmファイルです'); const migrated = normalizeProject(data);commitProject(()=>migrated);setActiveId(migrated.tracks[0].id);setBarsDraft(String(migrated.steps/16));setBpmDraft(String(Math.round(migrated.tickRate*7.5))) }
   const clearAll = () => {
     const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
     if (saveFirst) save()
     if (!window.confirm(language === 'ja' ? 'すべてのノートを削除します。この操作は取り消せません。よろしいですか？' : 'Delete every note? This cannot be undone.')) return
     stopPlayback(); setFollowPlayback(false); setFollowRun(null)
     const fresh = createInitialProject()
-    setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes([]); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setMenuOpen(false)
+    historyRef.current={past:[],future:[]};setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes(null); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setMenuOpen(false)
   }
   const applyBars = (raw = barsDraft) => {
     const requested = Number(raw)
@@ -257,14 +291,14 @@ function App() {
     const nextSteps = bars * 16
     const outside = project.tracks.reduce((count,track) => count + track.notes.filter(note => note.step >= nextSteps).length, 0)
     if (outside && !window.confirm(language === 'ja' ? `${bars}小節へ短縮すると、範囲外のノート${outside}個が削除されます。続行しますか？` : `Shortening to ${bars} bars will delete ${outside} notes outside the new range. Continue?`)) { setBarsDraft(String(project.steps / 16)); return }
-    setProject(p => ({...p,steps:nextSteps,tracks:p.tracks.map(track=>({...track,notes:track.notes.filter(note=>note.step<nextSteps)}))}))
+    commitProject(p => ({...p,steps:nextSteps,tracks:p.tracks.map(track=>({...track,notes:track.notes.filter(note=>note.step<nextSteps)}))}))
     setPlayhead(step => Math.min(step,nextSteps-1)); setBarsDraft(String(bars))
   }
   const commitBpm = (raw = bpmDraft) => {
     const requested = Number(raw)
     if (!Number.isFinite(requested) || requested < 8) { setBpmDraft(String(bpm)); return }
     const next = Math.min(7500, Math.round(requested))
-    setProject(p => ({...p,tickRate:next / 7.5})); setBpmDraft(String(next))
+    commitProject(p => ({...p,tickRate:next / 7.5})); setBpmDraft(String(next))
   }
   const zoomSteps = (delta:number) => {
     const next = Math.max(6,Math.min(30,stepHeight+delta))
@@ -282,7 +316,7 @@ function App() {
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
-      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.png" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={project.title} onChange={e => setProject(p => ({ ...p, title: e.target.value.toUpperCase() }))} aria-label="曲名" /></div></div>
+      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.png" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={project.title} onChange={e => commitProject(p => ({ ...p, title: e.target.value.toUpperCase() }))} aria-label="曲名" /></div></div>
       <div className="top-actions"><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select></div>
     </header>
 
@@ -302,7 +336,7 @@ function App() {
 
     {panel === 'tracks' && <div className="drawer mixer-list">{project.tracks.map((track, i) => {
       const trackInstrument = INSTRUMENTS.find(item => item.id === track.instrument) ?? INSTRUMENTS[0]
-      const patchTrack = (patch:Partial<Track>) => setProject(p => ({...p, tracks:p.tracks.map(item => item.id === track.id ? {...item,...patch}:item)}))
+      const patchTrack = (patch:Partial<Track>) => commitProject(p => ({...p, tracks:p.tracks.map(item => item.id === track.id ? {...item,...patch}:item)}))
       return <div key={track.id} className={`track-row ${track.id === activeId ? 'selected' : ''}`} style={{'--row-color':track.color} as React.CSSProperties}>
         <button className="track-select" onClick={() => setActiveId(track.id)}><b className={`track-number ${trackInstrument.texture}`}>{String(i + 1).padStart(2, '0')}</b><span><strong>{track.name}</strong><small>{language === 'ja' ? trackInstrument.ja : trackInstrument.en}</small></span></button>
         <div className="track-switches"><button className={track.ghostEnabled ? 'on' : ''} onClick={() => patchTrack({ghostEnabled:!track.ghostEnabled})} title="Ghost"><GhostIcon /></button><button className={track.muted ? 'danger' : ''} onClick={() => patchTrack({muted:!track.muted})} title="Mute">M</button><button className={track.solo ? 'solo' : ''} onClick={() => patchTrack({solo:!track.solo})} title="Solo">S</button></div>
@@ -314,8 +348,8 @@ function App() {
     <nav className="edit-tools">
       <button className={editMode === 'input' ? 'active' : ''} onClick={() => { setEditMode('input'); setSelection(null) }}>✎<small>{c[10]}</small></button>
       <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}>▧<small>{c[11]}</small></button>
-      <button onClick={copySelection} disabled={!normalizedSelection}>⧉<small>{c[12]}</small></button>
-      <button onClick={pasteSelection} disabled={!copiedNotes.length || !normalizedSelection}>⎘<small>{c[13]}</small></button>
+      <button className={copyFeedback?'copied':''} onClick={copySelection} disabled={!normalizedSelection}>{copyFeedback?'✓':'⧉'}<small>{c[12]}</small></button>
+      <button onClick={pasteSelection} disabled={!copiedNotes?.notes.length}>⎘<small>{c[13]}</small></button>
       <button onClick={deleteSelection} disabled={!normalizedSelection}>⌫<small>{c[14]}</small></button>
       <button onClick={() => zoomSteps(-4)}>−<small>{c[15]}</small></button>
       <button onClick={() => zoomSteps(4)}>+<small>{c[16]}</small></button>
@@ -333,18 +367,21 @@ function App() {
           const edges = selected && normalizedSelection ? `${step === normalizedSelection.minStep ? ' selection-top' : ''}${step === normalizedSelection.maxStep ? ' selection-bottom' : ''}${pitch === normalizedSelection.minPitch ? ' selection-left' : ''}${pitch === normalizedSelection.maxPitch ? ' selection-right' : ''}` : ''
           return <button key={pitch} data-step={step} data-pitch={pitch} onPointerDown={e => handlePointerDown(e, step, pitch)} className={`${isBlack(pitch) ? 'black-key' : 'white-key'} ${isDo(pitch) ? 'do' : ''} ${own ? 'note' : ghost ? 'ghost' : ''} ${selected ? `selected-cell${edges}` : ''}`} style={own ? { '--note': active.color } as React.CSSProperties : ghost ? { '--note': ghost.color } as React.CSSProperties : undefined} aria-label={`${pitchNames[pitch]}, ${language === 'ja' ? '小節' : 'bar'} ${Math.floor(step / 16) + 1}`} />
         })}
-        <button className="step-label" onPointerDown={e => seekFromLabel(e, step)} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : ''}</button>
+        <button className="step-label" onPointerDown={handleLabelDown} onPointerMove={handleLabelMove} onPointerUp={e=>handleLabelUp(e,step)} onPointerCancel={()=>{labelGestureRef.current=null}} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : ''}</button>
       </div>)}
     </section>
 
     <footer className="dock">
-      <button aria-label="元に戻す" disabled>↶<small>UNDO</small></button><button aria-label="やり直す" disabled>↷<small>REDO</small></button>
-      <button onClick={save}>⇩<small>SAVE .NBM</small></button><button onClick={() => fileRef.current?.click()}>⇧<small>OPEN</small></button>
+      <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}>↶<small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}>↷<small>REDO</small></button>
       <button onClick={() => setMenuOpen(!menuOpen)}>•••<small>{c[17]}</small></button>
-      <input ref={fileRef} hidden type="file" accept=".nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
+      <input ref={fileRef} hidden type="file" accept=".obg,.nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
-    {menuOpen && <div className="more-menu"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
+    {menuOpen && <div className="more-menu">
+      <div className="menu-section"><button onClick={()=>{save();setMenuOpen(false)}}>⇩ <span>SAVE .OBG</span></button><button onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}>⇧ <span>OPEN</span></button></div>
+      <div className="menu-section future"><button disabled>▦ <span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>⌂ <span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>♫ <span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>§ <span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>◎ <span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
+      <div className="menu-section"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>
+    </div>}
   </main>
 }
 export default App

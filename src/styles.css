@@ -114,3 +114,9 @@
 
 /* Continuous playback cursor; the saved grid-aligned playhead returns when stopped. */
 .roll{position:relative}.playback-cursor{position:absolute;z-index:8;top:-1px;left:0;right:0;height:2px;background:#318cca;box-shadow:0 0 6px #318cca;pointer-events:none;will-change:transform}.roll.is-playing .step.playhead::before{display:none}
+
+/* Compact editor feedback, measure-column scrolling, and the consolidated utility menu. */
+.edit-tools button.copied{color:#f3c84a;background:color-mix(in srgb,#f3c84a 14%,#151915);animation:copy-confirm .7s ease}@keyframes copy-confirm{0%{transform:scale(.82)}35%{transform:scale(1.08)}100%{transform:scale(1)}}
+.select .step .step-label{touch-action:pan-y}
+.dock{grid-template-columns:repeat(3,1fr)}
+.more-menu{width:min(292px,calc(100vw - 16px));max-height:calc(100dvh - 110px);overflow-y:auto;padding:7px;background:#151915;border-color:#465047}.more-menu .menu-section{display:grid;gap:4px;padding:5px 0;border-bottom:1px solid #303730}.more-menu .menu-section:last-child{border-bottom:0}.more-menu button{display:grid;grid-template-columns:22px 1fr auto;align-items:center;width:100%;min-height:40px;padding:8px 10px;border:1px solid #384138;background:#1b201b;color:#dfe3da;text-align:left;font-size:10px}.more-menu button span{margin:0}.more-menu button small{color:#747e74;font-size:6px}.more-menu button:disabled{opacity:.55}.more-menu button.danger{border-color:#73352c;background:#3d1d18;color:#ff8069}
