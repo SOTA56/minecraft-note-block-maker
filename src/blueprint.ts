@@ -11,8 +11,12 @@ export function maxPolyphony(project:Project) {
   return Math.max(0,...counts.values())
 }
 
-export function generateEasyBlueprint(project:Project,instruments:readonly BlueprintInstrument[],runLength:number,fold:'right'|'left') {
-  const events=Array.from({length:project.steps},(_,step)=>{
+export function generateEasyBlueprint(project:Project,instruments:readonly BlueprintInstrument[],runLength:number,fold:'right'|'left',includeSilentEdges=true) {
+  const populatedSteps=project.tracks.flatMap(track=>track.notes.map(note=>note.step))
+  const firstStep=includeSilentEdges||!populatedSteps.length?0:Math.min(...populatedSteps)
+  const lastStep=includeSilentEdges||!populatedSteps.length?project.steps-1:Math.max(...populatedSteps)
+  const events=Array.from({length:Math.max(1,lastStep-firstStep+1)},(_,offset)=>{
+    const step=firstStep+offset
     const notes:TimedNote[]=[]
     project.tracks.forEach((track,trackIndex)=>track.notes.filter(note=>note.step===step).forEach(note=>notes.push({trackId:track.id,trackIndex,pitch:note.pitch,instrument:track.instrument})))
     return notes
@@ -79,5 +83,5 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   const occupied=new Set(normalized.map(cell=>`${cell.x},${cell.y}`))
   const vectors=[['up',0,-1],['right',1,0],['down',0,1],['left',-1,0]] as const
   normalized.forEach(cell=>{if(cell.type==='dust')cell.connections=vectors.filter(([,dx,dy])=>occupied.has(`${cell.x+dx},${cell.y+dy}`)).map(([direction])=>direction)})
-  return {cells:normalized,width:Math.max(...normalized.map(cell=>cell.x))+2,height:Math.max(...normalized.map(cell=>cell.y))+2,eventsPerRun,runCount}
+  return {cells:normalized,width:Math.max(...normalized.map(cell=>cell.x))+2,height:Math.max(...normalized.map(cell=>cell.y))+2,eventsPerRun,runCount,firstStep,lastStep}
 }
