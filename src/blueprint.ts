@@ -37,7 +37,12 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
 
   const placeNotes=(notes:TimedNote[],centerX:number,y:number)=>{
     const lanes:Array<TimedNote|undefined>=Array(3)
-    notes.sort((a,b)=>(trackCounts.get(b.trackId)??0)-(trackCounts.get(a.trackId)??0)||a.trackIndex-b.trackIndex).forEach(note=>{
+    const singleTrackChord=notes.length>1&&new Set(notes.map(note=>note.trackId)).size===1
+    if(singleTrackChord){
+      const chordLanes=notes.length===2?[0,2]:[0,1,2]
+      notes.sort((a,b)=>a.pitch-b.pitch).slice(0,3).forEach((note,index)=>{lanes[chordLanes[index]]=note;laneAffinity.set(note.trackId,chordLanes[index])})
+    }
+    else notes.sort((a,b)=>(trackCounts.get(b.trackId)??0)-(trackCounts.get(a.trackId)??0)||a.trackIndex-b.trackIndex||a.pitch-b.pitch).forEach(note=>{
       const preferred=notes.length===1?1:(laneAffinity.get(note.trackId)??preferredLane.get(note.trackId)??1)
       const candidates=[preferred,1,0,2].filter((lane,pos,list)=>list.indexOf(lane)===pos)
       const lane=candidates.find(candidate=>!lanes[candidate])??lanes.findIndex(value=>!value)
