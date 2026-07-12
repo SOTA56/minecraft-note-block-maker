@@ -71,7 +71,7 @@ export default function BlueprintView({project,instruments,language,onBack,onSet
   const emitStepParticles=(step:number)=>{
     if(step<0)return
     setParticleSteps(current=>current.includes(step)?current:[...current,step])
-    const timer=window.setTimeout(()=>setParticleSteps(current=>current.filter(value=>value!==step)),1800)
+    const timer=window.setTimeout(()=>setParticleSteps(current=>current.filter(value=>value!==step)),250)
     particleTimersRef.current.push(timer)
   }
   const chooseCell=(item:NonNullable<typeof plan>['cells'][number])=>{
