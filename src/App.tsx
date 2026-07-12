@@ -58,7 +58,6 @@ function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
-  const pinchRef = useRef<{ pointers: Map<number,{x:number;y:number}>; active: boolean; startDistance: number; startHeight: number; anchorStep: number; rollTop: number; centerY: number; lastHeight: number; pendingHeight: number; frame: number } | null>(null)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -203,63 +202,6 @@ function App() {
     const newTop = anchorStep?.getBoundingClientRect().top ?? oldTop
     window.scrollBy({top:newTop-oldTop,behavior:'auto'})
   }
-  const handleRollPointerDown = (event:React.PointerEvent<HTMLElement>) => {
-    if (event.pointerType !== 'touch') return
-    const pinch = pinchRef.current ?? { pointers:new Map(), active:false, startDistance:0, startHeight:stepHeight, anchorStep:0, rollTop:0, centerY:0, lastHeight:stepHeight, pendingHeight:stepHeight, frame:0 }
-    pinch.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY})
-    pinchRef.current = pinch
-    if (pinch.pointers.size !== 2) return
-    const [a,b] = [...pinch.pointers.values()]
-    const centerY = (a.y+b.y)/2
-    const rollRect = rollRef.current?.getBoundingClientRect()
-    pinch.active = true
-    pinch.startDistance = Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))
-    pinch.startHeight = stepHeight
-    pinch.anchorStep = Math.max(0,(centerY-(rollRect?.top ?? centerY))/stepHeight)
-    pinch.rollTop = window.scrollY+(rollRect?.top ?? centerY)
-    pinch.centerY = centerY
-    pinch.lastHeight = stepHeight
-    pinch.pendingHeight = stepHeight
-    dragRef.current = null
-    event.preventDefault()
-  }
-  const handleRollPointerMove = (event:React.PointerEvent<HTMLElement>) => {
-    const pinch = pinchRef.current
-    if (!pinch?.pointers.has(event.pointerId)) return
-    pinch.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY})
-    if (!pinch.active || pinch.pointers.size < 2) return
-    const [a,b] = [...pinch.pointers.values()]
-    const distance = Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))
-    const next = Math.max(6,Math.min(30,pinch.startHeight*distance/pinch.startDistance))
-    event.preventDefault()
-    if (Math.abs(next-pinch.lastHeight)<0.08) return
-    pinch.pendingHeight = next
-    if (pinch.frame) return
-    pinch.frame = window.requestAnimationFrame(()=>{
-      pinch.frame = 0
-      pinch.lastHeight = pinch.pendingHeight
-      rollRef.current?.style.setProperty('--step-height',`${pinch.lastHeight}px`)
-      const targetScroll = Math.max(0,pinch.rollTop+pinch.anchorStep*pinch.lastHeight-pinch.centerY)
-      window.scrollTo({top:targetScroll,behavior:'auto'})
-    })
-  }
-  const handleRollPointerEnd = (event:React.PointerEvent<HTMLElement>) => {
-    const pinch = pinchRef.current
-    if (!pinch) return
-    pinch.pointers.delete(event.pointerId)
-    if (pinch.active && pinch.pointers.size < 2) {
-      dragRef.current = null
-      if (pinch.frame) {
-        window.cancelAnimationFrame(pinch.frame)
-        pinch.frame = 0
-        pinch.lastHeight = pinch.pendingHeight
-        rollRef.current?.style.setProperty('--step-height',`${pinch.lastHeight}px`)
-      }
-      pinch.active = false
-      setStepHeight(pinch.lastHeight)
-    }
-    if (pinch.pointers.size === 0) pinchRef.current = null
-  }
   const bpm = Math.round(project.tickRate * 7.5)
 
   return <main className="app">
@@ -306,7 +248,7 @@ function App() {
 
     <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onClick={() => previewTone(p,active.volume,active.instrument)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void previewTone(p,active.volume,active.instrument) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
-    <section ref={rollRef} className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handleRollPointerDown} onPointerMoveCapture={handleRollPointerMove} onPointerUpCapture={handleRollPointerEnd} onPointerCancelCapture={handleRollPointerEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+    <section ref={rollRef} className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {Array.from({ length: project.steps }, (_, step) => <div className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playingStep === step ? 'playing' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {PITCHES.map(pitch => {
           const own = active.notes.some(n => n.step === step && n.pitch === pitch)
