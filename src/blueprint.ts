@@ -19,6 +19,9 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   })
   const cells:BlueprintCell[]=[]
   const laneAffinity=new Map<string,number>()
+  const trackCounts=new Map(project.tracks.map(track=>[track.id,track.notes.length]))
+  const rankedTracks=[...project.tracks].sort((a,b)=>(trackCounts.get(b.id)??0)-(trackCounts.get(a.id)??0))
+  const preferredLane=new Map(rankedTracks.map((track,index)=>[track.id,[1,0,2][index]??1]))
   const cellsPerEvent=2
   const eventsPerRun=Math.max(1,Math.floor(runLength/cellsPerEvent))
   const runCount=Math.ceil(events.length/eventsPerRun)
@@ -30,16 +33,17 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
 
   const placeNotes=(notes:TimedNote[],centerX:number,y:number)=>{
     const lanes:Array<TimedNote|undefined>=Array(3)
-    notes.sort((a,b)=>a.trackIndex-b.trackIndex).forEach(note=>{
-      const preferred=laneAffinity.get(note.trackId)
-      const lane=preferred!==undefined&&!lanes[preferred]?preferred:lanes.findIndex(value=>!value)
+    notes.sort((a,b)=>(trackCounts.get(b.trackId)??0)-(trackCounts.get(a.trackId)??0)||a.trackIndex-b.trackIndex).forEach(note=>{
+      const preferred=notes.length===1?1:(laneAffinity.get(note.trackId)??preferredLane.get(note.trackId)??1)
+      const candidates=[preferred,1,0,2].filter((lane,pos,list)=>list.indexOf(lane)===pos)
+      const lane=candidates.find(candidate=>!lanes[candidate])??lanes.findIndex(value=>!value)
       if(lane>=0){lanes[lane]=note;laneAffinity.set(note.trackId,lane)}
     })
-    if(!notes.length){cells.push({x:centerX,y,type:'rest',label:'休',sub:'REST'});return}
+    if(!lanes[1])cells.push({x:centerX,y,type:'rest',texture:'placeholder'})
     lanes.forEach((note,lane)=>{
       if(!note)return
       const instrument=instruments.find(item=>item.id===note.instrument)??instruments[0]
-      cells.push({x:centerX+lane-1,y,type:'note',label:String(note.pitch),sub:instrument?.ja??note.instrument,texture:instrument?.texture})
+      cells.push({x:centerX+lane-1,y,type:'note',label:String(note.pitch),texture:instrument?.texture})
     })
   }
 
@@ -57,14 +61,14 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
       const nextX=centerX+directionSign*runGap
       const foldY=down?height+2:0
       const fromY=down?repeaterY+1:repeaterY-1
-      cells.push({x:centerX,y:fromY,type:'dust',direction:directionSign>0?'right':'left'})
-      for(let x=Math.min(centerX,nextX)+1;x<Math.max(centerX,nextX);x++)cells.push({x,y:foldY,type:'dust',direction:'right'})
-      cells.push({x:nextX,y:foldY,type:'dust',direction:down?'up':'down'})
+      for(let y=Math.min(fromY,foldY);y<=Math.max(fromY,foldY);y++)cells.push({x:centerX,y,type:'dust'})
+      for(let x=Math.min(centerX,nextX);x<=Math.max(centerX,nextX);x++)cells.push({x,y:foldY,type:'dust'})
     }
   })
   const firstX=originX
   cells.push({x:firstX,y:-2,type:'source',label:'START'})
   cells.push({x:firstX,y:-1,type:'dust',direction:'down'})
+  cells.push({x:firstX,y:0,type:'dust',direction:'down'})
   const minX=Math.min(...cells.map(cell=>cell.x)),minY=Math.min(...cells.map(cell=>cell.y))
   const normalized=cells.map(cell=>({...cell,x:cell.x-minX+1,y:cell.y-minY+1}))
   return {cells:normalized,width:Math.max(...normalized.map(cell=>cell.x))+2,height:Math.max(...normalized.map(cell=>cell.y))+2,eventsPerRun,runCount}
