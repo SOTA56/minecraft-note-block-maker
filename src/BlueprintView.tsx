@@ -76,7 +76,7 @@ export default function BlueprintView({project,instruments,language,onBack,onSet
   }
   const chooseCell=(item:NonNullable<typeof plan>['cells'][number])=>{
     const key=`${item.x}-${item.y}`
-    if(item.type==='note'){void previewTone(Number(item.label),item.volume??1,item.instrument??'Harp');window.clearTimeout(previewTimerRef.current);setPreviewCell(key);previewTimerRef.current=window.setTimeout(()=>setPreviewCell(null),1100);return}
+    if(item.type==='note'){void previewTone(Number(item.label),item.volume??1,item.instrument??'Harp');window.clearTimeout(previewTimerRef.current);setPreviewCell(null);window.requestAnimationFrame(()=>{setPreviewCell(key);previewTimerRef.current=window.setTimeout(()=>setPreviewCell(null),260)});return}
     if(item.type==='rest')return
     if(selectedCell===key){setSelectedCell(null);setStartStep(null);return}
     setSelectedCell(key);setStartStep(item.step??plan?.firstStep??0)
