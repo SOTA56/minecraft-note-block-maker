@@ -1,7 +1,7 @@
 import type { Project } from './types'
 
 export type BlueprintInstrument = { id:string; ja:string; en:string; blockJa:string; blockEn:string; texture:string }
-export type BlueprintCell = { x:number; y:number; type:'note'|'rest'|'repeater'|'dust'|'source'; label?:string; sub?:string; texture?:string; direction?:'up'|'down'|'left'|'right'; delay?:number }
+export type BlueprintCell = { x:number; y:number; type:'note'|'rest'|'repeater'|'dust'|'source'; label?:string; sub?:string; texture?:string; direction?:'up'|'down'|'left'|'right'; delay?:number; connections?:Array<'up'|'right'|'down'|'left'> }
 
 type TimedNote = { trackId:string; trackIndex:number; pitch:number; instrument:string }
 
@@ -29,7 +29,7 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   const runGap=3
   const directionSign=fold==='right'?1:-1
   const originX=fold==='right'?2:2+(runCount-1)*runGap
-  const height=eventsPerRun*cellsPerEvent
+  const height=eventsPerRun*cellsPerEvent-1
 
   const placeNotes=(notes:TimedNote[],centerX:number,y:number)=>{
     const lanes:Array<TimedNote|undefined>=Array(3)
@@ -50,26 +50,34 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   events.forEach((notes,step)=>{
     const run=Math.floor(step/eventsPerRun)
     const within=step%eventsPerRun
-    const down=run%2===0
+    const up=run%2===0
     const centerX=originX+directionSign*run*runGap
-    const baseY=down?1+within*cellsPerEvent:height-within*cellsPerEvent
-    const noteY=baseY
-    const repeaterY=down?baseY+1:baseY-1
+    // Both directions share the same block rows. Repeaters occupy the row
+    // immediately above each block, as in the canonical CSV construction plan.
+    const rowIndex=up?eventsPerRun-1-within:within
+    const noteY=rowIndex*cellsPerEvent
+    const repeaterY=noteY-1
     placeNotes(notes,centerX,noteY)
-    cells.push({x:centerX,y:repeaterY,type:'repeater',label:'1',direction:down?'down':'up',delay:1})
+    cells.push({x:centerX,y:repeaterY,type:'repeater',label:'1',direction:up?'up':'down',delay:1})
     if(within===eventsPerRun-1&&run<runCount-1){
       const nextX=centerX+directionSign*runGap
-      const foldY=down?height+2:0
-      const fromY=down?repeaterY+1:repeaterY-1
-      for(let y=Math.min(fromY,foldY);y<=Math.max(fromY,foldY);y++)cells.push({x:centerX,y,type:'dust'})
+      const foldY=up?repeaterY-1:noteY+2
+      for(let y=Math.min(repeaterY,foldY);y<=Math.max(repeaterY,foldY);y++)cells.push({x:centerX,y,type:'dust'})
       for(let x=Math.min(centerX,nextX);x<=Math.max(centerX,nextX);x++)cells.push({x,y:foldY,type:'dust'})
+      // One final dust cell turns from the horizontal bridge toward the next run.
+      if(!up)cells.push({x:nextX,y:height+1,type:'dust'})
     }
   })
   const firstX=originX
-  cells.push({x:firstX,y:-2,type:'source',label:'START'})
-  cells.push({x:firstX,y:-1,type:'dust',direction:'down'})
-  cells.push({x:firstX,y:0,type:'dust',direction:'down'})
-  const minX=Math.min(...cells.map(cell=>cell.x)),minY=Math.min(...cells.map(cell=>cell.y))
-  const normalized=cells.map(cell=>({...cell,x:cell.x-minX+1,y:cell.y-minY+1}))
+  cells.push({x:firstX,y:height+1,type:'source'})
+  cells.push({x:firstX,y:height,type:'dust'})
+  const unique=new Map<string,BlueprintCell>()
+  cells.forEach(cell=>{const key=`${cell.x},${cell.y}`;const current=unique.get(key);if(!current||current.type==='dust')unique.set(key,cell)})
+  const compact=[...unique.values()]
+  const minX=Math.min(...compact.map(cell=>cell.x)),minY=Math.min(...compact.map(cell=>cell.y))
+  const normalized=compact.map(cell=>({...cell,x:cell.x-minX+1,y:cell.y-minY+1}))
+  const occupied=new Set(normalized.map(cell=>`${cell.x},${cell.y}`))
+  const vectors=[['up',0,-1],['right',1,0],['down',0,1],['left',-1,0]] as const
+  normalized.forEach(cell=>{if(cell.type==='dust')cell.connections=vectors.filter(([,dx,dy])=>occupied.has(`${cell.x+dx},${cell.y+dy}`)).map(([direction])=>direction)})
   return {cells:normalized,width:Math.max(...normalized.map(cell=>cell.x))+2,height:Math.max(...normalized.map(cell=>cell.y))+2,eventsPerRun,runCount}
 }

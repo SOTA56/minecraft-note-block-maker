@@ -58,6 +58,7 @@ function App() {
   const [view,setView] = useState<'editor'|'blueprint'>('editor')
   const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
   const [bpmDraft, setBpmDraft] = useState(() => String(Math.round(project.tickRate * 7.5)))
+  const [titleDraft,setTitleDraft] = useState(project.title)
   const [followPlayback, setFollowPlayback] = useState(false)
   const [followRun, setFollowRun] = useState<{id:number;step:number} | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -127,7 +128,7 @@ function App() {
   })
   const syncProjectControls = (next:Project) => {
     if (!next.tracks.some(track=>track.id===activeId)) setActiveId(next.tracks[0].id)
-    setBarsDraft(String(next.steps/16));setBpmDraft(String(Math.round(next.tickRate*7.5)))
+    setBarsDraft(String(next.steps/16));setBpmDraft(String(Math.round(next.tickRate*7.5)));setTitleDraft(next.title)
   }
   const undo = () => {
     const previous = historyRef.current.past.pop()
@@ -284,7 +285,7 @@ function App() {
     if (!window.confirm(language === 'ja' ? 'すべてのノートを削除します。この操作は取り消せません。よろしいですか？' : 'Delete every note? This cannot be undone.')) return
     stopPlayback(); setFollowPlayback(false); setFollowRun(null)
     const fresh = createInitialProject()
-    historyRef.current={past:[],future:[]};setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes(null); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setMenuOpen(false)
+    historyRef.current={past:[],future:[]};setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes(null); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setTitleDraft(fresh.title); setMenuOpen(false)
   }
   const applyBars = (raw = barsDraft) => {
     const requested = Number(raw)
@@ -320,7 +321,7 @@ function App() {
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
-      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.png" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={project.title} onChange={e => commitProject(p => ({ ...p, title: e.target.value.toUpperCase() }))} aria-label="曲名" /></div></div>
+      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.png" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} onBlur={e=>{const title=e.currentTarget.value.trim()||project.title;setTitleDraft(title);if(title!==project.title)commitProject(p=>({...p,title}))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur()}} aria-label="曲名" /></div></div>
       <div className="top-actions"><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select></div>
     </header>
 
