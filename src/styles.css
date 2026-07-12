@@ -111,3 +111,6 @@
 
 /* Blue denotes transport and track-level interaction; yellow remains informational */
 .step.playhead::before{background:#318cca;box-shadow:0 0 6px #318cca}.settings input[type=range]{accent-color:#318cca}
+
+/* Keep the dense piano roll in its own paint layer during custom pinch resizing. */
+.roll{position:relative;z-index:0;isolation:isolate;contain:paint}.control-panel{isolation:isolate}

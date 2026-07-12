@@ -58,7 +58,7 @@ function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
-  const pinchRef = useRef<{ pointers: Map<number,{x:number;y:number}>; active: boolean; startDistance: number; startHeight: number; anchorStep: number; rollTop: number } | null>(null)
+  const pinchRef = useRef<{ pointers: Map<number,{x:number;y:number}>; active: boolean; startDistance: number; startHeight: number; anchorStep: number; rollTop: number; centerY: number; lastHeight: number; pendingHeight: number; frame: number } | null>(null)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -205,7 +205,7 @@ function App() {
   }
   const handleRollPointerDown = (event:React.PointerEvent<HTMLElement>) => {
     if (event.pointerType !== 'touch') return
-    const pinch = pinchRef.current ?? { pointers:new Map(), active:false, startDistance:0, startHeight:stepHeight, anchorStep:0, rollTop:0 }
+    const pinch = pinchRef.current ?? { pointers:new Map(), active:false, startDistance:0, startHeight:stepHeight, anchorStep:0, rollTop:0, centerY:0, lastHeight:stepHeight, pendingHeight:stepHeight, frame:0 }
     pinch.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY})
     pinchRef.current = pinch
     if (pinch.pointers.size !== 2) return
@@ -217,6 +217,9 @@ function App() {
     pinch.startHeight = stepHeight
     pinch.anchorStep = Math.max(0,(centerY-(rollRect?.top ?? centerY))/stepHeight)
     pinch.rollTop = window.scrollY+(rollRect?.top ?? centerY)
+    pinch.centerY = centerY
+    pinch.lastHeight = stepHeight
+    pinch.pendingHeight = stepHeight
     dragRef.current = null
     event.preventDefault()
   }
@@ -227,19 +230,34 @@ function App() {
     if (!pinch.active || pinch.pointers.size < 2) return
     const [a,b] = [...pinch.pointers.values()]
     const distance = Math.max(1,Math.hypot(a.x-b.x,a.y-b.y))
-    const centerY = (a.y+b.y)/2
     const next = Math.max(6,Math.min(30,pinch.startHeight*distance/pinch.startDistance))
     event.preventDefault()
-    if (Math.abs(next-stepHeight)<0.08) return
-    flushSync(()=>setStepHeight(next))
-    window.scrollTo({top:pinch.rollTop+pinch.anchorStep*next-centerY,behavior:'auto'})
+    if (Math.abs(next-pinch.lastHeight)<0.08) return
+    pinch.pendingHeight = next
+    if (pinch.frame) return
+    pinch.frame = window.requestAnimationFrame(()=>{
+      pinch.frame = 0
+      pinch.lastHeight = pinch.pendingHeight
+      rollRef.current?.style.setProperty('--step-height',`${pinch.lastHeight}px`)
+      const targetScroll = Math.max(0,pinch.rollTop+pinch.anchorStep*pinch.lastHeight-pinch.centerY)
+      window.scrollTo({top:targetScroll,behavior:'auto'})
+    })
   }
   const handleRollPointerEnd = (event:React.PointerEvent<HTMLElement>) => {
     const pinch = pinchRef.current
     if (!pinch) return
     pinch.pointers.delete(event.pointerId)
-    if (pinch.active) dragRef.current = null
-    if (pinch.pointers.size < 2) pinch.active = false
+    if (pinch.active && pinch.pointers.size < 2) {
+      dragRef.current = null
+      if (pinch.frame) {
+        window.cancelAnimationFrame(pinch.frame)
+        pinch.frame = 0
+        pinch.lastHeight = pinch.pendingHeight
+        rollRef.current?.style.setProperty('--step-height',`${pinch.lastHeight}px`)
+      }
+      pinch.active = false
+      setStepHeight(pinch.lastHeight)
+    }
     if (pinch.pointers.size === 0) pinchRef.current = null
   }
   const bpm = Math.round(project.tickRate * 7.5)
