@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
+import BlueprintView from './BlueprintView'
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
 const INSTRUMENTS = [
@@ -54,6 +55,7 @@ function App() {
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [view,setView] = useState<'editor'|'blueprint'>('editor')
   const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
   const [bpmDraft, setBpmDraft] = useState(() => String(Math.round(project.tickRate * 7.5)))
   const [followPlayback, setFollowPlayback] = useState(false)
@@ -313,6 +315,8 @@ function App() {
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
+  if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} onBack={()=>setView('editor')}/>
+
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
@@ -379,7 +383,7 @@ function App() {
     </footer>
     {menuOpen && <div className="more-menu">
       <div className="menu-section"><button onClick={()=>{save();setMenuOpen(false)}}>⇩ <span>SAVE .OBG</span></button><button onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}>⇧ <span>OPEN</span></button></div>
-      <div className="menu-section future"><button disabled>▦ <span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>⌂ <span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>♫ <span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>§ <span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>◎ <span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
+      <div className="menu-section future"><button onClick={()=>{setView('blueprint');setMenuOpen(false)}}>▦ <span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button disabled>⌂ <span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>♫ <span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>§ <span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>◎ <span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
       <div className="menu-section"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>
     </div>}
   </main>
