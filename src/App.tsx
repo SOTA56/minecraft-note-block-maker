@@ -59,10 +59,12 @@ function App() {
   const [followRun, setFollowRun] = useState<{id:number;step:number} | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
+  const playbackCursorRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
   const edgeScrollRef = useRef<{ x:number; y:number; frame:number }>({x:0,y:0,frame:0})
   const playbackSwipeRef = useRef<{pointerId:number;x:number;y:number} | null>(null)
   const followIdRef = useRef(0)
+  const followPlaybackRef = useRef(false)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -79,25 +81,29 @@ function App() {
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(() => () => stopPlayback(), [])
+  useEffect(()=>{followPlaybackRef.current=followPlayback},[followPlayback])
   useEffect(() => {
-    if (!followPlayback || !followRun || !rollRef.current) return
+    if (!followRun || !rollRef.current || !playbackCursorRef.current) return
     const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
     const bottom = document.querySelector('.dock')?.getBoundingClientRect().top ?? window.innerHeight
     const center = (top+bottom)/2
     const rollTop = window.scrollY+rollRef.current.getBoundingClientRect().top
     const startedAt = performance.now()+80
     const stepMs = 2000/project.tickRate
-    const scrollToStep = (step:number) => window.scrollTo({top:Math.max(0,rollTop+(step+.5)*stepHeight-center),behavior:'auto'})
-    scrollToStep(followRun.step)
+    const renderStep = (step:number) => {
+      playbackCursorRef.current?.style.setProperty('transform',`translateY(${step*stepHeight}px)`)
+      if (followPlaybackRef.current) window.scrollTo({top:Math.max(0,rollTop+step*stepHeight-center),behavior:'auto'})
+    }
+    renderStep(followRun.step)
     let frame = 0
     const follow = (now:number) => {
       const step = Math.min(project.steps-1,followRun.step+Math.max(0,now-startedAt)/stepMs)
-      scrollToStep(step)
+      renderStep(step)
       frame = window.requestAnimationFrame(follow)
     }
     frame = window.requestAnimationFrame(follow)
     return ()=>window.cancelAnimationFrame(frame)
-  },[followPlayback,followRun,project.steps,project.tickRate,stepHeight])
+  },[followRun,project.steps,project.tickRate,stepHeight])
 
   const polyphony = useMemo(() => {
     const counts = new Map<number, number>()
@@ -225,9 +231,9 @@ function App() {
   const isDo = (pitch: number) => pitch % 12 === 6
   const playFrom = async (step:number) => {
     stopPlayback(); setPlayingStep(step); setFollowPlayback(true); setFollowRun({id:++followIdRef.current,step}); setPlayhead(step)
-    await playProject(project,step,value=>{setPlayingStep(value);if(value<0)setFollowPlayback(false)})
+    await playProject(project,step,value=>{setPlayingStep(value);if(value<0){setFollowPlayback(false);setFollowRun(null)}})
   }
-  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false) } else await playFrom(playhead) }
+  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null) } else await playFrom(playhead) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
     const rect = event.currentTarget.getBoundingClientRect()
     const boundary = Math.min(project.steps - 1, step + (event.clientY - rect.top > rect.height / 2 ? 1 : 0))
@@ -240,6 +246,7 @@ function App() {
     const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
     if (saveFirst) save()
     if (!window.confirm(language === 'ja' ? 'すべてのノートを削除します。この操作は取り消せません。よろしいですか？' : 'Delete every note? This cannot be undone.')) return
+    stopPlayback(); setFollowPlayback(false); setFollowRun(null)
     const fresh = createInitialProject()
     setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes([]); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setMenuOpen(false)
   }
@@ -281,7 +288,7 @@ function App() {
 
     <section className="transport">
       <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}><span>{playingStep >= 0 ? '■' : '▶'}</span></button>
-      <button onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setPlayhead(0) }} aria-label="先頭へ"><span>┃◀</span></button>
+      <button onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><span>┃◀</span></button>
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <label className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><input type="text" inputMode="numeric" value={barsDraft} onChange={e => setBarsDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => applyBars(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>{language === 'ja' ? '小節' : 'BARS'}</span></label>
@@ -316,8 +323,9 @@ function App() {
 
     <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onClick={() => previewTone(p,active.volume,active.instrument)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void previewTone(p,active.volume,active.instrument) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
-    <section ref={rollRef} className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
-      {Array.from({ length: project.steps }, (_, step) => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playingStep === step ? 'playing' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
+    <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+      {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
+      {Array.from({ length: project.steps }, (_, step) => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {PITCHES.map(pitch => {
           const own = active.notes.some(n => n.step === step && n.pitch === pitch)
           const ghost = ghosts && project.tracks.find(t => t.id !== activeId && t.ghostEnabled !== false && t.notes.some(n => n.step === step && n.pitch === pitch))

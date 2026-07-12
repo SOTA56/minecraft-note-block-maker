@@ -111,3 +111,6 @@
 
 /* Blue denotes transport and track-level interaction; yellow remains informational */
 .step.playhead::before{background:#318cca;box-shadow:0 0 6px #318cca}.settings input[type=range]{accent-color:#318cca}
+
+/* Continuous playback cursor; the saved grid-aligned playhead returns when stopped. */
+.roll{position:relative}.playback-cursor{position:absolute;z-index:8;top:-1px;left:0;right:0;height:2px;background:#318cca;box-shadow:0 0 6px #318cca;pointer-events:none;will-change:transform}.roll.is-playing .step.playhead::before{display:none}
