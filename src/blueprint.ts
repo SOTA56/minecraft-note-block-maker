@@ -52,24 +52,24 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
     const within=step%eventsPerRun
     const up=run%2===0
     const centerX=originX+directionSign*run*runGap
-    // Both directions share the same block rows. Repeaters occupy the row
-    // immediately above each block, as in the canonical CSV construction plan.
+    // Block rows align across every run. Repeaters follow the signal direction:
+    // above blocks while travelling up, below blocks while travelling down.
     const rowIndex=up?eventsPerRun-1-within:within
     const noteY=rowIndex*cellsPerEvent
-    const repeaterY=noteY-1
+    const repeaterY=up?noteY-1:noteY+1
     placeNotes(notes,centerX,noteY)
     cells.push({x:centerX,y:repeaterY,type:'repeater',label:'1',direction:up?'up':'down',delay:1})
     if(within===eventsPerRun-1&&run<runCount-1){
       const nextX=centerX+directionSign*runGap
-      const foldY=up?repeaterY-1:noteY+2
+      const foldY=up?repeaterY-1:repeaterY+1
       for(let y=Math.min(repeaterY,foldY);y<=Math.max(repeaterY,foldY);y++)cells.push({x:centerX,y,type:'dust'})
       for(let x=Math.min(centerX,nextX);x<=Math.max(centerX,nextX);x++)cells.push({x,y:foldY,type:'dust'})
-      // One final dust cell turns from the horizontal bridge toward the next run.
-      if(!up)cells.push({x:nextX,y:height+1,type:'dust'})
+      // One final dust cell turns from the bridge toward the first block of the next run.
+      cells.push({x:nextX,y:repeaterY,type:'dust'})
     }
   })
   const firstX=originX
-  cells.push({x:firstX,y:height+1,type:'source'})
+  cells.push({x:firstX,y:height+1,type:'source',label:'S'})
   cells.push({x:firstX,y:height,type:'dust'})
   const unique=new Map<string,BlueprintCell>()
   cells.forEach(cell=>{const key=`${cell.x},${cell.y}`;const current=unique.get(key);if(!current||current.type==='dust')unique.set(key,cell)})
