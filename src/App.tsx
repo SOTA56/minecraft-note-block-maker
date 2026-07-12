@@ -29,13 +29,13 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
+const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,fold:'right',includeSilentEdges:true} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   const title = source.title === 'NEW CIRCUIT' || source.title === 'TITLE' ? 'SONG TITLE' : source.title
-  return {...source, format:'oto-blogic', title, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  return {...source, format:'oto-blogic', title, blueprint:source.blueprint??{runLength:40,fold:'right',includeSilentEdges:true}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 
@@ -316,7 +316,7 @@ function App() {
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
-  if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} onBack={()=>setView('editor')}/>
+  if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} onBack={()=>setView('editor')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
