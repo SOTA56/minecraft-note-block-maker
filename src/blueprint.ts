@@ -1,9 +1,9 @@
 import type { Project } from './types'
 
 export type BlueprintInstrument = { id:string; ja:string; en:string; blockJa:string; blockEn:string; texture:string }
-export type BlueprintCell = { x:number; y:number; type:'note'|'rest'|'repeater'|'dust'|'source'; label?:string; sub?:string; texture?:string; direction?:'up'|'down'|'left'|'right'; delay?:number; connections?:Array<'up'|'right'|'down'|'left'> }
+export type BlueprintCell = { x:number; y:number; type:'note'|'rest'|'repeater'|'dust'|'source'; label?:string; sub?:string; texture?:string; direction?:'up'|'down'|'left'|'right'; delay?:number; connections?:Array<'up'|'right'|'down'|'left'>; step?:number; instrument?:string; volume?:number; pan?:number }
 
-type TimedNote = { trackId:string; trackIndex:number; pitch:number; instrument:string }
+type TimedNote = { trackId:string; trackIndex:number; pitch:number; instrument:string; volume:number; pan:number }
 
 export function maxPolyphony(project:Project) {
   const counts=new Map<number,number>()
@@ -18,7 +18,7 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   const events=Array.from({length:Math.max(1,lastStep-firstStep+1)},(_,offset)=>{
     const step=firstStep+offset
     const notes:TimedNote[]=[]
-    project.tracks.forEach((track,trackIndex)=>track.notes.filter(note=>note.step===step).forEach(note=>notes.push({trackId:track.id,trackIndex,pitch:note.pitch,instrument:track.instrument})))
+    project.tracks.forEach((track,trackIndex)=>track.notes.filter(note=>note.step===step).forEach(note=>notes.push({trackId:track.id,trackIndex,pitch:note.pitch,instrument:track.instrument,volume:track.volume,pan:track.pan})))
     return notes
   })
   const cells:BlueprintCell[]=[]
@@ -35,7 +35,7 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   const originX=fold==='right'?2:2+(runCount-1)*runGap
   const height=eventsPerRun*cellsPerEvent-1
 
-  const placeNotes=(notes:TimedNote[],centerX:number,y:number)=>{
+  const placeNotes=(notes:TimedNote[],centerX:number,y:number,step:number)=>{
     const lanes:Array<TimedNote|undefined>=Array(3)
     const singleTrackChord=notes.length>1&&new Set(notes.map(note=>note.trackId)).size===1
     if(singleTrackChord){
@@ -48,15 +48,16 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
       const lane=candidates.find(candidate=>!lanes[candidate])??lanes.findIndex(value=>!value)
       if(lane>=0){lanes[lane]=note;laneAffinity.set(note.trackId,lane)}
     })
-    if(!lanes[1])cells.push({x:centerX,y,type:'rest',texture:'placeholder'})
+    if(!lanes[1])cells.push({x:centerX,y,type:'rest',texture:'placeholder',step})
     lanes.forEach((note,lane)=>{
       if(!note)return
       const instrument=instruments.find(item=>item.id===note.instrument)??instruments[0]
-      cells.push({x:centerX+lane-1,y,type:'note',label:String(note.pitch),texture:instrument?.texture})
+      cells.push({x:centerX+lane-1,y,type:'note',label:String(note.pitch),texture:instrument?.texture,step,instrument:note.instrument,volume:note.volume,pan:note.pan})
     })
   }
 
   events.forEach((notes,step)=>{
+    const projectStep=firstStep+step
     const run=Math.floor(step/eventsPerRun)
     const within=step%eventsPerRun
     const up=run%2===0
@@ -66,20 +67,21 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
     const rowIndex=up?eventsPerRun-1-within:within
     const noteY=rowIndex*cellsPerEvent
     const repeaterY=up?noteY-1:noteY+1
-    placeNotes(notes,centerX,noteY)
-    cells.push({x:centerX,y:repeaterY,type:'repeater',label:'1',direction:up?'up':'down',delay:1})
+    placeNotes(notes,centerX,noteY,projectStep)
+    cells.push({x:centerX,y:repeaterY,type:'repeater',label:'1',direction:up?'up':'down',delay:1,step:projectStep})
     if(within===eventsPerRun-1&&run<runCount-1){
       const nextX=centerX+directionSign*runGap
       const foldY=up?repeaterY-1:repeaterY+1
-      for(let y=Math.min(repeaterY,foldY);y<=Math.max(repeaterY,foldY);y++)cells.push({x:centerX,y,type:'dust'})
-      for(let x=Math.min(centerX,nextX);x<=Math.max(centerX,nextX);x++)cells.push({x,y:foldY,type:'dust'})
+      const nextStep=Math.min(lastStep,projectStep+1)
+      for(let y=Math.min(repeaterY,foldY);y<=Math.max(repeaterY,foldY);y++)cells.push({x:centerX,y,type:'dust',step:nextStep})
+      for(let x=Math.min(centerX,nextX);x<=Math.max(centerX,nextX);x++)cells.push({x,y:foldY,type:'dust',step:nextStep})
       // One final dust cell turns from the bridge toward the first block of the next run.
-      cells.push({x:nextX,y:repeaterY,type:'dust'})
+      cells.push({x:nextX,y:repeaterY,type:'dust',step:nextStep})
     }
   })
   const firstX=originX
-  cells.push({x:firstX,y:height+1,type:'source',label:'S'})
-  cells.push({x:firstX,y:height,type:'dust'})
+  cells.push({x:firstX,y:height+1,type:'source',label:'S',step:firstStep})
+  cells.push({x:firstX,y:height,type:'dust',step:firstStep})
   const unique=new Map<string,BlueprintCell>()
   cells.forEach(cell=>{const key=`${cell.x},${cell.y}`;const current=unique.get(key);if(!current||current.type==='dust')unique.set(key,cell)})
   const compact=[...unique.values()]
