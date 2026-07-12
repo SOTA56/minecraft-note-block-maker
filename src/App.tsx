@@ -55,12 +55,14 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
   const [bpmDraft, setBpmDraft] = useState(() => String(Math.round(project.tickRate * 7.5)))
-  const [followPlayback, setFollowPlayback] = useState(true)
+  const [followPlayback, setFollowPlayback] = useState(false)
+  const [followRun, setFollowRun] = useState<{id:number;step:number} | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
   const edgeScrollRef = useRef<{ x:number; y:number; frame:number }>({x:0,y:0,frame:0})
   const playbackSwipeRef = useRef<{pointerId:number;x:number;y:number} | null>(null)
+  const followIdRef = useRef(0)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -78,18 +80,24 @@ function App() {
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(() => () => stopPlayback(), [])
   useEffect(() => {
-    if (playingStep < 0 || !followPlayback) return
-    const frame = window.requestAnimationFrame(()=>{
-      const row = rollRef.current?.querySelector<HTMLElement>(`[data-roll-step="${playingStep}"]`)
-      if (!row) return
-      const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
-      const bottom = document.querySelector('.dock')?.getBoundingClientRect().top ?? window.innerHeight
-      const rect = row.getBoundingClientRect()
-      const target = window.scrollY+rect.top+rect.height/2-(top+bottom)/2
-      window.scrollTo({top:Math.max(0,target),behavior:'smooth'})
-    })
+    if (!followPlayback || !followRun || !rollRef.current) return
+    const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
+    const bottom = document.querySelector('.dock')?.getBoundingClientRect().top ?? window.innerHeight
+    const center = (top+bottom)/2
+    const rollTop = window.scrollY+rollRef.current.getBoundingClientRect().top
+    const startedAt = performance.now()+80
+    const stepMs = 2000/project.tickRate
+    const scrollToStep = (step:number) => window.scrollTo({top:Math.max(0,rollTop+(step+.5)*stepHeight-center),behavior:'auto'})
+    scrollToStep(followRun.step)
+    let frame = 0
+    const follow = (now:number) => {
+      const step = Math.min(project.steps-1,followRun.step+Math.max(0,now-startedAt)/stepMs)
+      scrollToStep(step)
+      frame = window.requestAnimationFrame(follow)
+    }
+    frame = window.requestAnimationFrame(follow)
     return ()=>window.cancelAnimationFrame(frame)
-  },[playingStep,followPlayback])
+  },[followPlayback,followRun,project.steps,project.tickRate,stepHeight])
 
   const polyphony = useMemo(() => {
     const counts = new Map<number, number>()
@@ -215,8 +223,11 @@ function App() {
   const pitchLabel = (name:string) => { const [base, sharp] = name.split('♯'); return <>{base}{sharp !== undefined && <span className="sharp">♯</span>}</> }
   const isBlack = (pitch: number) => [0, 2, 4, 7, 9].includes(pitch % 12)
   const isDo = (pitch: number) => pitch % 12 === 6
-  const playFrom = async (step:number) => { stopPlayback(); setFollowPlayback(true); setPlayhead(step); await playProject(project, step, setPlayingStep) }
-  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1) } else await playFrom(playhead) }
+  const playFrom = async (step:number) => {
+    stopPlayback(); setPlayingStep(step); setFollowPlayback(true); setFollowRun({id:++followIdRef.current,step}); setPlayhead(step)
+    await playProject(project,step,value=>{setPlayingStep(value);if(value<0)setFollowPlayback(false)})
+  }
+  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false) } else await playFrom(playhead) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
     const rect = event.currentTarget.getBoundingClientRect()
     const boundary = Math.min(project.steps - 1, step + (event.clientY - rect.top > rect.height / 2 ? 1 : 0))
@@ -270,7 +281,7 @@ function App() {
 
     <section className="transport">
       <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}><span>{playingStep >= 0 ? '■' : '▶'}</span></button>
-      <button onClick={() => { stopPlayback(); setPlayingStep(-1); setPlayhead(0) }} aria-label="先頭へ"><span>┃◀</span></button>
+      <button onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setPlayhead(0) }} aria-label="先頭へ"><span>┃◀</span></button>
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <label className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><input type="text" inputMode="numeric" value={barsDraft} onChange={e => setBarsDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => applyBars(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>{language === 'ja' ? '小節' : 'BARS'}</span></label>
