@@ -28,12 +28,13 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'note-block-maker', version: 1, title: 'TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
+const createInitialProject = ():Project => ({ format: 'note-block-maker', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)) })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
-  return {...source, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  const title = source.title === 'NEW CIRCUIT' || source.title === 'TITLE' ? 'SONG TITLE' : source.title
+  return {...source, title, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 
@@ -206,7 +207,7 @@ function App() {
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
-      <div className="brand"><span className="brand-mark">♪</span><div><small>{language === 'ja' ? '音ブロジック' : 'NOTE BLOGIC'}</small><input value={project.title} onChange={e => setProject(p => ({ ...p, title: e.target.value.toUpperCase() }))} aria-label="曲名" /></div></div>
+      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.png" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={project.title} onChange={e => setProject(p => ({ ...p, title: e.target.value.toUpperCase() }))} aria-label="曲名" /></div></div>
       <div className="top-actions"><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select></div>
     </header>
 
@@ -265,7 +266,7 @@ function App() {
       <button onClick={save}>⇩<small>SAVE .NBM</small></button><button onClick={() => fileRef.current?.click()}>⇧<small>OPEN</small></button>
       <button onClick={() => setMenuOpen(!menuOpen)}>•••<small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
-      <div className="copyright">© 2026 Note Blogick · Powered by SOTA56</div>
+      <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
     {menuOpen && <div className="more-menu"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>}
   </main>

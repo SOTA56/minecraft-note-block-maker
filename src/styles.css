@@ -105,3 +105,9 @@
 
 /* Compact transport: BPM value and TPS conversion share one line */
 .transport{height:56px}.meter,.tick,.poly{padding:6px 7px}.tick.bpm{display:grid;grid-template-columns:48px minmax(0,1fr);grid-template-rows:11px 24px;align-content:center}.tick.bpm small{grid-column:1/-1}.tick.bpm input{grid-column:1;grid-row:2;align-self:center}.tick.bpm span{grid-column:2;grid-row:2;align-self:center;display:block;margin:0;white-space:nowrap;font-size:7px}.tick.bars{padding-block:6px}.poly{display:grid;align-content:center}
+
+/* OTO BLOGIC brand assets */
+.brand{gap:8px}.brand>div{display:grid;align-content:center;gap:2px}.brand-icon{width:48px;height:48px;object-fit:contain}.brand-logo{display:block;width:118px;height:auto;image-rendering:pixelated}.brand input{width:150px}
+
+/* Blue denotes transport and track-level interaction; yellow remains informational */
+.step.playhead::before{background:#318cca;box-shadow:0 0 6px #318cca}.settings input[type=range]{accent-color:#318cca}
