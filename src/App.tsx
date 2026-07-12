@@ -55,11 +55,12 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
   const [bpmDraft, setBpmDraft] = useState(() => String(Math.round(project.tickRate * 7.5)))
+  const [followPlayback, setFollowPlayback] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
-  const selectionScrollRef = useRef<{ pointers:Map<number,{x:number;y:number}>; twoFinger:boolean; lastCenterY:number; previous:typeof selection } | null>(null)
   const edgeScrollRef = useRef<{ x:number; y:number; frame:number }>({x:0,y:0,frame:0})
+  const playbackSwipeRef = useRef<{pointerId:number;x:number;y:number} | null>(null)
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -76,6 +77,19 @@ function App() {
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(() => () => stopPlayback(), [])
+  useEffect(() => {
+    if (playingStep < 0 || !followPlayback) return
+    const frame = window.requestAnimationFrame(()=>{
+      const row = rollRef.current?.querySelector<HTMLElement>(`[data-roll-step="${playingStep}"]`)
+      if (!row) return
+      const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
+      const bottom = document.querySelector('.dock')?.getBoundingClientRect().top ?? window.innerHeight
+      const rect = row.getBoundingClientRect()
+      const target = window.scrollY+rect.top+rect.height/2-(top+bottom)/2
+      window.scrollTo({top:Math.max(0,target),behavior:'smooth'})
+    })
+    return ()=>window.cancelAnimationFrame(frame)
+  },[playingStep,followPlayback])
 
   const polyphony = useMemo(() => {
     const counts = new Map<number, number>()
@@ -98,7 +112,7 @@ function App() {
   }
   const runEdgeScroll = () => {
     edgeScrollRef.current.frame = 0
-    if (!dragRef.current?.selecting || selectionScrollRef.current?.twoFinger) return
+    if (!dragRef.current?.selecting) return
     const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
     const bottom = document.querySelector('.dock')?.getBoundingClientRect().top ?? window.innerHeight
     const zone = 56
@@ -109,37 +123,19 @@ function App() {
     updateSelectionEndAt(edgeScrollRef.current.x,Math.max(top+2,Math.min(bottom-2,y)))
     edgeScrollRef.current.frame = window.requestAnimationFrame(runEdgeScroll)
   }
-  const handleSelectionScrollDown = (event:React.PointerEvent<HTMLElement>) => {
-    if (editMode !== 'select' || event.pointerType !== 'touch') return
-    const gesture = selectionScrollRef.current ?? {pointers:new Map(),twoFinger:false,lastCenterY:event.clientY,previous:selection}
-    gesture.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY})
-    selectionScrollRef.current = gesture
-    if (gesture.pointers.size === 2) {
-      gesture.twoFinger = true
-      gesture.lastCenterY = [...gesture.pointers.values()].reduce((sum,p)=>sum+p.y,0)/2
-      dragRef.current = null
-      setSelection(gesture.previous)
-      if (edgeScrollRef.current.frame) window.cancelAnimationFrame(edgeScrollRef.current.frame)
-      edgeScrollRef.current.frame = 0
-      event.preventDefault()
+  const handlePlaybackSwipeDown = (event:React.PointerEvent<HTMLElement>) => {
+    if (playingStep >= 0 && event.isPrimary) playbackSwipeRef.current = {pointerId:event.pointerId,x:event.clientX,y:event.clientY}
+  }
+  const handlePlaybackSwipeMove = (event:React.PointerEvent<HTMLElement>) => {
+    const start = playbackSwipeRef.current
+    if (!start || start.pointerId !== event.pointerId) return
+    if (Math.hypot(event.clientX-start.x,event.clientY-start.y) > 10) {
+      setFollowPlayback(false)
+      playbackSwipeRef.current = null
     }
   }
-  const handleSelectionScrollMove = (event:React.PointerEvent<HTMLElement>) => {
-    const gesture = selectionScrollRef.current
-    if (!gesture?.pointers.has(event.pointerId)) return
-    gesture.pointers.set(event.pointerId,{x:event.clientX,y:event.clientY})
-    if (!gesture.twoFinger || gesture.pointers.size < 2) return
-    const centerY = [...gesture.pointers.values()].reduce((sum,p)=>sum+p.y,0)/gesture.pointers.size
-    window.scrollBy({top:gesture.lastCenterY-centerY,behavior:'auto'})
-    gesture.lastCenterY = centerY
-    event.preventDefault()
-  }
-  const handleSelectionScrollEnd = (event:React.PointerEvent<HTMLElement>) => {
-    const gesture = selectionScrollRef.current
-    if (!gesture) return
-    gesture.pointers.delete(event.pointerId)
-    if (gesture.twoFinger) dragRef.current = null
-    if (gesture.pointers.size === 0) selectionScrollRef.current = null
+  const handlePlaybackSwipeEnd = (event:React.PointerEvent<HTMLElement>) => {
+    if (playbackSwipeRef.current?.pointerId === event.pointerId) playbackSwipeRef.current = null
   }
   const handlePointerDown = (event: React.PointerEvent, step: number, pitch: number) => {
     if (editMode === 'select') {
@@ -219,7 +215,7 @@ function App() {
   const pitchLabel = (name:string) => { const [base, sharp] = name.split('♯'); return <>{base}{sharp !== undefined && <span className="sharp">♯</span>}</> }
   const isBlack = (pitch: number) => [0, 2, 4, 7, 9].includes(pitch % 12)
   const isDo = (pitch: number) => pitch % 12 === 6
-  const playFrom = async (step:number) => { stopPlayback(); setPlayhead(step); await playProject(project, step, setPlayingStep) }
+  const playFrom = async (step:number) => { stopPlayback(); setFollowPlayback(true); setPlayhead(step); await playProject(project, step, setPlayingStep) }
   const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1) } else await playFrom(playhead) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
     const rect = event.currentTarget.getBoundingClientRect()
@@ -309,8 +305,8 @@ function App() {
 
     <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onClick={() => previewTone(p,active.volume,active.instrument)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void previewTone(p,active.volume,active.instrument) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
-    <section ref={rollRef} className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handleSelectionScrollDown} onPointerMoveCapture={handleSelectionScrollMove} onPointerUpCapture={handleSelectionScrollEnd} onPointerCancelCapture={handleSelectionScrollEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
-      {Array.from({ length: project.steps }, (_, step) => <div className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playingStep === step ? 'playing' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
+    <section ref={rollRef} className={`roll ${editMode}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+      {Array.from({ length: project.steps }, (_, step) => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playingStep === step ? 'playing' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {PITCHES.map(pitch => {
           const own = active.notes.some(n => n.step === step && n.pitch === pitch)
           const ghost = ghosts && project.tracks.find(t => t.id !== activeId && t.ghostEnabled !== false && t.notes.some(n => n.step === step && n.pitch === pitch))
