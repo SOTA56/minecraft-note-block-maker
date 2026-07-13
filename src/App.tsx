@@ -72,6 +72,8 @@ function App() {
   const followPlaybackRef = useRef(false)
   const historyRef = useRef<{past:Project[];future:Project[]}>({past:[],future:[]})
   const copyFeedbackTimerRef = useRef(0)
+  const barsValueRef = useRef(project.steps / 16)
+  const barsHoldRef = useRef<{delay:number;repeat:number}>({delay:0,repeat:0})
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -88,6 +90,8 @@ function App() {
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(() => () => stopPlayback(), [])
+  useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
+  useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
   useEffect(()=>{followPlaybackRef.current=followPlayback},[followPlayback])
   useEffect(() => {
     if (!followRun || !rollRef.current || !playbackCursorRef.current) return
@@ -294,9 +298,13 @@ function App() {
     const nextSteps = bars * 16
     const outside = project.tracks.reduce((count,track) => count + track.notes.filter(note => note.step >= nextSteps).length, 0)
     if (outside && !window.confirm(language === 'ja' ? `${bars}小節へ短縮すると、範囲外のノート${outside}個が削除されます。続行しますか？` : `Shortening to ${bars} bars will delete ${outside} notes outside the new range. Continue?`)) { setBarsDraft(String(project.steps / 16)); return }
+    barsValueRef.current=bars
     commitProject(p => ({...p,steps:nextSteps,tracks:p.tracks.map(track=>({...track,notes:track.notes.filter(note=>note.step<nextSteps)}))}))
     setPlayhead(step => Math.min(step,nextSteps-1)); setBarsDraft(String(bars))
   }
+  const stopBarsHold = () => {window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat);barsHoldRef.current={delay:0,repeat:0}}
+  const adjustBars = (delta:number) => {const next=Math.max(1,Math.min(999,barsValueRef.current+delta));if(next!==barsValueRef.current)applyBars(String(next))}
+  const startBarsHold = (delta:number,event:React.PointerEvent<HTMLButtonElement>) => {event.preventDefault();stopBarsHold();adjustBars(delta);barsHoldRef.current.delay=window.setTimeout(()=>{barsHoldRef.current.repeat=window.setInterval(()=>adjustBars(delta),125)},450)}
   const commitBpm = (raw = bpmDraft) => {
     const requested = Number(raw)
     if (!Number.isFinite(requested) || requested < 8) { setBpmDraft(String(bpm)); return }
@@ -330,7 +338,7 @@ function App() {
       <button className="cue" onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><img className="transport-icon" src="/assets/icons/cue.svg" alt="" aria-hidden="true" /></button>
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
-      <label className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><input type="text" inputMode="numeric" value={barsDraft} onChange={e => setBarsDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => applyBars(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>{language === 'ja' ? '小節' : 'BARS'}</span></label>
+      <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><strong>{project.steps/16}</strong><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
     </section>
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
@@ -343,7 +351,7 @@ function App() {
       const trackInstrument = INSTRUMENTS.find(item => item.id === track.instrument) ?? INSTRUMENTS[0]
       const patchTrack = (patch:Partial<Track>) => commitProject(p => ({...p, tracks:p.tracks.map(item => item.id === track.id ? {...item,...patch}:item)}))
       return <div key={track.id} className={`track-row ${track.id === activeId ? 'selected' : ''}`} style={{'--row-color':track.color} as React.CSSProperties}>
-        <button className="track-select" onClick={() => setActiveId(track.id)}><b className={`track-number ${trackInstrument.texture}`}>{String(i + 1).padStart(2, '0')}</b><span><strong>{track.name}</strong><small>{language === 'ja' ? trackInstrument.ja : trackInstrument.en}</small></span></button>
+        <button className="track-select" onClick={() => setActiveId(track.id)}><b className={`track-number ${trackInstrument.texture} ${track.notes.length?'':'empty'}`}>{String(i + 1).padStart(2, '0')}</b><span><strong>{track.name}</strong><small>{language === 'ja' ? trackInstrument.ja : trackInstrument.en}</small></span></button>
         <div className="track-switches"><button className={track.ghostEnabled ? 'on' : ''} onClick={() => patchTrack({ghostEnabled:!track.ghostEnabled})} title="Ghost"><GhostIcon /></button><button className={track.muted ? 'danger' : ''} onClick={() => patchTrack({muted:!track.muted})} title="Mute">M</button><button className={track.solo ? 'solo' : ''} onClick={() => patchTrack({solo:!track.solo})} title="Solo">S</button></div>
         <label className="track-volume"><span>VOL</span><input type="range" min="0" max="1" step=".01" value={track.volume} onChange={e => patchTrack({volume:+e.target.value})} /><b>{Math.round(track.volume*100)}</b></label>
       </div>
@@ -383,9 +391,9 @@ function App() {
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
     {menuOpen && <div className="more-menu">
-      <div className="menu-section"><button onClick={()=>{save();setMenuOpen(false)}}>⇩ <span>SAVE .OBG</span></button><button onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}>⇧ <span>OPEN</span></button></div>
-      <div className="menu-section future"><button onClick={()=>{setView('blueprint');setMenuOpen(false)}}>▦ <span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button disabled>⌂ <span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>♫ <span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>§ <span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled>◎ <span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
-      <div className="menu-section"><button className="danger" onClick={clearAll}>⌫ <span>{c[18]}</span></button></div>
+      <div className="menu-section"><button onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button></div>
+      <div className="menu-section future"><button onClick={()=>{setView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button disabled><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">§</b><span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">◎</b><span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
+      <div className="menu-section"><button className="danger" onClick={clearAll}><b className="menu-icon">⌫</b><span>{c[18]}</span></button></div>
     </div>}
   </main>
 }
