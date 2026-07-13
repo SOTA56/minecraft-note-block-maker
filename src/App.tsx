@@ -335,7 +335,7 @@ function App() {
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
       <button className="track-main" onClick={() => setPanel(panel === 'tracks' ? null : 'tracks')}><span className={`block-chip ${instrument.texture}`}>{String(project.tracks.indexOf(active) + 1).padStart(2, '0')}</span><span><small>{t.activeTrack}</small><strong>{active.name}</strong></span><b>{panel === 'tracks' ? '⌃' : '⌄'}</b></button>
-      <button onClick={() => setPanel(panel === 'settings' ? null : 'settings')}><span>☷</span><small>{language === 'ja' ? 'トラック設定' : 'TRACK SET'}</small></button>
+      <button className="track-settings-trigger" onClick={() => setPanel(panel === 'settings' ? null : 'settings')}><img src="/assets/icons/settings.svg" alt="" aria-hidden="true" /><small>{language === 'ja' ? 'トラック設定' : 'TRACK SET'}</small></button>
       <button className={ghosts ? 'on' : ''} onClick={() => setGhosts(!ghosts)}><GhostIcon /><small>{t.ghost}</small></button>
     </section>
 
