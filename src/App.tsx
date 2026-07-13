@@ -64,7 +64,7 @@ function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const playbackCursorRef = useRef<HTMLDivElement>(null)
-  const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection> } | null>(null)
+  const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseAllNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection>; baseProject?: Project } | null>(null)
   const edgeScrollRef = useRef<{ x:number; y:number; frame:number }>({x:0,y:0,frame:0})
   const playbackSwipeRef = useRef<{pointerId:number;x:number;y:number} | null>(null)
   const labelGestureRef = useRef<{pointerId:number;x:number;y:number;moved:boolean} | null>(null)
@@ -188,7 +188,7 @@ function App() {
     if (editMode === 'select') {
       event.currentTarget.setPointerCapture(event.pointerId)
       if (selection && isSelected(step, pitch) && active.notes.some(n => n.step === step && n.pitch === pitch)) {
-        dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseSelection: selection }
+        dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseAllNotes:active.notes, baseSelection: selection, baseProject:project }
         return
       }
       setSelection({ startStep: step, endStep: step, startPitch: pitch, endPitch: pitch })
@@ -212,15 +212,20 @@ function App() {
     const step = Number(target.dataset.step)
     const pitch = Number(target.dataset.pitch)
     if (step === drag.step && pitch === drag.pitch) return
-    if (drag.group && drag.baseNotes && drag.baseSelection) {
-      const ds = step - drag.originStep
-      const dp = pitch - drag.originPitch
-      const original = drag.baseNotes
-      changeActiveNotes(notes => [...notes.filter(n => !original.some(o => o.step === n.step && o.pitch === n.pitch)), ...original.map(n => ({ step: Math.max(0, Math.min(project.steps - 1, n.step + ds)), pitch: Math.max(0, Math.min(24, n.pitch + dp)) }))])
+    if (drag.group && drag.baseNotes && drag.baseAllNotes && drag.baseSelection) {
       const base = drag.baseSelection
+      const minStep=Math.min(base.startStep,base.endStep),maxStep=Math.max(base.startStep,base.endStep)
+      const minPitch=Math.min(base.startPitch,base.endPitch),maxPitch=Math.max(base.startPitch,base.endPitch)
+      const ds = Math.max(-minStep,Math.min(project.steps-1-maxStep,step-drag.originStep))
+      const dp = Math.max(-minPitch,Math.min(24-maxPitch,pitch-drag.originPitch))
+      if(drag.step===drag.originStep+ds&&drag.pitch===drag.originPitch+dp)return
+      const original = drag.baseNotes
+      const moved=original.map(n=>({step:n.step+ds,pitch:n.pitch+dp}))
+      const remaining=drag.baseAllNotes.filter(n=>!original.some(o=>o.step===n.step&&o.pitch===n.pitch)&&!moved.some(item=>item.step===n.step&&item.pitch===n.pitch))
+      setProject(p=>({...p,tracks:p.tracks.map(track=>track.id===activeId?{...track,notes:[...remaining,...moved]}:track)}))
       setSelection({ startStep: base.startStep + ds, endStep: base.endStep + ds, startPitch: base.startPitch + dp, endPitch: base.endPitch + dp })
-      if (pitch !== drag.pitch) previewTone(pitch, active.volume, active.instrument)
-      drag.moved = true; drag.step = step; drag.pitch = pitch
+      if (drag.originPitch+dp !== drag.pitch) previewTone(drag.originPitch+dp, active.volume, active.instrument)
+      drag.moved = true; drag.step = drag.originStep+ds; drag.pitch = drag.originPitch+dp
       return
     }
     if (drag.selecting) {
@@ -229,7 +234,6 @@ function App() {
       return
     }
     drag.moved = true
-    setDraggedNote(drag.step, drag.pitch, step, pitch)
     if (pitch !== drag.pitch) previewTone(pitch, active.volume, active.instrument)
     drag.step = step; drag.pitch = pitch
   }
@@ -237,7 +241,9 @@ function App() {
     if (edgeScrollRef.current.frame) window.cancelAnimationFrame(edgeScrollRef.current.frame)
     edgeScrollRef.current.frame = 0
     const drag = dragRef.current
-    if (drag?.existed && !drag.moved && !drag.selecting) changeActiveNotes(notes => notes.filter(n => n.step !== drag.originStep || n.pitch !== drag.originPitch))
+    if (drag?.group&&drag.moved&&drag.baseProject){historyRef.current.past.push(drag.baseProject);if(historyRef.current.past.length>100)historyRef.current.past.shift();historyRef.current.future=[]}
+    if (drag?.existed && !drag.moved && !drag.selecting && !drag.group) changeActiveNotes(notes => notes.filter(n => n.step !== drag.originStep || n.pitch !== drag.originPitch))
+    if (drag?.existed && drag.moved && !drag.selecting && !drag.group) setDraggedNote(drag.originStep,drag.originPitch,drag.step,drag.pitch)
     if (drag && !drag.existed && !drag.moved && !drag.selecting) {
       setDraggedNote(drag.originStep, drag.originPitch, drag.originStep, drag.originPitch)
       previewTone(drag.originPitch, active.volume, active.instrument)
