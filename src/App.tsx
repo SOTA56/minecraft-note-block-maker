@@ -338,7 +338,7 @@ function App() {
       <button className="cue" onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><img className="transport-icon" src="/assets/icons/cue.svg" alt="" aria-hidden="true" /></button>
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
-      <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><strong>{project.steps/16}</strong><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
+      <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><input aria-label={language==='ja'?'小節数を入力':'Enter bars'} type="text" inputMode="numeric" value={barsDraft} onChange={event=>setBarsDraft(event.target.value.replace(/[^0-9]/g,''))} onBlur={event=>applyBars(event.currentTarget.value)} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur()}}/><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
     </section>
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
@@ -360,10 +360,10 @@ function App() {
     <button className="panel-toggle" onClick={() => setControlsOpen(!controlsOpen)} aria-label={controlsOpen ? '操作パネルを収納' : '操作パネルを表示'}>{controlsOpen ? '⌃' : '⌄'}</button>
     <nav className="edit-tools">
       <button className={editMode === 'input' ? 'active' : ''} onClick={() => { setEditMode('input'); setSelection(null) }}><span className="tool-icon">✎</span><small>{c[10]}</small></button>
-      <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}><span className="tool-icon">▧</span><small>{c[11]}</small></button>
+      <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}><span className="tool-icon tool-select">▧</span><small>{c[11]}</small></button>
       <button className={copyFeedback?'copied':''} onClick={copySelection} disabled={!normalizedSelection}><span className="tool-icon">{copyFeedback?'✓':'⧉'}</span><small>{c[12]}</small></button>
-      <button onClick={pasteSelection} disabled={!copiedNotes?.notes.length}><span className="tool-icon">⎘</span><small>{c[13]}</small></button>
-      <button onClick={deleteSelection} disabled={!normalizedSelection}><span className="tool-icon">⌫</span><small>{c[14]}</small></button>
+      <button onClick={pasteSelection} disabled={!copiedNotes?.notes.length}><span className="tool-icon tool-paste">⎘</span><small>{c[13]}</small></button>
+      <button className="delete-tool" onClick={deleteSelection} disabled={!normalizedSelection}><span className="tool-icon">⌫</span><small>{c[14]}</small></button>
       <button onClick={() => zoomSteps(-4)}><span className="tool-icon">−</span><small>{c[15]}</small></button>
       <button onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
