@@ -56,3 +56,8 @@
 
 /* The legend reuses the actual repeater mark at a smaller scale. */
 .blueprint-legend .legend-repeater{position:relative}.blueprint-legend .legend-repeater .repeater-mark{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6875)}.blueprint-legend .legend-repeater .repeater-mark b{top:3px}
+
+.settings-icon{display:block;width:21px;height:21px;object-fit:contain}.control-action.active .settings-icon{filter:sepia(1) saturate(4) hue-rotate(355deg) brightness(1.12)}
+
+.blueprint-header{grid-template-columns:max-content minmax(74px,1fr) 70px}.blueprint-header>strong{align-self:stretch;display:flex;align-items:center;padding-left:12px;border-left:2px solid #318cca}.blueprint-header .editor-back{grid-template-columns:22px 27px;justify-content:center;gap:5px}.blueprint-header .editor-back img{display:block;width:27px;height:27px}.blueprint-header .editor-back i{color:#fff}
+@media(max-width:520px){.blueprint-header{grid-template-columns:max-content minmax(64px,1fr) 62px;gap:7px}.blueprint-header>strong{padding-left:8px}.blueprint-header .editor-back{grid-template-columns:18px 24px;gap:4px}.blueprint-header .editor-back img{width:24px;height:24px}}
