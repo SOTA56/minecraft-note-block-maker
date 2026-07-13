@@ -326,8 +326,8 @@ function App() {
     </header>
 
     <section className="transport">
-      <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}><span>{playingStep >= 0 ? '■' : '▶'}</span></button>
-      <button onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><span>┃◀</span></button>
+      <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}><img className="transport-icon" src={playingStep >= 0 ? '/assets/icons/stop.svg' : '/assets/icons/play.svg'} alt="" aria-hidden="true" /></button>
+      <button className="cue" onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><img className="transport-icon" src="/assets/icons/cue.svg" alt="" aria-hidden="true" /></button>
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <label className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><input type="text" inputMode="numeric" value={barsDraft} onChange={e => setBarsDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => applyBars(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>{language === 'ja' ? '小節' : 'BARS'}</span></label>
