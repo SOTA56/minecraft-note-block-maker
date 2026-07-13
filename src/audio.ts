@@ -56,7 +56,7 @@ export async function previewTone(pitch: number, volume: number, instrument: str
   playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume)
 }
 
-export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void) {
+export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean}) {
   const token = ++stopAt
   const ctx = await getContext()
   if (stopAt !== token) return
@@ -66,7 +66,7 @@ export async function playProject(project: Project, fromStep = 0, onStep?: (step
   const stepSeconds = 2 / project.tickRate
   const start = ctx.currentTime + 0.08
   audible.forEach(track => track.notes.filter(note => note.step >= fromStep).forEach(note =>
-    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - fromStep) * stepSeconds, track.volume, track.pan ?? 0, true)))
+    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - fromStep) * stepSeconds, track.volume, options?.usePan===false?0:track.pan??0, true)))
   for (let step = fromStep; step < project.steps; step += 1) {
     window.setTimeout(() => { if (stopAt === token) onStep?.(step) }, 80 + (step - fromStep) * stepSeconds * 1000)
   }

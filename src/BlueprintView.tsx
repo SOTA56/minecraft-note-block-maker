@@ -87,7 +87,7 @@ export default function BlueprintView({project,instruments,language,onBack,onSet
   const playBlueprint=async()=>{
     if(playingStep>=0){stopPlayback();setPlayingStep(-1);return}
     const from=startStep??plan?.firstStep??0;setPlayingStep(from)
-    await playProject(project,from,step=>{setPlayingStep(step);emitStepParticles(step)})
+    await playProject(project,from,step=>{setPlayingStep(step);emitStepParticles(step)},{usePan:false})
   }
   const cueStart=()=>{stopPlayback();setPlayingStep(-1);const source=plan?.cells.find(item=>item.type==='source');if(source){setSelectedCell(`${source.x}-${source.y}`);setStartStep(source.step??plan?.firstStep??0)}}
   return <main className={`blueprint-page theme-${theme}`}>

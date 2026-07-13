@@ -50,6 +50,7 @@ function App() {
   const [stepHeight, setStepHeight] = useState(30)
   const [controlsOpen, setControlsOpen] = useState(true)
   const [editMode, setEditMode] = useState<'input' | 'select'>('input')
+  const [dragPreview,setDragPreview]=useState<{originStep:number;originPitch:number;step:number;pitch:number}|null>(null)
   const [selection, setSelection] = useState<{ startStep: number; endStep: number; startPitch: number; endPitch: number } | null>(null)
   const [copiedNotes, setCopiedNotes] = useState<{ notes:{step:number;pitch:number}[]; width:number } | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
@@ -197,6 +198,7 @@ function App() {
     }
     const existed = active.notes.some(n => n.step === step && n.pitch === pitch)
     if (existed) event.currentTarget.setPointerCapture(event.pointerId)
+    if(existed)setDragPreview({originStep:step,originPitch:pitch,step,pitch})
     dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed, startX:event.clientX, startY:event.clientY }
   }
   const handlePointerMove = (event: React.PointerEvent) => {
@@ -234,6 +236,7 @@ function App() {
       return
     }
     drag.moved = true
+    if(drag.existed)setDragPreview({originStep:drag.originStep,originPitch:drag.originPitch,step,pitch})
     if (pitch !== drag.pitch) previewTone(pitch, active.volume, active.instrument)
     drag.step = step; drag.pitch = pitch
   }
@@ -248,7 +251,7 @@ function App() {
       setDraggedNote(drag.originStep, drag.originPitch, drag.originStep, drag.originPitch)
       previewTone(drag.originPitch, active.volume, active.instrument)
     }
-    dragRef.current = null
+    setDragPreview(null);dragRef.current = null
   }
   const copySelection = () => {
     if (!normalizedSelection) return
@@ -380,7 +383,10 @@ function App() {
       {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
       {Array.from({ length: project.steps }, (_, step) => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {PITCHES.map(pitch => {
-          const own = active.notes.some(n => n.step === step && n.pitch === pitch)
+          const storedOwn = active.notes.some(n => n.step === step && n.pitch === pitch)
+          const previewOrigin=Boolean(dragPreview&&dragPreview.originStep===step&&dragPreview.originPitch===pitch)
+          const previewTarget=Boolean(dragPreview&&dragPreview.step===step&&dragPreview.pitch===pitch)
+          const own = (storedOwn&&!previewOrigin)||previewTarget
           const ghost = ghosts && project.tracks.find(t => t.id !== activeId && t.ghostEnabled !== false && t.notes.some(n => n.step === step && n.pitch === pitch))
           const selected = isSelected(step,pitch)
           const edges = selected && normalizedSelection ? `${step === normalizedSelection.minStep ? ' selection-top' : ''}${step === normalizedSelection.maxStep ? ' selection-bottom' : ''}${pitch === normalizedSelection.minPitch ? ' selection-left' : ''}${pitch === normalizedSelection.maxPitch ? ' selection-right' : ''}` : ''
