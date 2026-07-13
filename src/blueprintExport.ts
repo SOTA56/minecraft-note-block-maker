@@ -3,7 +3,7 @@ import type { BlueprintCell } from './blueprint'
 type Plan={cells:BlueprintCell[];width:number;height:number}
 export type ExportLegendBlock={texture:string;label:string;name:string}
 const textureFiles:Record<string,string>={earth:'grass_block_side.png',wood:'oak_planks.png',stone:'cobblestone.png',sand:'sand.png',glass:'glass.png',wool:'pink_wool.png',clay:'clay.png',gold:'gold_block.png',ice:'ice.png',bone:'bone_block_side.png',iron:'iron_block.png',soul:'soul_sand.png',pumpkin:'pumpkin_side.png',emerald:'emerald_block.png',hay:'hay_block_side.png',glow:'glowstone.png',copper:'copper_block.png','copper-exposed':'exposed_copper.png','copper-weathered':'weathered_copper.png','copper-oxidized':'oxidized_copper.png',placeholder:'light_blue_concrete.png'}
-const copperColors:Record<string,string>={copper:'#ff8a4c','copper-exposed':'#ffd166','copper-weathered':'#4ed6ae','copper-oxidized':'#36a9e1'}
+const copperColors:Record<string,string>={copper:'#7a3e45','copper-exposed':'#8a5427','copper-weathered':'#2f6f67','copper-oxidized':'#294f87'}
 
 const loadImage=(src:string)=>new Promise<HTMLImageElement>((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=reject;image.src=src})
 const safeName=(title:string)=>title.trim().replace(/[\\/:*?"<>|]/g,'_')||'OTO-BLOGIC'
