@@ -22,10 +22,7 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
     return notes
   })
   const cells:BlueprintCell[]=[]
-  const laneAffinity=new Map<string,number>()
   const trackCounts=new Map(project.tracks.map(track=>[track.id,track.notes.length]))
-  const rankedTracks=[...project.tracks].sort((a,b)=>(trackCounts.get(b.id)??0)-(trackCounts.get(a.id)??0))
-  const preferredLane=new Map(rankedTracks.map((track,index)=>[track.id,[1,0,2][index]??1]))
   const cellsPerEvent=2
   const eventsPerRun=Math.max(1,Math.floor(runLength/cellsPerEvent))
   const runCount=Math.ceil(events.length/eventsPerRun)
@@ -35,19 +32,25 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   const originX=fold==='right'?2:2+(runCount-1)*runGap
   const height=eventsPerRun*cellsPerEvent-1
 
-  const placeNotes=(notes:TimedNote[],centerX:number,y:number,step:number)=>{
+  const placeNotes=(notes:TimedNote[],centerX:number,y:number,step:number,up:boolean)=>{
     const lanes:Array<TimedNote|undefined>=Array(3)
-    const singleTrackChord=notes.length>1&&new Set(notes.map(note=>note.trackId)).size===1
-    if(singleTrackChord){
-      const chordLanes=notes.length===2?[0,2]:[0,1,2]
-      notes.sort((a,b)=>a.pitch-b.pitch).slice(0,3).forEach((note,index)=>{lanes[chordLanes[index]]=note;laneAffinity.set(note.trackId,chordLanes[index])})
-    }
-    else notes.sort((a,b)=>(trackCounts.get(b.trackId)??0)-(trackCounts.get(a.trackId)??0)||a.trackIndex-b.trackIndex||a.pitch-b.pitch).forEach(note=>{
-      const preferred=notes.length===1?1:(laneAffinity.get(note.trackId)??preferredLane.get(note.trackId)??1)
-      const candidates=[preferred,1,0,2].filter((lane,pos,list)=>list.indexOf(lane)===pos)
-      const lane=candidates.find(candidate=>!lanes[candidate])??lanes.findIndex(value=>!value)
-      if(lane>=0){lanes[lane]=note;laneAffinity.set(note.trackId,lane)}
-    })
+    // Lanes are expressed from the builder's direction of travel. This keeps the
+    // centre occupied first, then the travel-left and travel-right positions.
+    const travelLeft=up?0:2
+    const travelRight=up?2:0
+    const placementOrder=[1,travelLeft,travelRight]
+    const groups=[...new Set(notes.map(note=>note.trackId))].map(trackId=>({
+      trackId,
+      notes:notes.filter(note=>note.trackId===trackId).sort((a,b)=>a.pitch-b.pitch),
+      trackIndex:notes.find(note=>note.trackId===trackId)?.trackIndex??0,
+    }))
+    // A chord needs a stable centre more than a single note does. Among equal
+    // group sizes, the track used most often in the song wins. Every note then
+    // occupies exactly one remaining lane, so competing preferences never drop
+    // a sound from the circuit.
+    groups.sort((a,b)=>b.notes.length-a.notes.length||(trackCounts.get(b.trackId)??0)-(trackCounts.get(a.trackId)??0)||a.trackIndex-b.trackIndex)
+    const ordered=groups.flatMap(group=>group.notes)
+    ordered.slice(0,3).forEach((note,index)=>{lanes[placementOrder[index]]=note})
     if(!lanes[1])cells.push({x:centerX,y,type:'rest',texture:'placeholder',step})
     lanes.forEach((note,lane)=>{
       if(!note)return
@@ -67,7 +70,7 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
     const rowIndex=up?eventsPerRun-1-within:within
     const noteY=rowIndex*cellsPerEvent
     const repeaterY=up?noteY-1:noteY+1
-    placeNotes(notes,centerX,noteY,projectStep)
+    placeNotes(notes,centerX,noteY,projectStep,up)
     cells.push({x:centerX,y:repeaterY,type:'repeater',label:'1',direction:up?'up':'down',delay:1,step:projectStep})
     if(within===eventsPerRun-1&&run<runCount-1){
       const nextX=centerX+directionSign*runGap
