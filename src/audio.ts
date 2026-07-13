@@ -5,6 +5,7 @@ let stopAt = 0
 const buffers = new Map<string, AudioBuffer>()
 const loading = new Map<string, Promise<AudioBuffer>>()
 const playbackSources = new Set<AudioBufferSourceNode>()
+const playbackTimers = new Set<number>()
 
 const SOUND_FILES: Record<string, string> = {
   Harp: 'harp', Bass: 'bass', 'Bass Drum': 'bd', Snare: 'snare', Hat: 'hat', Guitar: 'guitar',
@@ -56,27 +57,40 @@ export async function previewTone(pitch: number, volume: number, instrument: str
   playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume)
 }
 
-export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean}) {
+const schedulePlaybackTimer = (callback: () => void, delay: number) => {
+  const timer = window.setTimeout(() => {
+    playbackTimers.delete(timer)
+    callback()
+  }, delay)
+  playbackTimers.add(timer)
+}
+
+export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean;toStep?:number}) {
   const token = ++stopAt
   const ctx = await getContext()
   if (stopAt !== token) return
   const audible = project.tracks.filter(track => !track.muted && (!project.tracks.some(item => item.solo) || track.solo))
   const loaded = new Map(await Promise.all([...new Set(audible.map(track => track.instrument))].map(async instrument => [instrument, await loadBuffer(ctx, instrument)] as const)))
   if (stopAt !== token) return
+  const firstStep = Math.max(0, Math.min(project.steps - 1, Math.round(fromStep)))
+  const lastStep = Math.max(firstStep, Math.min(project.steps - 1, Math.round(options?.toStep ?? project.steps - 1)))
   const stepSeconds = 2 / project.tickRate
   const start = ctx.currentTime + 0.08
-  audible.forEach(track => track.notes.filter(note => note.step >= fromStep).forEach(note =>
-    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - fromStep) * stepSeconds, track.volume, options?.usePan===false?0:track.pan??0, true)))
-  for (let step = fromStep; step < project.steps; step += 1) {
-    window.setTimeout(() => { if (stopAt === token) onStep?.(step) }, 80 + (step - fromStep) * stepSeconds * 1000)
+  audible.forEach(track => track.notes.filter(note => note.step >= firstStep && note.step <= lastStep).forEach(note =>
+    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - firstStep) * stepSeconds, track.volume, options?.usePan===false?0:track.pan??0, true)))
+  for (let step = firstStep; step <= lastStep; step += 1) {
+    schedulePlaybackTimer(() => { if (stopAt === token) onStep?.(step) }, 80 + (step - firstStep) * stepSeconds * 1000)
   }
-  window.setTimeout(() => { if (stopAt === token) onStep?.(-1) }, 90 + (project.steps - fromStep) * stepSeconds * 1000)
+  schedulePlaybackTimer(() => { if (stopAt === token) onStep?.(-1) }, 90 + (lastStep - firstStep + 1) * stepSeconds * 1000)
 }
 
 export function stopPlayback() {
   stopAt += 1
+  playbackTimers.forEach(timer => window.clearTimeout(timer))
+  playbackTimers.clear()
   playbackSources.forEach(source => {
-    try { source.stop() } catch { /* Already ended or stopped. */ }
+    try { source.stop(0) } catch { /* Already ended or stopped. */ }
+    try { source.disconnect() } catch { /* Already disconnected. */ }
   })
   playbackSources.clear()
 }

@@ -3,8 +3,9 @@ import type {BlueprintCell,BlueprintInstrument,BlueprintPlan,CompactBlueprint} f
 
 type TimedNote={trackId:string;trackIndex:number;pitch:number;instrument:string;volume:number;pan:number}
 type EventFrame={kind:'event';step:number;notes:TimedNote[];groupId:string}
-type RepeaterFrame={kind:'repeater';step:number;delay:number;groupId:string}
-type RestFrame={kind:'rest';step:number;groupId:string;reason:'parity'|'fold'}
+type DelayFrame={delayId:string;delayTotal:number}
+type RepeaterFrame={kind:'repeater';step:number;delay:number;groupId:string}&DelayFrame
+type RestFrame={kind:'rest';step:number;groupId:string;reason:'parity'|'fold'}&Partial<DelayFrame>
 type Frame=EventFrame|RepeaterFrame|RestFrame
 type Phase='a'|'b'
 type Run={frames:Frame[];wide:boolean;lastWideIndex:number;phase:Phase;globalIndex:number}
@@ -50,22 +51,29 @@ function collectFrames(project:Project,includeSilentEdges:boolean){
     const next=steps[index+1]
     if(next===undefined)return
     let arrival=step
+    const delayId=`delay-${step}-${next}`,delayTotal=next-step
     splitCompactDelay(next-step).forEach((part,partIndex)=>{
-      if(part==='rest')frames.push({kind:'rest',step:arrival,groupId:`delay-${step}-${next}-${partIndex}`,reason:'parity'})
-      else{arrival+=part;frames.push({kind:'repeater',step:arrival,delay:part,groupId:`delay-${step}-${next}-${partIndex}`})}
+      if(part==='rest')frames.push({kind:'rest',step:arrival,groupId:`${delayId}-${partIndex}`,reason:'parity',delayId,delayTotal})
+      else{arrival+=part;frames.push({kind:'repeater',step:arrival,delay:part,groupId:`${delayId}-${partIndex}`,delayId,delayTotal})}
     })
   })
   return{frames,firstStep,lastStep,maxPolyphony:Math.max(0,...[...notesByStep.values()].map(notes=>notes.length))}
 }
 
-function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,wideMode:boolean){
+function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,wideMode:boolean,firstRunEvery=0){
   const runs:Run[]=[]
   let offset=0,phase:Phase='a'
   while(offset<frames.length){
-    const capacity=runs.length===0?firstCapacity:laterCapacity
+    const capacity=runs.length===0||(firstRunEvery>0&&runs.length%firstRunEvery===0)?firstCapacity:laterCapacity
     let consumed=Math.min(capacity,frames.length-offset)
     let slice=frames.slice(offset,offset+consumed)
-    if(offset+consumed<frames.length&&slice.at(-1)?.kind==='repeater'){
+    const boundary=slice.at(-1),continuation=frames[offset+consumed]
+    const splitsLongDelay=boundary?.kind==='repeater'
+      &&boundary.delayTotal>=5
+      &&continuation!==undefined
+      &&'delayId' in continuation
+      &&continuation.delayId===boundary.delayId
+    if(splitsLongDelay){
       const displaced=slice.pop() as RepeaterFrame
       consumed--
       slice.push({kind:'rest',step:slice.at(-1)?.step??displaced.step,groupId:`fold-${runs.length}`,reason:'fold'})
@@ -147,8 +155,10 @@ function layerExit(entry:Corner,runCount:number):Corner{
   return{x:opposite(entry.x) as 'left'|'right',y:(runCount%2?opposite(entry.y):entry.y) as 'top'|'bottom'}
 }
 
+const threeRunsPerLayer=(width:number)=>Math.max(1,Math.floor((width-4)/2)+1)
+
 function groupThreeLayers(runs:Run[],width:number){
-  const maxRuns=Math.max(1,Math.floor((width-4)/2)+1),layers:Run[][]=[]
+  const maxRuns=threeRunsPerLayer(width),layers:Run[][]=[]
   for(let offset=0;offset<runs.length;offset+=maxRuns)layers.push(runs.slice(offset,offset+maxRuns))
   return layers
 }
@@ -156,14 +166,15 @@ function groupThreeLayers(runs:Run[],width:number){
 function renderThreeLayer(runs:Run[],width:number,height:number,entry:Corner,layerIndex:number,firstStep:number,lastStep:number,instruments:readonly BlueprintInstrument[]){
   const builder=new CellBuilder(width,height),centers=runs.map((_,index)=>2+index*2),framePoints:Point[][]=[]
   runs.forEach((run,runIndex)=>{
-    const up=runIndex%2===0,start=run.globalIndex===0?height-3:up?height-2:1,dy=up?-1:1
+    const up=runIndex%2===0,start=runIndex===0?height-3:up?height-2:1,dy=up?-1:1
     framePoints[runIndex]=run.frames.map((frame,index)=>{
       const point={x:centers[runIndex],y:start+dy*index};placeSingleFrame(builder,frame,point,up,instruments);return point
     })
   })
-  if(runs[0]?.globalIndex===0){
+  if(runs.length){
     const x=centers[0],source={x,y:height-1},dust={x,y:height-2},step=runs[0].frames[0]?.step??firstStep
-    builder.add({...source,type:'source',label:'S',step,groupId:'source'});builder.path([dust],step,'source');builder.arm(dust,source);builder.arm(dust,framePoints[0][0])
+    const groupId=`source-${layerIndex}`
+    builder.add({...source,type:'source',label:'S',step,groupId});builder.path([dust],step,groupId);builder.arm(dust,source);builder.arm(dust,framePoints[0][0])
   }
   runs.slice(0,-1).forEach((run,index)=>{
     const up=index%2===0,current=framePoints[index].at(-1) as Point,next=framePoints[index+1][0],foldY=up?0:height-1,step=run.frames.at(-1)?.step??firstStep,groupId=`fold-${run.globalIndex}`
@@ -224,7 +235,7 @@ function occupiedMixedPoints(run:Run,points:MixedFramePoints[],up:boolean){
     if(!paired)return frame.kind==='event'?bankPoints(points[index].carrier,frame.notes.length,up):[points[index].carrier]
     if(!left||!right)throw new Error('A wide compact run is missing its paired lane.')
     if(frame.kind!=='event')return[left,right]
-    if(frame.notes.length>3)return[...bankPoints(left,3,up),...bankPoints(right,frame.notes.length-3,up)]
+    if(frame.notes.length>3)return[...bankPoints(right,3,up),...bankPoints(left,frame.notes.length-3,up)]
     return[left,...bankPoints(right,frame.notes.length,up)]
   })
 }
@@ -250,7 +261,7 @@ function placeMixedFrame(builder:CellBuilder,run:Run,frame:Frame,index:number,po
   if(!paired){placeSingleFrame(builder,frame,points.carrier,up,instruments);return}
   if(!left||!right)throw new Error('A wide compact run is missing its paired lane.')
   if(frame.kind==='event'){
-    if(frame.notes.length>3){placeBank(builder,frame.notes.slice(0,3),left,up,frame.groupId,frame.step,instruments);placeBank(builder,frame.notes.slice(3,6),right,up,frame.groupId,frame.step,instruments)}
+    if(frame.notes.length>3){placeBank(builder,frame.notes.slice(0,3),right,up,frame.groupId,frame.step,instruments);placeBank(builder,frame.notes.slice(3,6),left,up,frame.groupId,frame.step,instruments)}
     else{builder.add({...left,type:'rest',texture:'placeholder',step:frame.step,groupId:frame.groupId});placeBank(builder,frame.notes,right,up,frame.groupId,frame.step,instruments)}
   }else if(frame.kind==='repeater'){
     ;[left,right].forEach(point=>builder.add({...point,type:'repeater',label:String(frame.delay),delay:frame.delay,direction:up?'up':'down',step:frame.step,groupId:frame.groupId}))
@@ -269,17 +280,18 @@ function verticalDust(builder:CellBuilder,x:number,outerY:number,cell:Point,step
 function renderMixedLayer(layer:{runs:Run[];positions:RunPosition[]},width:number,height:number,entry:Corner,layerIndex:number,firstStep:number,lastStep:number,instruments:readonly BlueprintInstrument[]){
   const {runs,positions}=layer,builder=new CellBuilder(width,height),framePoints=collisionFreeMixedPoints(positions,height)
   runs.forEach((run,runIndex)=>run.frames.forEach((frame,index)=>placeMixedFrame(builder,run,frame,index,framePoints[runIndex][index],runIndex%2===0,instruments)))
-  if(runs[0]?.globalIndex===0){
+  if(runs.length){
     const position=positions[0],step=runs[0].frames[0]?.step??firstStep,sourceY=height-1,outerY=height-2
+    const groupId=`source-${layerIndex}`
     if(position.run.wide){
       const left=position.left as number,right=position.right as number,sourceX=(left+right)/2,path:Array<Point>=[]
-      builder.add({x:sourceX,y:sourceY,type:'source',label:'S',step,groupId:'source'})
+      builder.add({x:sourceX,y:sourceY,type:'source',label:'S',step,groupId})
       for(let x=left;x<=right;x++)path.push({x,y:outerY})
-      builder.path(path,step,'source');builder.arm(path[Math.round(sourceX-left)],{x:sourceX,y:sourceY})
-      verticalDust(builder,left,outerY,framePoints[0][0].left as Point,step,'source');verticalDust(builder,right,outerY,framePoints[0][0].right as Point,step,'source')
+      builder.path(path,step,groupId);builder.arm(path[Math.round(sourceX-left)],{x:sourceX,y:sourceY})
+      verticalDust(builder,left,outerY,framePoints[0][0].left as Point,step,groupId);verticalDust(builder,right,outerY,framePoints[0][0].right as Point,step,groupId)
     }else{
-      const x=position.center as number,source={x,y:sourceY};builder.add({...source,type:'source',label:'S',step,groupId:'source'})
-      verticalDust(builder,x,outerY,framePoints[0][0].carrier,step,'source');builder.arm({x,y:outerY},source)
+      const x=position.center as number,source={x,y:sourceY};builder.add({...source,type:'source',label:'S',step,groupId})
+      verticalDust(builder,x,outerY,framePoints[0][0].carrier,step,groupId);builder.arm({x,y:outerY},source)
     }
   }
   runs.slice(0,-1).forEach((run,index)=>{
@@ -298,7 +310,7 @@ function generate(project:Project,instruments:readonly BlueprintInstrument[],wid
   const timeline=collectFrames(project,includeSilentEdges)
   if(timeline.maxPolyphony>6)throw new Error('Compact circuits support at most six simultaneous notes.')
   const mixed=timeline.maxPolyphony>3
-  const runs=partitionRuns(timeline.frames,mixed?height-6:height-3,mixed?height-5:height-2,mixed)
+  const runs=partitionRuns(timeline.frames,mixed?height-6:height-3,mixed?height-5:height-2,mixed,mixed?0:threeRunsPerLayer(width))
   const mixedGrouped=mixed?groupMixedLayers(runs,width,height):null
   const grouped=mixed?(mixedGrouped as Array<{runs:Run[];positions:RunPosition[]}>).map(item=>item.runs):groupThreeLayers(runs,width)
   const layers:BlueprintPlan[]=[]

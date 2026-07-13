@@ -13,6 +13,12 @@ function project(polyphony:(step:number)=>number,steps:number):Project{
   return{format:'oto-blogic',version:1,title:'TEST',edition:'both',tickRate:20,delayUnit:1,steps,tracks}
 }
 
+function sparseProject(noteSteps:number[],steps=Math.max(...noteSteps,0)+1):Project{
+  const input=project(()=>0,steps)
+  input.tracks[0].notes=noteSteps.map((step,index)=>({step,pitch:index%25}))
+  return input
+}
+
 const at=(cells:BlueprintCell[],x:number,y:number)=>cells.find(cell=>cell.x===x&&cell.y===y)
 
 describe('splitCompactDelay',()=>{
@@ -95,6 +101,18 @@ describe('compact routing edge cases',()=>{
     expect(at(plan.cells,4,1)?.type).toBe('repeater')
   })
 
+  it('adds a fold block only when a long delay chain itself crosses the fold',()=>{
+    const compact=generateCompactBlueprintRect(sparseProject([0,5,18,27,32,45,46]),instruments,16,16,false)
+    const foldBlocks=compact.layers.flatMap(layer=>layer.cells).filter(cell=>cell.type==='rest'&&cell.groupId?.startsWith('fold-'))
+    expect(foldBlocks).toHaveLength(1)
+  })
+
+  it('keeps an ordinary boundary repeater when the next frame is an event',()=>{
+    const compact=generateCompactBlueprintRect(sparseProject([0,4,8,12,16,20,24,28,32,36,40,44,48]),instruments,16,16,false)
+    const foldBlocks=compact.layers.flatMap(layer=>layer.cells).filter(cell=>cell.type==='rest'&&cell.groupId?.startsWith('fold-'))
+    expect(foldBlocks).toHaveLength(0)
+  })
+
   it('keeps each layer playback range local to that layer',()=>{
     const compact=generateCompactBlueprintRect(project(()=>3,240),instruments,16,16,false)
     expect(compact.layers.length).toBeGreaterThan(1)
@@ -104,6 +122,30 @@ describe('compact routing edge cases',()=>{
       expect(layer.lastStep).toBe(Math.max(...steps))
       if(index)expect(layer.firstStep).toBeGreaterThanOrEqual(compact.layers[index-1].lastStep)
     })
+  })
+
+  it.each([
+    ['single-line',project(()=>3,240)],
+    ['paired',project(()=>6,240)],
+  ])('gives every %s layer its own source and adjacent start dust',(_,input)=>{
+    const compact=generateCompactBlueprintRect(input,instruments,16,16,false)
+    expect(compact.layers.length).toBeGreaterThan(1)
+    compact.layers.forEach((layer,index)=>{
+      const sources=layer.cells.filter(cell=>cell.type==='source')
+      expect(sources).toHaveLength(1)
+      const source=sources[0]
+      expect(source).toMatchObject({step:layer.firstStep,groupId:`source-${index}`})
+      expect(layer.cells.some(cell=>cell.type==='dust'&&cell.groupId===source.groupId&&Math.abs(cell.x-source.x)+Math.abs(cell.y-source.y)===1)).toBe(true)
+      expect(layer.cells.some(cell=>cell.groupId?.startsWith('source-')&&cell.groupId!==`source-${index}`)).toBe(false)
+    })
+  })
+
+  it('fills the fold-side bank first and its repeater center before side cells',()=>{
+    const plan=generateCompactBlueprintRect(project(step=>step===0?4:1,2),instruments,16,21,false).layers[0]
+    const notes=plan.cells.filter(cell=>cell.type==='note'&&cell.step===0)
+    const centers=notes.filter(cell=>cell.x===1||cell.x===3)
+    expect(centers.map(cell=>[cell.x,cell.label])).toEqual([[3,'0'],[1,'3']])
+    expect(notes.filter(cell=>cell.y===16).map(cell=>cell.label).sort()).toEqual(['0','1','2'])
   })
 
   it('does not lose notes or place cells outside the board across deterministic mixed patterns',()=>{
