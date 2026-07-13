@@ -1,4 +1,4 @@
-import type { BlueprintCell } from './blueprint'
+import type { BlueprintCell,BlueprintPlan } from './blueprint'
 
 type Plan={cells:BlueprintCell[];width:number;height:number}
 export type ExportLegendBlock={texture:string;label:string;name:string}
@@ -49,8 +49,25 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
   return canvas
 }
 
+const canvasBlob=(canvas:HTMLCanvasElement)=>new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('PNGを作成できませんでした。')),'image/png'))
+
 export async function exportBlueprint(plan:Plan,format:'png'|'pdf',title:string,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean){
   const canvas=await render(plan,theme,legendBlocks,ja),name=safeName(title)
   if(format==='png'){const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)throw new Error('PNGを作成できませんでした。');const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`${name}-blueprint.png`;link.click();URL.revokeObjectURL(url);return}
   const {jsPDF}=await import('jspdf');const pdf=new jsPDF({orientation:canvas.width>=canvas.height?'landscape':'portrait',unit:'px',format:[canvas.width,canvas.height],compress:true});pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,canvas.width,canvas.height);pdf.save(`${name}-blueprint.pdf`)
+}
+
+export async function exportBlueprintLayers(plans:BlueprintPlan[],format:'png'|'pdf',title:string,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean){
+  if(plans.length<=1)return exportBlueprint(plans[0],format,title,theme,legendBlocks,ja)
+  const canvases=[] as HTMLCanvasElement[]
+  for(const plan of plans)canvases.push(await render(plan,theme,legendBlocks,ja))
+  const name=safeName(title)
+  if(format==='png'){
+    const {default:JSZip}=await import('jszip'),zip=new JSZip()
+    for(let index=0;index<canvases.length;index++)zip.file(`${name}-layer-${String(index+1).padStart(2,'0')}.png`,await canvasBlob(canvases[index]))
+    const blob=await zip.generateAsync({type:'blob'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=`${name}-blueprint-layers.zip`;link.click();URL.revokeObjectURL(url);return
+  }
+  const {jsPDF}=await import('jspdf'),first=canvases[0],pdf=new jsPDF({orientation:first.width>=first.height?'landscape':'portrait',unit:'px',format:[first.width,first.height],compress:true})
+  canvases.forEach((canvas,index)=>{if(index)pdf.addPage([canvas.width,canvas.height],canvas.width>=canvas.height?'landscape':'portrait');pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,canvas.width,canvas.height)})
+  pdf.save(`${name}-blueprint-layers.pdf`)
 }

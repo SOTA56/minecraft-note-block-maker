@@ -29,14 +29,14 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,fold:'right',includeSilentEdges:true} })
+const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,compactSize:50,fold:'right',includeSilentEdges:true} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   const title = source.title === 'NEW CIRCUIT' || source.title === 'TITLE' ? 'SONG TITLE' : source.title
   const delayUnit:1|2|4=source.delayUnit===2||source.delayUnit===4?source.delayUnit:1
-  return {...source, format:'oto-blogic', title, delayUnit, blueprint:source.blueprint??{runLength:40,fold:'right',includeSilentEdges:true}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  return {...source, format:'oto-blogic', title, delayUnit, blueprint:{runLength:source.blueprint?.runLength??40,compactSize:source.blueprint?.compactSize??50,fold:source.blueprint?.fold??'right',includeSilentEdges:source.blueprint?.includeSilentEdges??true,theme:source.blueprint?.theme}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 

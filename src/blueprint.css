@@ -73,6 +73,7 @@
 .blueprint-stepper{grid-template-columns:minmax(24px,auto) auto minmax(76px,1fr);gap:5px}.blueprint-stepper>span:last-child{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr;width:100%;height:38px}.blueprint-stepper button{width:100%;min-width:38px;min-height:38px;border-bottom:0!important;border-left:1px solid #3b4840!important;font-size:14px!important}
 /* The brand column must not grow with a long song title. */
 .blueprint-header{grid-template-columns:minmax(0,180px) minmax(78px,1fr) 58px}.blueprint-brand,.blueprint-brand>div,.blueprint-brand h1{min-width:0}.blueprint-brand h1{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blueprint-layers{display:flex;overflow-x:auto;gap:1px;padding:6px 8px;border-bottom:1px solid #354038;background:#111713;scrollbar-width:thin}.blueprint-layers button{flex:0 0 auto;min-width:92px;height:34px;border:1px solid #38473e;background:#18201b;color:#8e9990;font:9px 'Archivo Black'}.blueprint-layers button.active{border-color:#e4c547;background:#302a12;color:#f0d254}
 @media(max-width:520px){.blueprint-header{grid-template-columns:minmax(0,164px) minmax(78px,1fr) 58px}}
 @media(max-width:520px){.blueprint-header>strong{font-size:13.5px}}
 .bp-cell.note.copper{border-color:#963247!important}.bp-cell.note.copper b{color:#fff;-webkit-text-stroke:1.5px #963247;text-shadow:0 1px 0 #300812,1px 0 0 #300812,0 -1px 0 #300812,-1px 0 0 #300812}
