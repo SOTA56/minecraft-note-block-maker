@@ -148,3 +148,9 @@
 .blueprint-options .blueprint-stepper{display:grid!important;grid-template-columns:minmax(24px,auto) auto minmax(76px,1fr)!important;align-items:center;justify-content:stretch!important;gap:5px;width:100%;height:38px}
 .blueprint-options .blueprint-stepper>span:last-child{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr;width:100%!important;height:38px!important}
 .blueprint-options .blueprint-stepper button{width:100%;min-width:38px;min-height:38px;padding:0!important;border-bottom:0!important;border-left:1px solid #3b4840!important;font-size:14px!important}
+
+/* Give every glyph a real box so unrelated Unicode metrics cannot move the
+   visual centers or labels. */
+.edit-tools button{gap:2px;line-height:1}.edit-tools .tool-icon{display:grid;place-items:center;width:100%;height:27px;font-size:27px;line-height:1;transform:translateY(-1px)}.edit-tools small{line-height:1}
+.dock>button{gap:1px;line-height:1}.dock .dock-icon{display:grid;place-items:center;width:34px;height:25px;font-size:33px;line-height:1}.dock>.dock-menu{font-size:inherit;letter-spacing:0}.dock>.dock-menu .dock-icon{padding-left:2px;font-size:18px;letter-spacing:2px;transform:translateY(-2px)}.dock>button small{height:8px;line-height:8px}
+.more-menu .menu-icon{display:flex;align-items:center;justify-content:center;align-self:center;justify-self:center;width:28px;height:28px;margin:0!important;padding:0;font-size:24px;line-height:1;transform:none}.more-menu .blueprint-menu{border-color:#356b8b;background:#142934;color:#8fd2f5}.more-menu .file-menu{border-color:#6c5d27;background:#2d2817;color:#f0d35e}

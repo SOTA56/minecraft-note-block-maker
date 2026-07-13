@@ -35,6 +35,7 @@ export default function BlueprintView({project,instruments,language,onBack,onSet
   const stageRef=useRef<HTMLDivElement>(null)
   const zoomTextRef=useRef<HTMLElement>(null)
   const zoomRef=useRef(1)
+  const boardInitializedRef=useRef(false)
   const suppressClickUntilRef=useRef(0)
   const gestureRef=useRef<{pointers:Map<number,{x:number;y:number;startX:number;startY:number;target:HTMLElement|null}>;lastX:number;lastY:number;startDistance:number;startZoom:number;anchorX:number;anchorY:number}|null>(null)
   const cell=40,axisLeft=42,axisTop=36
@@ -51,7 +52,7 @@ export default function BlueprintView({project,instruments,language,onBack,onSet
     wrap.scrollLeft=anchorX*next-cx;wrap.scrollTop=anchorY*next-cy
     if(zoomTextRef.current)zoomTextRef.current.textContent=`${Math.round(next*100)}%`
   }
-  useEffect(()=>{zoomRef.current=1;if(shellRef.current)shellRef.current.style.transform='scale(1)';if(stageRef.current&&plan){stageRef.current.style.width=`${axisLeft*2+plan.width*cell}px`;stageRef.current.style.height=`${axisTop*2+plan.height*cell}px`}if(zoomTextRef.current)zoomTextRef.current.textContent='100%';const frame=window.requestAnimationFrame(()=>{if(wrapRef.current)wrapRef.current.scrollTop=wrapRef.current.scrollHeight});return()=>window.cancelAnimationFrame(frame)},[plan?.width,plan?.height])
+  useEffect(()=>{const zoom=zoomRef.current;if(shellRef.current)shellRef.current.style.transform=`scale(${zoom})`;if(stageRef.current&&plan){stageRef.current.style.width=`${(axisLeft*2+plan.width*cell)*zoom}px`;stageRef.current.style.height=`${(axisTop*2+plan.height*cell)*zoom}px`}if(zoomTextRef.current)zoomTextRef.current.textContent=`${Math.round(zoom*100)}%`;const firstLayout=!boardInitializedRef.current;boardInitializedRef.current=true;const frame=window.requestAnimationFrame(()=>{if(firstLayout&&wrapRef.current)wrapRef.current.scrollTop=wrapRef.current.scrollHeight});return()=>window.cancelAnimationFrame(frame)},[plan?.width,plan?.height])
   const pointerDown=(event:React.PointerEvent<HTMLElement>)=>{
     if(event.pointerType!=='touch')return
     const rect=event.currentTarget.getBoundingClientRect(),x=event.clientX-rect.left,y=event.clientY-rect.top,point={x,y,startX:x,startY:y,target:event.target instanceof HTMLElement?event.target:null}
