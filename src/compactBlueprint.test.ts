@@ -20,6 +20,34 @@ function sparseProject(noteSteps:number[],steps=Math.max(...noteSteps,0)+1):Proj
 }
 
 const at=(cells:BlueprintCell[],x:number,y:number)=>cells.find(cell=>cell.x===x&&cell.y===y)
+const directions={up:[0,-1],right:[1,0],down:[0,1],left:[-1,0]} as const
+
+function foldEndpoints(cells:BlueprintCell[],groupId:string){
+  const byPosition=new Map(cells.map(cell=>[`${cell.x},${cell.y}`,cell]))
+  const endpoints=new Map<string,BlueprintCell>()
+  cells.filter(cell=>cell.type==='dust'&&cell.groupId===groupId).forEach(dust=>dust.connections?.forEach(direction=>{
+    const [dx,dy]=directions[direction],neighbor=byPosition.get(`${dust.x+dx},${dust.y+dy}`)
+    if(neighbor&&neighbor.type!=='dust')endpoints.set(`${neighbor.x},${neighbor.y}`,neighbor)
+  }))
+  return[...endpoints.values()]
+}
+
+function expectFoldTopology(plan:{cells:BlueprintCell[];runCount:number}){
+  const foldIds=new Set(plan.cells.filter(cell=>cell.type==='dust'&&cell.groupId?.startsWith('fold-')).map(cell=>cell.groupId))
+  expect(foldIds.size).toBe(plan.runCount-1)
+  for(let index=0;index<plan.runCount-1;index++){
+    const groupId=`fold-${index}`,endpoints=foldEndpoints(plan.cells,groupId)
+    const blocks=endpoints.filter(cell=>cell.type==='note'||cell.type==='rest')
+    const repeaters=endpoints.filter(cell=>cell.type==='repeater')
+    expect(blocks.length,`${groupId} must leave the old column from a block`).toBeGreaterThan(0)
+    expect(repeaters.length,`${groupId} must enter the next column through a repeater`).toBeGreaterThan(0)
+    expect(repeaters.every(cell=>cell.direction===(index%2===0?'down':'up')),`${groupId} repeater direction`).toBe(true)
+    const blockGroup=plan.cells.filter(cell=>cell.groupId===blocks[0].groupId&&(cell.type==='note'||cell.type==='rest'))
+    const repeaterGroup=plan.cells.filter(cell=>cell.groupId===repeaters[0].groupId&&cell.type==='repeater')
+    expect(Math.max(...blockGroup.map(cell=>cell.y))-Math.min(...blockGroup.map(cell=>cell.y)),`${groupId} block stagger`).toBeLessThanOrEqual(1)
+    expect(Math.max(...repeaterGroup.map(cell=>cell.y))-Math.min(...repeaterGroup.map(cell=>cell.y)),`${groupId} repeater stagger`).toBeLessThanOrEqual(1)
+  }
+}
 
 describe('splitCompactDelay',()=>{
   const cases:[number,(number|'rest')[]][]=[
@@ -79,10 +107,16 @@ describe('mixed six-note PDF geometry',()=>{
     expect([11,12,13].map(x=>at(plan.cells,x,0)?.type)).toEqual(['dust','dust','dust'])
     expect([13,14,15,16,17].map(x=>at(plan.cells,x,19)?.type)).toEqual(['dust','dust','dust','dust','dust'])
     expect([21,22,23].map(x=>at(plan.cells,x,19)?.type)).toEqual(['dust','dust','dust'])
+    expectFoldTopology(plan)
   })
   it('never drops or duplicates note cells',()=>{
     const expected=Array.from({length:64},(_,step)=>widths[Math.floor(step/8)]).reduce((sum,value)=>sum+value,0)
     expect(plan.cells.filter(cell=>cell.type==='note')).toHaveLength(expected)
+  })
+
+  it.each([16,17,21,50,51,96])('keeps fold %i column ends as blocks and the next starts as repeaters',(height)=>{
+    const value=generateCompactBlueprintRect(project(()=>6,140),instruments,50,height,false).layers[0]
+    expectFoldTopology(value)
   })
 })
 
@@ -107,7 +141,7 @@ describe('compact routing edge cases',()=>{
     expect(foldBlocks).toHaveLength(1)
   })
 
-  it('keeps an ordinary boundary repeater when the next frame is an event',()=>{
+  it('moves an ordinary boundary repeater without adding a fold block',()=>{
     const compact=generateCompactBlueprintRect(sparseProject([0,4,8,12,16,20,24,28,32,36,40,44,48]),instruments,16,16,false)
     const foldBlocks=compact.layers.flatMap(layer=>layer.cells).filter(cell=>cell.type==='rest'&&cell.groupId?.startsWith('fold-'))
     expect(foldBlocks).toHaveLength(0)

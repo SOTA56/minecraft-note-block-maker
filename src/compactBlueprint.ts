@@ -73,7 +73,17 @@ function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,
       &&continuation!==undefined
       &&'delayId' in continuation
       &&continuation.delayId===boundary.delayId
-    if(splitsLongDelay){
+    if(wideMode&&continuation&&boundary?.kind==='repeater'){
+      const prior=slice.at(-2)
+      if(prior?.kind==='repeater'&&boundary.delayTotal>=5){
+        const displaced=slice.pop() as RepeaterFrame
+        consumed--
+        slice.push({kind:'rest',step:prior.step??displaced.step,groupId:`fold-${runs.length}`,reason:'fold'})
+      }else{
+        slice.pop()
+        consumed--
+      }
+    }else if(splitsLongDelay){
       const displaced=slice.pop() as RepeaterFrame
       consumed--
       slice.push({kind:'rest',step:slice.at(-1)?.step??displaced.step,groupId:`fold-${runs.length}`,reason:'fold'})
