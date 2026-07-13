@@ -12,11 +12,13 @@ export function maxPolyphony(project:Project) {
 }
 
 export function generateEasyBlueprint(project:Project,instruments:readonly BlueprintInstrument[],runLength:number,fold:'right'|'left',includeSilentEdges=true) {
+  const delay=project.delayUnit??1
   const populatedSteps=project.tracks.flatMap(track=>track.notes.map(note=>note.step))
   const firstStep=includeSilentEdges||!populatedSteps.length?0:Math.min(...populatedSteps)
-  const lastStep=includeSilentEdges||!populatedSteps.length?project.steps-1:Math.max(...populatedSteps)
-  const events=Array.from({length:Math.max(1,lastStep-firstStep+1)},(_,offset)=>{
-    const step=firstStep+offset
+  const lastStep=includeSilentEdges||!populatedSteps.length?Math.floor((project.steps-1)/delay)*delay:Math.max(...populatedSteps)
+  const eventSteps:number[]=[]
+  for(let step=firstStep;step<=lastStep;step+=delay)eventSteps.push(step)
+  const events=eventSteps.map(step=>{
     const notes:TimedNote[]=[]
     project.tracks.forEach((track,trackIndex)=>track.notes.filter(note=>note.step===step).forEach(note=>notes.push({trackId:track.id,trackIndex,pitch:note.pitch,instrument:track.instrument,volume:track.volume,pan:track.pan})))
     return notes
@@ -59,10 +61,10 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
     })
   }
 
-  events.forEach((notes,step)=>{
-    const projectStep=firstStep+step
-    const run=Math.floor(step/eventsPerRun)
-    const within=step%eventsPerRun
+  events.forEach((notes,eventIndex)=>{
+    const projectStep=eventSteps[eventIndex]
+    const run=Math.floor(eventIndex/eventsPerRun)
+    const within=eventIndex%eventsPerRun
     const up=run%2===0
     const centerX=originX+directionSign*run*runGap
     // Block rows align across every run. Repeaters follow the signal direction:
@@ -71,11 +73,11 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
     const noteY=rowIndex*cellsPerEvent
     const repeaterY=up?noteY-1:noteY+1
     placeNotes(notes,centerX,noteY,projectStep,up)
-    cells.push({x:centerX,y:repeaterY,type:'repeater',label:'1',direction:up?'up':'down',delay:1,step:projectStep})
+    cells.push({x:centerX,y:repeaterY,type:'repeater',label:String(delay),direction:up?'up':'down',delay,step:projectStep})
     if(within===eventsPerRun-1&&run<runCount-1){
       const nextX=centerX+directionSign*runGap
       const foldY=up?repeaterY-1:repeaterY+1
-      const nextStep=Math.min(lastStep,projectStep+1)
+      const nextStep=Math.min(lastStep,projectStep+delay)
       for(let y=Math.min(repeaterY,foldY);y<=Math.max(repeaterY,foldY);y++)cells.push({x:centerX,y,type:'dust',step:nextStep})
       for(let x=Math.min(centerX,nextX);x<=Math.max(centerX,nextX);x++)cells.push({x,y:foldY,type:'dust',step:nextStep})
       // One final dust cell turns from the bridge toward the first block of the next run.

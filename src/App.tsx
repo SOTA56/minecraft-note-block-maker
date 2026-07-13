@@ -29,13 +29,14 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,fold:'right',includeSilentEdges:true} })
+const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,fold:'right',includeSilentEdges:true} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   const title = source.title === 'NEW CIRCUIT' || source.title === 'TITLE' ? 'SONG TITLE' : source.title
-  return {...source, format:'oto-blogic', title, blueprint:source.blueprint??{runLength:40,fold:'right',includeSilentEdges:true}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  const delayUnit:1|2|4=source.delayUnit===2||source.delayUnit===4?source.delayUnit:1
+  return {...source, format:'oto-blogic', title, delayUnit, blueprint:source.blueprint??{runLength:40,fold:'right',includeSilentEdges:true}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 
@@ -103,8 +104,8 @@ function App() {
     const startedAt = performance.now()+80
     const stepMs = 2000/project.tickRate
     const renderStep = (step:number) => {
-      playbackCursorRef.current?.style.setProperty('transform',`translateY(${step*stepHeight}px)`)
-      if (followPlaybackRef.current) window.scrollTo({top:Math.max(0,rollTop+step*stepHeight-center),behavior:'auto'})
+      playbackCursorRef.current?.style.setProperty('transform',`translateY(${step/project.delayUnit*stepHeight}px)`)
+      if (followPlaybackRef.current) window.scrollTo({top:Math.max(0,rollTop+step/project.delayUnit*stepHeight-center),behavior:'auto'})
     }
     renderStep(followRun.step)
     let frame = 0
@@ -115,7 +116,7 @@ function App() {
     }
     frame = window.requestAnimationFrame(follow)
     return ()=>window.cancelAnimationFrame(frame)
-  },[followRun,project.steps,project.tickRate,stepHeight])
+  },[followRun,project.steps,project.tickRate,project.delayUnit,stepHeight])
 
   const polyphony = useMemo(() => {
     const counts = new Map<number, number>()
@@ -283,7 +284,7 @@ function App() {
   const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null) } else await playFrom(playhead) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    const boundary = Math.min(project.steps - 1, step + (event.clientY - rect.top > rect.height / 2 ? 1 : 0))
+    const boundary = Math.min(project.steps - project.delayUnit, step + (event.clientY - rect.top > rect.height / 2 ? project.delayUnit : 0))
     setPlayhead(boundary)
     if (play || playingStep >= 0) void playFrom(boundary)
   }
@@ -314,6 +315,19 @@ function App() {
   const stopBarsHold = () => {window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat);barsHoldRef.current={delay:0,repeat:0}}
   const adjustBars = (delta:number) => {const next=Math.max(1,Math.min(999,barsValueRef.current+delta));if(next!==barsValueRef.current)applyBars(String(next))}
   const startBarsHold = (delta:number,event:React.PointerEvent<HTMLButtonElement>) => {event.preventDefault();stopBarsHold();adjustBars(delta);barsHoldRef.current.delay=window.setTimeout(()=>{barsHoldRef.current.repeat=window.setInterval(()=>adjustBars(delta),125)},450)}
+  const cycleDelayMode = () => {
+    const next:1|2|4=project.delayUnit===1?2:project.delayUnit===2?4:1
+    const invalid=project.tracks.reduce((count,track)=>count+track.notes.filter(note=>note.step%next!==0).length,0)
+    if(invalid){
+      window.alert(language==='ja'
+        ? `${next}遅延モードでは、${next}目盛ごとの位置にだけノートを置けます。\n現在のノート${invalid}個がその位置に合わないため、切り替えませんでした。`
+        : `${next}-delay mode only accepts notes on every ${next}th base step.\n${invalid} existing note(s) do not align, so the mode was not changed.`)
+      return
+    }
+    stopPlayback();setPlayingStep(-1);setFollowPlayback(false);setFollowRun(null)
+    commitProject(current=>({...current,delayUnit:next}))
+    setPlayhead(value=>Math.floor(value/next)*next);setSelection(null);setDragPreview(null)
+  }
   const commitBpm = (raw = bpmDraft) => {
     const requested = Number(raw)
     if (!Number.isFinite(requested) || requested < 8) { setBpmDraft(String(bpm)); return }
@@ -381,7 +395,7 @@ function App() {
     </div>
     <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
-      {Array.from({ length: project.steps }, (_, step) => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${step % 16 === 15 ? 'bar-end' : step % 4 === 3 ? 'beat-end' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
+      {Array.from({ length: project.steps }, (_, step) => step).filter(step=>step%project.delayUnit===0).map(step => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${(step+project.delayUnit)%16===0 ? 'bar-end' : (step+project.delayUnit)%4===0 ? 'beat-end' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {PITCHES.map(pitch => {
           const storedOwn = active.notes.some(n => n.step === step && n.pitch === pitch)
           const previewOrigin=Boolean(dragPreview&&dragPreview.originStep===step&&dragPreview.originPitch===pitch)
@@ -399,6 +413,7 @@ function App() {
     <footer className="dock">
       <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="dock-icon">↶</span><small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="dock-icon">↷</span><small>REDO</small></button>
       <button className="dock-menu" onClick={() => setMenuOpen(!menuOpen)}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
+      <button className="delay-mode-button" onClick={cycleDelayMode} aria-label={`${project.delayUnit}遅延モード。押すと切り替え`}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
       <input ref={fileRef} hidden type="file" accept=".obg,.nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>

@@ -74,3 +74,9 @@
 .blueprint-header{grid-template-columns:minmax(0,180px) minmax(78px,1fr) 58px}.blueprint-brand,.blueprint-brand>div,.blueprint-brand h1{min-width:0}.blueprint-brand h1{display:block;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:520px){.blueprint-header{grid-template-columns:minmax(0,164px) minmax(78px,1fr) 58px}}
 @media(max-width:520px){.blueprint-header>strong{font-size:13.5px}}
+.bp-cell.note.copper{border-color:#ff8a4c!important}.bp-cell.note.copper b{color:#fff;-webkit-text-stroke:1.5px #ff8a4c;text-shadow:0 1px 0 #3b1606,1px 0 0 #3b1606,0 -1px 0 #3b1606,-1px 0 0 #3b1606}
+.bp-cell.note.copper-exposed{border-color:#ffd166!important}.bp-cell.note.copper-exposed b{color:#fff;-webkit-text-stroke:1.5px #ffd166;text-shadow:0 1px 0 #453407,1px 0 0 #453407,0 -1px 0 #453407,-1px 0 0 #453407}
+.bp-cell.note.copper-weathered{border-color:#4ed6ae!important}.bp-cell.note.copper-weathered b{color:#fff;-webkit-text-stroke:1.5px #4ed6ae;text-shadow:0 1px 0 #073c2e,1px 0 0 #073c2e,0 -1px 0 #073c2e,-1px 0 0 #073c2e}
+.bp-cell.note.copper-oxidized{border-color:#36a9e1!important}.bp-cell.note.copper-oxidized b{color:#fff;-webkit-text-stroke:1.5px #36a9e1;text-shadow:0 1px 0 #06304b,1px 0 0 #06304b,0 -1px 0 #06304b,-1px 0 0 #06304b}
+.blueprint-legend>span>.legend-copy{display:grid;align-content:center;gap:2px;margin:0;color:#939e94;font-size:inherit;line-height:1.25}.blueprint-legend .legend-copy small{display:block;color:#707b72;font-size:6px;white-space:nowrap}
+.blueprint-legend i.legend-note{background-image:var(--legend-texture)!important}

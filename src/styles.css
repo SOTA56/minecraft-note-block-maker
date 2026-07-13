@@ -160,3 +160,7 @@
 .edit-tools .tool-select{transform:translateY(-3px)}.edit-tools .tool-paste{font-size:30px;transform:translateY(-5px)}.edit-tools .delete-tool{color:#ff6658}.edit-tools .delete-tool:disabled{color:#ff6658}.edit-tools .delete-tool .tool-icon{font-size:30px}
 .dock>.dock-menu small{transform:none}
 .more-menu .menu-icon{transform:translateY(-2px)}.more-menu .trash-icon{mask-size:17px 17px;-webkit-mask-size:17px 17px}
+.dock{grid-template-columns:repeat(4,1fr)}
+.delay-mode-icon{position:relative;color:#82c9f0}
+.delay-mode-icon::before{content:'';position:absolute;inset:1px 5px;background:currentColor;mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat;-webkit-mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat}
+.delay-mode-icon b{position:absolute;z-index:1;right:1px;bottom:-1px;display:grid;place-items:center;width:16px;height:16px;border:1px solid #151915;border-radius:50%;background:#e3c346;color:#151915;font:10px 'Archivo Black';line-height:1}
