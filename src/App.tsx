@@ -57,6 +57,7 @@ function App() {
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [delayMenuOpen,setDelayMenuOpen]=useState(false)
   const [view,setView] = useState<'editor'|'blueprint'>('editor')
   const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
   const [bpmDraft, setBpmDraft] = useState(() => String(Math.round(project.tickRate * 7.5)))
@@ -315,8 +316,8 @@ function App() {
   const stopBarsHold = () => {window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat);barsHoldRef.current={delay:0,repeat:0}}
   const adjustBars = (delta:number) => {const next=Math.max(1,Math.min(999,barsValueRef.current+delta));if(next!==barsValueRef.current)applyBars(String(next))}
   const startBarsHold = (delta:number,event:React.PointerEvent<HTMLButtonElement>) => {event.preventDefault();stopBarsHold();adjustBars(delta);barsHoldRef.current.delay=window.setTimeout(()=>{barsHoldRef.current.repeat=window.setInterval(()=>adjustBars(delta),125)},450)}
-  const cycleDelayMode = () => {
-    const next:1|2|4=project.delayUnit===1?2:project.delayUnit===2?4:1
+  const applyDelayMode = (next:1|2|4) => {
+    if(next===project.delayUnit){setDelayMenuOpen(false);return}
     const invalid=project.tracks.reduce((count,track)=>count+track.notes.filter(note=>note.step%next!==0).length,0)
     if(invalid){
       window.alert(language==='ja'
@@ -326,7 +327,7 @@ function App() {
     }
     stopPlayback();setPlayingStep(-1);setFollowPlayback(false);setFollowRun(null)
     commitProject(current=>({...current,delayUnit:next}))
-    setPlayhead(value=>Math.floor(value/next)*next);setSelection(null);setDragPreview(null)
+    setPlayhead(value=>Math.floor(value/next)*next);setSelection(null);setDragPreview(null);setDelayMenuOpen(false)
   }
   const commitBpm = (raw = bpmDraft) => {
     const requested = Number(raw)
@@ -412,11 +413,12 @@ function App() {
 
     <footer className="dock">
       <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="dock-icon">↶</span><small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="dock-icon">↷</span><small>REDO</small></button>
-      <button className="dock-menu" onClick={() => setMenuOpen(!menuOpen)}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
-      <button className="delay-mode-button" onClick={cycleDelayMode} aria-label={`${project.delayUnit}遅延モード。押すと切り替え`}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className="dock-menu" onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false)}}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".obg,.nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
+    {delayMenuOpen&&<div className="delay-mode-menu" role="group" aria-label={language==='ja'?'遅延モードを選択':'Select delay mode'}>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}><b>{value}</b><small>{language==='ja'?'遅延':'DELAY'}</small></button>)}</div>}
     {menuOpen && <div className="more-menu">
       <div className="menu-section"><button className="blueprint-menu" onClick={()=>{setView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button></div>
       <div className="menu-section future"><button disabled><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">§</b><span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">◎</b><span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
