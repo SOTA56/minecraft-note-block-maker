@@ -53,7 +53,7 @@ function App() {
   const [editMode, setEditMode] = useState<'input' | 'select'>('input')
   const [dragPreview,setDragPreview]=useState<{originStep:number;originPitch:number;step:number;pitch:number}|null>(null)
   const [selection, setSelection] = useState<{ startStep: number; endStep: number; startPitch: number; endPitch: number } | null>(null)
-  const [copiedNotes, setCopiedNotes] = useState<{ notes:{step:number;pitch:number}[]; width:number } | null>(null)
+  const [copiedNotes, setCopiedNotes] = useState<{ notes:{step:number;pitch:number}[]; width:number; delayUnit:1|2|4 } | null>(null)
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
@@ -75,6 +75,7 @@ function App() {
   const followPlaybackRef = useRef(false)
   const historyRef = useRef<{past:Project[];future:Project[]}>({past:[],future:[]})
   const copyFeedbackTimerRef = useRef(0)
+  const copiedModeRef=useRef(project.delayUnit)
   const barsValueRef = useRef(project.steps / 16)
   const barsHoldRef = useRef<{delay:number;repeat:number}>({delay:0,repeat:0})
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
@@ -96,6 +97,7 @@ function App() {
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
   useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
   useEffect(()=>{followPlaybackRef.current=followPlayback},[followPlayback])
+  useEffect(()=>{if(copiedModeRef.current!==project.delayUnit){setCopiedNotes(null);setCopyFeedback(false);window.clearTimeout(copyFeedbackTimerRef.current)}copiedModeRef.current=project.delayUnit},[project.delayUnit])
   useEffect(() => {
     if (!followRun || !rollRef.current || !playbackCursorRef.current) return
     const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
@@ -257,16 +259,17 @@ function App() {
   }
   const copySelection = () => {
     if (!normalizedSelection) return
-    setCopiedNotes({notes:active.notes.filter(n => isSelected(n.step,n.pitch)).map(n=>({step:n.step-normalizedSelection.minStep,pitch:n.pitch})),width:normalizedSelection.maxStep-normalizedSelection.minStep+1})
+    setCopiedNotes({notes:active.notes.filter(n => isSelected(n.step,n.pitch)).map(n=>({step:n.step-normalizedSelection.minStep,pitch:n.pitch})),width:normalizedSelection.maxStep-normalizedSelection.minStep+project.delayUnit,delayUnit:project.delayUnit})
     setCopyFeedback(true)
     window.clearTimeout(copyFeedbackTimerRef.current)
     copyFeedbackTimerRef.current=window.setTimeout(()=>setCopyFeedback(false),700)
   }
   const pasteSelection = () => {
-    if (!copiedNotes?.notes.length) return
-    const pasted = copiedNotes.notes.map(note=>({step:playhead+note.step,pitch:note.pitch})).filter(note=>note.step<project.steps)
+    if (!copiedNotes?.notes.length||copiedNotes.delayUnit!==project.delayUnit) return
+    const pasted = copiedNotes.notes.map(note=>({step:playhead+note.step,pitch:note.pitch})).filter(note=>note.step<project.steps&&note.step%project.delayUnit===0)
     changeActiveNotes(notes=>[...notes.filter(note=>!pasted.some(item=>item.step===note.step&&item.pitch===note.pitch)),...pasted])
-    setPlayhead(Math.min(project.steps-1,playhead+copiedNotes.width))
+    const nextBoundary=Math.ceil((playhead+copiedNotes.width)/project.delayUnit)*project.delayUnit
+    setPlayhead(Math.min(project.steps-project.delayUnit,nextBoundary))
   }
   const deleteSelection = () => normalizedSelection && changeActiveNotes(notes => notes.filter(n => !isSelected(n.step, n.pitch)))
   const pitchSets = {
