@@ -9,9 +9,15 @@ const loadImage=(src:string)=>new Promise<HTMLImageElement>((resolve,reject)=>{c
 const safeName=(title:string)=>title.trim().replace(/[\\/:*?"<>|]/g,'_')||'OTO-BLOGIC'
 
 async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean){
-  const cell=40,axis=42,footer=34,width=axis*2+plan.width*cell
-  const legendItems=legendBlocks.length+4,legendColumns=Math.max(1,Math.floor((width-axis*2)/210)),legendRows=Math.ceil(legendItems/legendColumns),legendHeight=28+legendRows*52
-  const height=axis*2+plan.height*cell+legendHeight+footer
+  const cell=40,axis=42,footer=34,gridWidth=axis*2+plan.width*cell,gridHeight=axis*2+plan.height*cell
+  const legendItems=legendBlocks.length+4,bottomColumns=Math.max(1,Math.floor((gridWidth-axis*2)/210)),bottomRows=Math.ceil(legendItems/bottomColumns),bottomLegendHeight=28+bottomRows*52
+  const sideWidth=280,sideLegendHeight=28+legendItems*52
+  const bottomSize={width:gridWidth,height:gridHeight+bottomLegendHeight+footer}
+  const sideSize={width:gridWidth+sideWidth,height:Math.max(gridHeight,axis+sideLegendHeight)+footer}
+  const aspectPenalty=(size:{width:number;height:number})=>Math.abs(Math.log(size.width/size.height))
+  const legendAtSide=aspectPenalty(sideSize)<aspectPenalty(bottomSize)
+  const width=legendAtSide?sideSize.width:bottomSize.width,height=legendAtSide?sideSize.height:bottomSize.height
+  const legendColumns=legendAtSide?1:bottomColumns,legendTop=legendAtSide?axis:gridHeight,legendLeft=legendAtSide?gridWidth+18:axis
   if(width>16384||height>16384||width*height>120_000_000)throw new Error('設計図が大きすぎます。折り返しまでのマス数を調整するか、前後の無音を省いてください。')
   const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height
   const context=canvas.getContext('2d');if(!context)throw new Error('画像を作成できませんでした。')
@@ -32,11 +38,10 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
     else if(item.type==='repeater'){context.save();context.translate(cx,cy);if(item.direction==='up')context.rotate(Math.PI);context.fillStyle='#ed171c';context.beginPath();context.moveTo(-15,-16);context.lineTo(15,-16);context.lineTo(15,7);context.lineTo(0,16);context.lineTo(-15,7);context.closePath();context.fill();if(item.direction==='up')context.rotate(-Math.PI);context.fillStyle='#fff';context.font='21px "Archivo Black"';context.fillText(String(item.delay??1),0,item.direction==='up'?3:-3);context.restore()}
     else if(item.type==='dust'){context.strokeStyle='#e51d24';context.fillStyle='#e51d24';context.lineWidth=5;for(const direction of item.connections??[]){context.beginPath();context.moveTo(cx,cy);context.lineTo(cx+(direction==='right'?cell/2:direction==='left'?-cell/2:0),cy+(direction==='down'?cell/2:direction==='up'?-cell/2:0));context.stroke()}context.beginPath();context.arc(cx,cy,6,0,Math.PI*2);context.fill()}
   }
-  const legendTop=axis+plan.height*cell+axis
-  context.textAlign='left';context.textBaseline='middle';context.fillStyle=foreground;context.font='14px "Archivo Black"';context.fillText(ja?'図の説明':'LEGEND',axis,legendTop+10)
+  context.textAlign='left';context.textBaseline='middle';context.fillStyle=foreground;context.font='14px "Archivo Black"';context.fillText(ja?'図の説明':'LEGEND',legendLeft,legendTop+10)
   const allLegend:Array<({kind:'block'}&ExportLegendBlock)|{kind:'repeater'|'placeholder'|'dust'|'source';name:string}>=[...legendBlocks.map(block=>({kind:'block' as const,...block})),{kind:'repeater',name:ja?'リピーターの向きと遅延数':'Repeater direction and delay'},{kind:'placeholder',name:ja?'仮ブロック：任意の不透過ブロック':'Placeholder: any solid opaque block'},{kind:'dust',name:ja?'レッドストーンダスト':'Redstone dust'},{kind:'source',name:ja?'スタート':'Start'}]
-  const itemWidth=(width-axis*2)/legendColumns
-  allLegend.forEach((item,index)=>{const column=index%legendColumns,row=Math.floor(index/legendColumns),x=axis+column*itemWidth,y=legendTop+28+row*52,iconX=x+16,iconY=y+16
+  const itemWidth=legendAtSide?sideWidth-36:(gridWidth-axis*2)/legendColumns
+  allLegend.forEach((item,index)=>{const column=index%legendColumns,row=Math.floor(index/legendColumns),x=legendLeft+column*itemWidth,y=legendTop+28+row*52,iconX=x+16,iconY=y+16
     if(item.kind==='block'){const image=textures.get(item.texture);if(item.texture==='glass'){context.fillStyle=dark?'#79989b':'#cae6e8';context.fillRect(x,y,32,32)}if(image)context.drawImage(image,x,y,32,32);const copper=copperColors[item.texture];context.strokeStyle=copper??'#000';context.lineWidth=copper?3:2;context.strokeRect(x+1,y+1,30,30);context.textAlign='center';context.font='18px "Archivo Black"';context.fillStyle='#fff';context.strokeStyle=copper??'#000';context.lineWidth=4;context.strokeText(item.label,iconX,iconY);context.fillText(item.label,iconX,iconY)}
     else if(item.kind==='placeholder'){context.fillStyle='#48b9dc';context.fillRect(x,y,32,32);context.strokeStyle='#000';context.lineWidth=2;context.strokeRect(x+1,y+1,30,30)}
     else if(item.kind==='dust'){context.fillStyle='#e51d24';context.beginPath();context.arc(iconX,iconY,6,0,Math.PI*2);context.fill()}
