@@ -101,3 +101,5 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
 }
 
 export {generateCompactBlueprint,generateCompactBlueprintRect,splitCompactDelay} from './compactBlueprint'
+export {allocateFishbone,allocateFishboneAuto,allocateFishboneManual,generateFishboneBlueprint} from './fishboneBlueprint'
+export type {FishboneAllocation,FishboneLane,FishboneResult,FishboneRow,FishboneSlot,FishboneTrackStatus} from './fishboneBlueprint'

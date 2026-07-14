@@ -29,7 +29,7 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,compactSize:50,fold:'right',includeSilentEdges:true} })
+const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,compactSize:50,fold:'right',includeSilentEdges:true,fishboneMode:'auto',fishboneManual:{}} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const DEFAULT_BLUEPRINT_VIEW:BlueprintViewState={kind:'easy',layerIndex:0,zoom:1,scrollLeft:0,scrollTop:0}
@@ -37,7 +37,9 @@ const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   const title = source.title === 'NEW CIRCUIT' || source.title === 'TITLE' ? 'SONG TITLE' : source.title
   const delayUnit:1|2|4=source.delayUnit===2||source.delayUnit===4?source.delayUnit:1
-  return {...source, format:'oto-blogic', title, delayUnit, blueprint:{runLength:source.blueprint?.runLength??40,compactSize:source.blueprint?.compactSize??50,fold:source.blueprint?.fold??'right',includeSilentEdges:source.blueprint?.includeSilentEdges??true,theme:source.blueprint?.theme}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  const knownTrackIds=new Set(tracks.map(track=>track.id))
+  const fishboneManual=Object.fromEntries(Object.entries(source.blueprint?.fishboneManual??{}).flatMap(([trackId,lanes])=>knownTrackIds.has(trackId)&&Array.isArray(lanes)?[[trackId,[...new Set(lanes.filter(lane=>Number.isInteger(lane)&&lane>0))]]]:[]))
+  return {...source, format:'oto-blogic', title, delayUnit, blueprint:{runLength:source.blueprint?.runLength??40,compactSize:source.blueprint?.compactSize??50,fold:source.blueprint?.fold??'right',includeSilentEdges:source.blueprint?.includeSilentEdges??true,theme:source.blueprint?.theme,fishboneMode:source.blueprint?.fishboneMode==='manual'?'manual':'auto',fishboneManual}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 
@@ -420,7 +422,7 @@ function App() {
       <button onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
 
-    <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onClick={() => auditionPitch(p)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
+    <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onPointerDown={event=>{if(event.isPrimary&&event.button===0)auditionPitch(p)}} onClick={event=>{if(event.detail===0)auditionPitch(p)}} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
     <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
