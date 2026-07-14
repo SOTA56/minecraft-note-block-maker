@@ -18,6 +18,8 @@ type Direction='up'|'right'|'down'|'left'
 const opposite=(value:'left'|'right'|'top'|'bottom')=>value==='left'?'right':value==='right'?'left':value==='top'?'bottom':'top'
 const directionBetween=(a:Point,b:Point):Direction=>b.x>a.x?'right':b.x<a.x?'left':b.y>a.y?'down':'up'
 const oppositeDirection=(direction:Direction):Direction=>direction==='up'?'down':direction==='down'?'up':direction==='left'?'right':'left'
+const transformPoint=(point:Point,width:number,height:number,entry:Corner):Point=>({x:entry.x==='right'?width-1-point.x:point.x,y:entry.y==='top'?height-1-point.y:point.y})
+const transformVerticalDirection=(direction:'up'|'down',entry:Corner)=>entry.y==='top'?(direction==='up'?'down':'up'):direction
 
 /** Split a redstone delay from four ticks downward.  When the repeater count
  * is even, a zero-delay solid block goes immediately before the last repeater.
@@ -191,8 +193,9 @@ function renderThreeLayer(runs:Run[],width:number,height:number,entry:Corner,lay
     const path:Array<Point>=[];for(let x=current.x;x<=next.x;x++)path.push({x,y:foldY})
     builder.path(path,step,groupId);builder.arm(path[0],current);builder.arm(path.at(-1) as Point,next)
   })
-  const cells=transformCells(builder.finish(),width,height,entry),steps=runs.flatMap(run=>run.frames.map(frame=>frame.step))
-  return{cells,width,height,eventsPerRun:Math.max(...runs.map(run=>run.frames.filter(frame=>frame.kind==='event').length)),runCount:runs.length,firstStep:steps.length?Math.min(...steps):firstStep,lastStep:steps.length?Math.max(...steps):lastStep,layer:layerIndex+1} satisfies BlueprintPlan
+  const cells=transformCells(builder.finish(),width,height,entry),steps=runs.flatMap(run=>run.frames.map(frame=>frame.step)),lastRunIndex=runs.length-1,rawExit=framePoints[lastRunIndex]?.at(-1)
+  const exit=rawExit?{...transformPoint(rawExit,width,height,entry),direction:transformVerticalDirection(lastRunIndex%2===0?'up':'down',entry)}:undefined
+  return{cells,width,height,eventsPerRun:Math.max(...runs.map(run=>run.frames.filter(frame=>frame.kind==='event').length)),runCount:runs.length,firstStep:steps.length?Math.min(...steps):firstStep,lastStep:steps.length?Math.max(...steps):lastStep,layer:layerIndex+1,exit} satisfies BlueprintPlan
 }
 
 function groupMixedLayers(runs:Run[],width:number,height:number){
@@ -312,13 +315,31 @@ function renderMixedLayer(layer:{runs:Run[];positions:RunPosition[]},width:numbe
     if(nextPosition.run.wide){verticalDust(builder,nextPosition.left as number,outerY,nextPoints.left as Point,step,groupId);verticalDust(builder,nextPosition.right as number,outerY,nextPoints.right as Point,step,groupId)}
     else verticalDust(builder,nextPosition.center as number,outerY,nextPoints.carrier,step,groupId)
   })
-  const cells=transformCells(builder.finish(),width,height,entry),steps=runs.flatMap(run=>run.frames.map(frame=>frame.step))
-  return{cells,width,height,eventsPerRun:Math.max(...runs.map(run=>run.frames.filter(frame=>frame.kind==='event').length)),runCount:runs.length,firstStep:steps.length?Math.min(...steps):firstStep,lastStep:steps.length?Math.max(...steps):lastStep,layer:layerIndex+1} satisfies BlueprintPlan
+  const cells=transformCells(builder.finish(),width,height,entry),steps=runs.flatMap(run=>run.frames.map(frame=>frame.step)),lastRunIndex=runs.length-1,rawExit=framePoints[lastRunIndex]?.at(-1)?.carrier
+  const exit=rawExit?{...transformPoint(rawExit,width,height,entry),direction:transformVerticalDirection(lastRunIndex%2===0?'up':'down',entry)}:undefined
+  return{cells,width,height,eventsPerRun:Math.max(...runs.map(run=>run.frames.filter(frame=>frame.kind==='event').length)),runCount:runs.length,firstStep:steps.length?Math.min(...steps):firstStep,lastStep:steps.length?Math.max(...steps):lastStep,layer:layerIndex+1,exit} satisfies BlueprintPlan
 }
 
 function alignRouteToBoard(plan:BlueprintPlan,boardHeight:number,entry:Corner){
   const offset=entry.y==='bottom'?boardHeight-plan.height:0
-  return{...plan,height:boardHeight,cells:offset?plan.cells.map(cell=>({...cell,y:cell.y+offset})):plan.cells}
+  return{...plan,height:boardHeight,cells:offset?plan.cells.map(cell=>({...cell,y:cell.y+offset})):plan.cells,exit:plan.exit&&{...plan.exit,y:plan.exit.y+offset}}
+}
+
+function addLayerNavigation(layers:BlueprintPlan[]){
+  if(layers.length<2)return layers
+  return layers.map((plan,index)=>{
+    let cells=plan.cells.map(cell=>{
+      if(index===0||cell.type!=='source')return cell
+      const direction:Direction=cell.y===0?'down':'up'
+      return{...cell,type:'layer-link' as const,label:direction==='up'?'↑':'↓',direction,connections:[direction],targetLayer:index-1}
+    })
+    if(index<layers.length-1&&plan.exit){
+      const {x,y,direction}=plan.exit,edgeY=direction==='up'?0:plan.height-1,dy=direction==='up'?-1:1,groupId=`layer-exit-${index}`
+      for(let nextY=y+dy;nextY!==edgeY;nextY+=dy)cells.push({x,y:nextY,type:'dust',step:plan.lastStep,groupId,connections:['up','down']})
+      cells.push({x,y:edgeY,type:'layer-link',label:direction==='up'?'↑':'↓',direction,connections:[oppositeDirection(direction)],step:plan.lastStep,groupId,targetLayer:index+1})
+    }
+    return{...plan,cells}
+  })
 }
 
 function generate(project:Project,instruments:readonly BlueprintInstrument[],width:number,height:number,includeSilentEdges:boolean):CompactBlueprint{
@@ -338,7 +359,7 @@ function generate(project:Project,instruments:readonly BlueprintInstrument[],wid
     const plan=mixed?alignRouteToBoard(routePlan,height,entry):routePlan
     layers.push(plan);entry=layerExit(entry,layerRuns.length)
   })
-  return{layers,firstStep:timeline.firstStep,lastStep:timeline.lastStep,size:Math.max(width,height)}
+  return{layers:addLayerNavigation(layers),firstStep:timeline.firstStep,lastStep:timeline.lastStep,size:Math.max(width,height)}
 }
 
 export function generateCompactBlueprintRect(project:Project,instruments:readonly BlueprintInstrument[],width:number,height:number,includeSilentEdges=true){

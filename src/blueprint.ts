@@ -1,8 +1,8 @@
 import type { Project } from './types'
 
 export type BlueprintInstrument = { id:string; ja:string; en:string; blockJa:string; blockEn:string; texture:string }
-export type BlueprintCell = { x:number; y:number; type:'note'|'rest'|'repeater'|'dust'|'source'; label?:string; sub?:string; texture?:string; direction?:'up'|'down'|'left'|'right'; delay?:number; connections?:Array<'up'|'right'|'down'|'left'>; step?:number; groupId?:string; instrument?:string; volume?:number; pan?:number }
-export type BlueprintPlan={cells:BlueprintCell[];width:number;height:number;eventsPerRun:number;runCount:number;firstStep:number;lastStep:number;layer?:number}
+export type BlueprintCell = { x:number; y:number; type:'note'|'rest'|'repeater'|'dust'|'source'|'layer-link'; label?:string; sub?:string; texture?:string; direction?:'up'|'down'|'left'|'right'; delay?:number; connections?:Array<'up'|'right'|'down'|'left'>; step?:number; groupId?:string; instrument?:string; volume?:number; pan?:number; targetLayer?:number }
+export type BlueprintPlan={cells:BlueprintCell[];width:number;height:number;eventsPerRun:number;runCount:number;firstStep:number;lastStep:number;layer?:number;exit?:{x:number;y:number;direction:'up'|'down'}}
 export type CompactBlueprint={layers:BlueprintPlan[];firstStep:number;lastStep:number;size:number}
 
 type TimedNote = { trackId:string; trackIndex:number; pitch:number; instrument:string; volume:number; pan:number }

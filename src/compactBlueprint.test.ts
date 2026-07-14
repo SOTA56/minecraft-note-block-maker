@@ -127,23 +127,26 @@ describe('compact routing edge cases',()=>{
     const even=generateCompactBlueprintRect(input,instruments,16,evenHeight,false)
     expect(even.layers).toHaveLength(odd.layers.length)
     even.layers.forEach((layer,index)=>{
-      const oddLayer=odd.layers[index],source=layer.cells.find(cell=>cell.type==='source')
-      expect([0,evenHeight-1]).toContain(source?.y)
-      const offset=source?.y===evenHeight-1?1:0
-      expect(layer.cells.map(cell=>offset?{...cell,y:cell.y-offset}:cell)).toEqual(oddLayer.cells)
+      const oddLayer=odd.layers[index],entry=layer.cells.find(cell=>cell.groupId===`source-${index}`&&(cell.type==='source'||cell.type==='layer-link'))
+      expect([0,evenHeight-1]).toContain(entry?.y)
+      const offset=entry?.y===evenHeight-1?1:0
+      const routeCells=layer.cells.filter(cell=>!cell.groupId?.startsWith('layer-exit-'))
+      const oddRouteCells=oddLayer.cells.filter(cell=>!cell.groupId?.startsWith('layer-exit-'))
+      expect(routeCells.map(cell=>offset?{...cell,y:cell.y-offset}:cell)).toEqual(oddRouteCells)
       expect(layer.height).toBe(evenHeight)
-      expect(layer.cells.some(cell=>cell.y===(offset?0:evenHeight-1))).toBe(false)
+      expect(routeCells.some(cell=>cell.y===(offset?0:evenHeight-1))).toBe(false)
     })
   })
 
   it.each([16,26,50,96])('keeps an even %i square while using the preceding odd vertical route height',(size)=>{
     const compact=generateCompactBlueprint(project(()=>6,240),instruments,size,false)
-    compact.layers.forEach(layer=>{
-      const source=layer.cells.find(cell=>cell.type==='source')
-      expect([0,size-1]).toContain(source?.y)
+    compact.layers.forEach((layer,index)=>{
+      const entry=layer.cells.find(cell=>cell.groupId===`source-${index}`&&(cell.type==='source'||cell.type==='layer-link'))
+      const routeCells=layer.cells.filter(cell=>!cell.groupId?.startsWith('layer-exit-'))
+      expect([0,size-1]).toContain(entry?.y)
       expect(layer.width).toBe(size)
       expect(layer.height).toBe(size)
-      expect(layer.cells.some(cell=>cell.y===(source?.y===0?size-1:0))).toBe(false)
+      expect(routeCells.some(cell=>cell.y===(entry?.y===0?size-1:0))).toBe(false)
     })
   })
 
@@ -187,16 +190,27 @@ describe('compact routing edge cases',()=>{
   it.each([
     ['single-line',project(()=>3,240)],
     ['paired',project(()=>6,240)],
-  ])('gives every %s layer its own source and adjacent start dust',(_,input)=>{
+  ])('links every %s layer with edge arrows and straight dust',(_,input)=>{
     const compact=generateCompactBlueprintRect(input,instruments,16,16,false)
     expect(compact.layers.length).toBeGreaterThan(1)
     compact.layers.forEach((layer,index)=>{
       const sources=layer.cells.filter(cell=>cell.type==='source')
-      expect(sources).toHaveLength(1)
-      const source=sources[0]
-      expect(source).toMatchObject({step:layer.firstStep,groupId:`source-${index}`})
-      expect(layer.cells.some(cell=>cell.type==='dust'&&cell.groupId===source.groupId&&Math.abs(cell.x-source.x)+Math.abs(cell.y-source.y)===1)).toBe(true)
+      expect(sources).toHaveLength(index===0?1:0)
+      const entry=index===0?sources[0]:layer.cells.find(cell=>cell.type==='layer-link'&&cell.targetLayer===index-1)
+      expect(entry).toMatchObject({step:layer.firstStep,groupId:`source-${index}`})
+      expect([0,layer.height-1]).toContain(entry?.y)
+      if(index)expect(entry?.direction).toBe(entry?.y===0?'down':'up')
+      expect(layer.cells.some(cell=>cell.type==='dust'&&cell.groupId===entry?.groupId&&Math.abs(cell.x-(entry?.x??0))+Math.abs(cell.y-(entry?.y??0))===1)).toBe(true)
       expect(layer.cells.some(cell=>cell.groupId?.startsWith('source-')&&cell.groupId!==`source-${index}`)).toBe(false)
+      const outgoing=layer.cells.find(cell=>cell.type==='layer-link'&&cell.targetLayer===index+1)
+      if(index===compact.layers.length-1)expect(outgoing).toBeUndefined()
+      else{
+        expect(outgoing).toMatchObject({x:layer.exit?.x,direction:layer.exit?.direction,step:layer.lastStep,groupId:`layer-exit-${index}`})
+        expect([0,layer.height-1]).toContain(outgoing?.y)
+        const start=Math.min(layer.exit?.y??0,outgoing?.y??0)+1,end=Math.max(layer.exit?.y??0,outgoing?.y??0)
+        for(let y=start;y<end;y++)expect(at(layer.cells,outgoing?.x??0,y)).toMatchObject({type:'dust',groupId:`layer-exit-${index}`})
+      }
+      expect(new Set(layer.cells.map(cell=>`${cell.x},${cell.y}`)).size).toBe(layer.cells.length)
     })
   })
 
