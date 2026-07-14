@@ -1,6 +1,6 @@
 import {describe,expect,it} from 'vitest'
 import type {Project,Track} from './types'
-import {generateCompactBlueprintRect,splitCompactDelay} from './compactBlueprint'
+import {generateCompactBlueprint,generateCompactBlueprintRect,splitCompactDelay} from './compactBlueprint'
 import type {BlueprintCell,BlueprintInstrument} from './blueprint'
 
 const instruments:BlueprintInstrument[]=[{id:'Harp',ja:'ハープ',en:'Harp',blockJa:'その他',blockEn:'Other',texture:'earth'}]
@@ -121,6 +121,32 @@ describe('mixed six-note PDF geometry',()=>{
 })
 
 describe('compact routing edge cases',()=>{
+  it.each([[15,16],[25,26],[49,50],[95,96]])('keeps the %i-row mixed route shape inside an even %i-row board',(oddHeight,evenHeight)=>{
+    const input=project(()=>6,240)
+    const odd=generateCompactBlueprintRect(input,instruments,16,oddHeight,false)
+    const even=generateCompactBlueprintRect(input,instruments,16,evenHeight,false)
+    expect(even.layers).toHaveLength(odd.layers.length)
+    even.layers.forEach((layer,index)=>{
+      const oddLayer=odd.layers[index],source=layer.cells.find(cell=>cell.type==='source')
+      expect([0,evenHeight-1]).toContain(source?.y)
+      const offset=source?.y===evenHeight-1?1:0
+      expect(layer.cells.map(cell=>offset?{...cell,y:cell.y-offset}:cell)).toEqual(oddLayer.cells)
+      expect(layer.height).toBe(evenHeight)
+      expect(layer.cells.some(cell=>cell.y===(offset?0:evenHeight-1))).toBe(false)
+    })
+  })
+
+  it.each([16,26,50,96])('keeps an even %i square while using the preceding odd vertical route height',(size)=>{
+    const compact=generateCompactBlueprint(project(()=>6,240),instruments,size,false)
+    compact.layers.forEach(layer=>{
+      const source=layer.cells.find(cell=>cell.type==='source')
+      expect([0,size-1]).toContain(source?.y)
+      expect(layer.width).toBe(size)
+      expect(layer.height).toBe(size)
+      expect(layer.cells.some(cell=>cell.y===(source?.y===0?size-1:0))).toBe(false)
+    })
+  })
+
   it('collapses a paired run to its carrier after the last four-note event',()=>{
     const plan=generateCompactBlueprintRect(project(step=>step===0?6:3,11),instruments,30,21,false).layers[0]
     expect(plan.cells.filter(cell=>cell.type==='note'&&cell.step===0)).toHaveLength(6)

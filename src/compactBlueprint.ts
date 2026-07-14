@@ -316,19 +316,26 @@ function renderMixedLayer(layer:{runs:Run[];positions:RunPosition[]},width:numbe
   return{cells,width,height,eventsPerRun:Math.max(...runs.map(run=>run.frames.filter(frame=>frame.kind==='event').length)),runCount:runs.length,firstStep:steps.length?Math.min(...steps):firstStep,lastStep:steps.length?Math.max(...steps):lastStep,layer:layerIndex+1} satisfies BlueprintPlan
 }
 
+function alignRouteToBoard(plan:BlueprintPlan,boardHeight:number,entry:Corner){
+  const offset=entry.y==='bottom'?boardHeight-plan.height:0
+  return{...plan,height:boardHeight,cells:offset?plan.cells.map(cell=>({...cell,y:cell.y+offset})):plan.cells}
+}
+
 function generate(project:Project,instruments:readonly BlueprintInstrument[],width:number,height:number,includeSilentEdges:boolean):CompactBlueprint{
   const timeline=collectFrames(project,includeSilentEdges)
   if(timeline.maxPolyphony>6)throw new Error('Compact circuits support at most six simultaneous notes.')
   const mixed=timeline.maxPolyphony>3
-  const runs=partitionRuns(timeline.frames,mixed?height-6:height-3,mixed?height-5:height-2,mixed,mixed?0:threeRunsPerLayer(width))
-  const mixedGrouped=mixed?groupMixedLayers(runs,width,height):null
+  const routeHeight=mixed&&height%2===0?height-1:height
+  const runs=partitionRuns(timeline.frames,mixed?routeHeight-6:height-3,mixed?routeHeight-5:height-2,mixed,mixed?0:threeRunsPerLayer(width))
+  const mixedGrouped=mixed?groupMixedLayers(runs,width,routeHeight):null
   const grouped=mixed?(mixedGrouped as Array<{runs:Run[];positions:RunPosition[]}>).map(item=>item.runs):groupThreeLayers(runs,width)
   const layers:BlueprintPlan[]=[]
   let entry:Corner={x:'left',y:'bottom'}
   grouped.forEach((layerRuns,index)=>{
-    const plan=mixed
-      ?renderMixedLayer((mixedGrouped as Array<{runs:Run[];positions:RunPosition[]}>)[index],width,height,entry,index,timeline.firstStep,timeline.lastStep,instruments)
+    const routePlan=mixed
+      ?renderMixedLayer((mixedGrouped as Array<{runs:Run[];positions:RunPosition[]}>)[index],width,routeHeight,entry,index,timeline.firstStep,timeline.lastStep,instruments)
       :renderThreeLayer(layerRuns,width,height,entry,index,timeline.firstStep,timeline.lastStep,instruments)
+    const plan=mixed?alignRouteToBoard(routePlan,height,entry):routePlan
     layers.push(plan);entry=layerExit(entry,layerRuns.length)
   })
   return{layers,firstStep:timeline.firstStep,lastStep:timeline.lastStep,size:Math.max(width,height)}
