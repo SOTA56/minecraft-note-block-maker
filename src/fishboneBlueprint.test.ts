@@ -79,6 +79,13 @@ describe('fishbone geometry',()=>{
     expect(plan.cells.some(cell=>cell.x===center.x-8&&cell.y===center.y)).toBe(false)
   })
 
+  it('marks repeaters with the signal direction on both sides of a center',()=>{
+    const left=track('left',[[0,1],[2,2]]),right=track('right',[[0,3],[2,4]])
+    const {plan}=generateFishboneBlueprint(project([left,right]),instruments,'manual',{left:[1],right:[2]})
+    expect(plan.cells.some(cell=>cell.type==='repeater'&&cell.direction==='left')).toBe(true)
+    expect(plan.cells.some(cell=>cell.type==='repeater'&&cell.direction==='right')).toBe(true)
+  })
+
   it('places a cyan carrier under a B-only note',()=>{
     const {plan}=generateFishboneBlueprint(project([track('a',[[1,1]]),track('b',[[0,2]])]),instruments)
     const upper=plan.cells.find(cell=>cell.type==='note'&&cell.label==='2')!
