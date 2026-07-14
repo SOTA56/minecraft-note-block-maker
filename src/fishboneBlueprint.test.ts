@@ -86,6 +86,40 @@ describe('fishbone geometry',()=>{
     expect(plan.cells.some(cell=>cell.type==='repeater'&&cell.direction==='right')).toBe(true)
   })
 
+  it('keeps regular center spacing by default and packs beat-head-only lanes when enabled',()=>{
+    const tracks=Array.from({length:4},(_,index)=>track(`t${index}`,[[0,index],[4,index+4]]))
+    const manual=Object.fromEntries(tracks.map((item,index)=>[item.id,[index+1]]))
+    const regular=generateFishboneBlueprint(project(tracks),instruments,'manual',manual)
+    const packed=generateFishboneBlueprint(project(tracks),instruments,'manual',manual,true)
+    const centers=(result:typeof regular)=>result.plan.cells.filter(cell=>cell.texture==='center-placeholder'&&cell.step===0).map(cell=>cell.x).sort((a,b)=>a-b)
+    expect(centers(regular)).toEqual([8,26])
+    expect(centers(packed)).toEqual([2,8])
+    expect(packed.plan.width).toBe(11)
+    expect(packed.plan.width).toBeLessThan(regular.plan.width)
+  })
+
+  it('preserves both eight-block side reservations for an odd regular lane count',()=>{
+    const regular=generateFishboneBlueprint(project([track('single',[[0,1]])]),instruments)
+    const packed=generateFishboneBlueprint(project([track('single',[[0,1]])]),instruments,'auto',{},true)
+    expect(regular.plan.cells.find(cell=>cell.texture==='center-placeholder')?.x).toBe(8)
+    expect(regular.plan.width).toBe(17)
+    expect(packed.plan.cells.find(cell=>cell.texture==='center-placeholder')?.x).toBe(2)
+    expect(packed.plan.width).toBe(3)
+  })
+
+  it('packs each center from the widest actually used offset and leaves one empty column',()=>{
+    const lanes=[track('left-short',[[0,1]]),track('right-wide',[[3,2]]),track('left-wide',[[2,3]]),track('right-medium',[[1,4]])]
+    const manual=Object.fromEntries(lanes.map((item,index)=>[item.id,[index+1]]))
+    const {plan}=generateFishboneBlueprint(project(lanes),instruments,'manual',manual,true)
+    const centers=plan.cells.filter(cell=>cell.texture==='center-placeholder'&&cell.step===0).map(cell=>cell.x).sort((a,b)=>a-b)
+    const laneY=plan.cells.find(cell=>cell.type==='note'&&cell.x===10)!.y
+    expect(centers).toEqual([2,18])
+    expect(plan.cells.some(cell=>cell.type==='note'&&cell.x===10)).toBe(true)
+    expect(plan.cells.some(cell=>cell.type==='note'&&cell.x===12)).toBe(true)
+    expect(plan.cells.some(cell=>cell.x===11&&cell.y===laneY)).toBe(false)
+    expect(plan.width).toBe(23)
+  })
+
   it('places a cyan carrier under a B-only note',()=>{
     const {plan}=generateFishboneBlueprint(project([track('a',[[1,1]]),track('b',[[0,2]])]),instruments)
     const upper=plan.cells.find(cell=>cell.type==='note'&&cell.label==='2')!
@@ -128,6 +162,34 @@ describe('fishbone geometry',()=>{
     const vertical=result.plan.cells.filter(cell=>cell.type==='repeater'&&cell.direction==='up'&&cell.groupId==='fishbone-start-distribution')
     const totals=centers.map(center=>horizontal.filter(cell=>cell.x>Math.min(center,source.x)&&cell.x<Math.max(center,source.x)).length+vertical.filter(cell=>cell.x===center).length)
     expect(new Set(totals).size).toBe(1)
+  })
+
+  it('rebuilds centered synchronized startup wiring after packing columns',()=>{
+    const tracks=Array.from({length:8},(_,index)=>track(`packed-${index}`,[[index%4,index]]))
+    const result=generateFishboneBlueprint(project(tracks),instruments,'manual',Object.fromEntries(tracks.map((item,index)=>[item.id,[index+1]])),true)
+    const source=result.plan.cells.find(cell=>cell.type==='source')!
+    const horizontal=result.plan.cells.filter(cell=>cell.type==='repeater'&&(cell.direction==='left'||cell.direction==='right')&&cell.groupId==='fishbone-start-distribution')
+    const centers=result.plan.cells.filter(cell=>cell.texture==='center-placeholder'&&cell.step===0).map(cell=>cell.x).sort((a,b)=>a-b)
+    expect(Math.abs(source.x-(result.plan.width-1)/2)).toBeLessThanOrEqual(1)
+    for(const center of centers){
+      const points=[source.x,...horizontal.filter(cell=>cell.x>Math.min(center,source.x)&&cell.x<Math.max(center,source.x)).map(cell=>cell.x),center].sort((a,b)=>center<source.x?b-a:a-b)
+      expect(Math.max(...points.slice(1).map((point,index)=>Math.abs(point-points[index])))).toBeLessThanOrEqual(14)
+    }
+    const vertical=result.plan.cells.filter(cell=>cell.type==='repeater'&&cell.direction==='up'&&cell.groupId==='fishbone-start-distribution')
+    const totals=centers.map(center=>horizontal.filter(cell=>cell.x>Math.min(center,source.x)&&cell.x<Math.max(center,source.x)).length+vertical.filter(cell=>cell.x===center).length)
+    expect(new Set(totals).size).toBe(1)
+  })
+
+  it('keeps packed plans collision-free and in bounds from one through eight lanes',()=>{
+    for(let laneCount=1;laneCount<=8;laneCount++){
+      const tracks=Array.from({length:laneCount},(_,index)=>track(`range-${laneCount}-${index}`,[[index%4,index],[4+(index*3)%4,index+8]]))
+      const result=generateFishboneBlueprint(project(tracks),instruments,'manual',Object.fromEntries(tracks.map((item,index)=>[item.id,[index+1]])),true)
+      const keys=result.plan.cells.map(cell=>`${cell.x},${cell.y}`)
+      expect(new Set(keys).size).toBe(keys.length)
+      expect(result.plan.cells.every(cell=>cell.x>=0&&cell.x<result.plan.width&&cell.y>=0&&cell.y<result.plan.height)).toBe(true)
+      const source=result.plan.cells.find(cell=>cell.type==='source')!
+      expect(Math.abs(source.x-(result.plan.width-1)/2)).toBeLessThanOrEqual(1)
+    }
   })
 
   it('omits physical startup wiring above eight lanes but keeps every note and centered S',()=>{

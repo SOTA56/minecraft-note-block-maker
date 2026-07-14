@@ -95,7 +95,7 @@ export function allocateFishbone(project:Project,mode:FishboneMode='auto',manual
 
 const directions=[['up',0,-1],['right',1,0],['down',0,1],['left',-1,0]] as const
 
-export function generateFishboneBlueprint(project:Project,instruments:readonly BlueprintInstrument[],mode:FishboneMode='auto',manual:Record<string,number[]>={}):FishboneResult{
+export function generateFishboneBlueprint(project:Project,instruments:readonly BlueprintInstrument[],mode:FishboneMode='auto',manual:Record<string,number[]>={},packColumns=false):FishboneResult{
   const allocation=allocateFishbone(project,mode,manual),allNotes=project.tracks.flatMap(track=>track.notes)
   const firstStep=allNotes.length?Math.min(...allNotes.map(note=>note.step)):0,lastStep=allNotes.length?Math.max(...allNotes.map(note=>note.step)):0
   const laneCount=allocation.lanes.length
@@ -103,8 +103,16 @@ export function generateFishboneBlueprint(project:Project,instruments:readonly B
     const plan:BlueprintPlan={cells:[{x:1,y:2,type:'source',label:'S',step:firstStep,groupId:'fishbone-source'}],width:3,height:3,eventsPerRun:4,runCount:0,firstStep,lastStep}
     return {plan,laneCount,statuses:allocation.statuses,assignments:allocation.assignments,remainingNotes:allocation.remainingNotes,connected:true}
   }
-  const groups=Math.floor((lastStep-firstStep)/4)+1,centers=Math.ceil(laneCount/2),centerXs=Array.from({length:centers},(_,index)=>8+index*18)
-  const fullMaxX=centerXs.at(-1)!+8,sourceX=Math.round(fullMaxX/2),bottomA=1+(groups-1)*2
+  const groups=Math.floor((lastStep-firstStep)/4)+1,centers=Math.ceil(laneCount/2)
+  const laneExtents=allocation.lanes.map(lane=>{
+    if(!packColumns)return 8
+    const maxOffset=Math.max(-1,...[...lane.slots.keys()].map(step=>(step-firstStep)%4))
+    return maxOffset<0?0:2+maxOffset*2
+  })
+  const leftExtent=(pair:number)=>packColumns?(laneExtents[pair*2]??0):8,rightExtent=(pair:number)=>packColumns?(laneExtents[pair*2+1]??0):8
+  const centerXs:number[]=[leftExtent(0)]
+  for(let pair=1;pair<centers;pair++)centerXs.push(centerXs[pair-1]+rightExtent(pair-1)+leftExtent(pair)+2)
+  const fullMaxX=centerXs.at(-1)!+rightExtent(centers-1),sourceX=Math.round(fullMaxX/2),bottomA=1+(groups-1)*2
   const cells=new Map<string,BlueprintCell>()
   const add=(cell:BlueprintCell)=>{
     const key=`${cell.x},${cell.y}`,current=cells.get(key)
