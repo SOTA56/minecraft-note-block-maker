@@ -331,12 +331,12 @@ function addLayerNavigation(layers:BlueprintPlan[]){
     let cells=plan.cells.map(cell=>{
       if(index===0||cell.type!=='source')return cell
       const direction:Direction=cell.y===0?'down':'up'
-      return{...cell,type:'layer-link' as const,label:direction==='up'?'↑':'↓',direction,connections:[direction],targetLayer:index-1}
+      return{...cell,type:'layer-link' as const,label:direction==='up'?'↑':'↓',direction,connections:undefined,targetLayer:index-1}
     })
     if(index<layers.length-1&&plan.exit){
       const {x,y,direction}=plan.exit,edgeY=direction==='up'?0:plan.height-1,dy=direction==='up'?-1:1,groupId=`layer-exit-${index}`
       for(let nextY=y+dy;nextY!==edgeY;nextY+=dy)cells.push({x,y:nextY,type:'dust',step:plan.lastStep,groupId,connections:['up','down']})
-      cells.push({x,y:edgeY,type:'layer-link',label:direction==='up'?'↑':'↓',direction,connections:[oppositeDirection(direction)],step:plan.lastStep,groupId,targetLayer:index+1})
+      cells.push({x,y:edgeY,type:'layer-link',label:direction==='up'?'↑':'↓',direction,step:plan.lastStep,groupId,targetLayer:index+1})
     }
     return{...plan,cells}
   })

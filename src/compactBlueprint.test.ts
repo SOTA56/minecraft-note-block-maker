@@ -199,13 +199,14 @@ describe('compact routing edge cases',()=>{
       const entry=index===0?sources[0]:layer.cells.find(cell=>cell.type==='layer-link'&&cell.targetLayer===index-1)
       expect(entry).toMatchObject({step:layer.firstStep,groupId:`source-${index}`})
       expect([0,layer.height-1]).toContain(entry?.y)
-      if(index)expect(entry?.direction).toBe(entry?.y===0?'down':'up')
+      if(index){expect(entry?.direction).toBe(entry?.y===0?'down':'up');expect(entry?.connections).toBeUndefined()}
       expect(layer.cells.some(cell=>cell.type==='dust'&&cell.groupId===entry?.groupId&&Math.abs(cell.x-(entry?.x??0))+Math.abs(cell.y-(entry?.y??0))===1)).toBe(true)
       expect(layer.cells.some(cell=>cell.groupId?.startsWith('source-')&&cell.groupId!==`source-${index}`)).toBe(false)
       const outgoing=layer.cells.find(cell=>cell.type==='layer-link'&&cell.targetLayer===index+1)
       if(index===compact.layers.length-1)expect(outgoing).toBeUndefined()
       else{
         expect(outgoing).toMatchObject({x:layer.exit?.x,direction:layer.exit?.direction,step:layer.lastStep,groupId:`layer-exit-${index}`})
+        expect(outgoing?.connections).toBeUndefined()
         expect([0,layer.height-1]).toContain(outgoing?.y)
         const start=Math.min(layer.exit?.y??0,outgoing?.y??0)+1,end=Math.max(layer.exit?.y??0,outgoing?.y??0)
         for(let y=start;y<end;y++)expect(at(layer.cells,outgoing?.x??0,y)).toMatchObject({type:'dust',groupId:`layer-exit-${index}`})
