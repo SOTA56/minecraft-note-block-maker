@@ -86,3 +86,4 @@
 /* Layer links are navigation markers, not playable redstone components. */
 .blueprint-board-wrap{min-height:240px}.blueprint-stage{box-sizing:content-box;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 .bp-cell.layer-link{z-index:4;overflow:visible;border:1px solid #fff;background:#111713;cursor:pointer}.bp-cell.layer-link b{position:relative;z-index:2;color:#35a9ec;font:32px 'Archivo Black';line-height:1;text-shadow:0 1px 2px #06151f,0 0 7px #35a9ec88}.theme-light .bp-cell.layer-link{background:#fff}.legend-layer-link{color:#35a9ec!important;font:24px 'Archivo Black'!important;text-shadow:0 0 5px #35a9ec66}
+.blueprint-warning strong{color:#fff!important;text-shadow:0 1px 2px #000}.blueprint-warning p{color:#f3cbc4}.blueprint-options.packed{grid-template-columns:repeat(2,1fr)}

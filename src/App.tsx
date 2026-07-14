@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
-import BlueprintView from './BlueprintView'
+import BlueprintView, { type BlueprintViewState } from './BlueprintView'
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
 const INSTRUMENTS = [
@@ -32,6 +32,7 @@ const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK
 const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,compactSize:50,fold:'right',includeSilentEdges:true} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
+const DEFAULT_BLUEPRINT_VIEW:BlueprintViewState={kind:'easy',layerIndex:0,zoom:1,scrollLeft:0,scrollTop:0}
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
   const title = source.title === 'NEW CIRCUIT' || source.title === 'TITLE' ? 'SONG TITLE' : source.title
@@ -59,6 +60,9 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [delayMenuOpen,setDelayMenuOpen]=useState(false)
   const [view,setView] = useState<'editor'|'blueprint'>('editor')
+  const [blueprintViewState,setBlueprintViewState]=useState<BlueprintViewState>(DEFAULT_BLUEPRINT_VIEW)
+  const [previewPitches,setPreviewPitches]=useState<number[]>([])
+  const [playbackPitches,setPlaybackPitches]=useState<number[]>([])
   const [barsDraft, setBarsDraft] = useState(() => String(project.steps / 16))
   const [bpmDraft, setBpmDraft] = useState(() => String(Math.round(project.tickRate * 7.5)))
   const [titleDraft,setTitleDraft] = useState(project.title)
@@ -78,6 +82,11 @@ function App() {
   const copiedModeRef=useRef(project.delayUnit)
   const barsValueRef = useRef(project.steps / 16)
   const barsHoldRef = useRef<{delay:number;repeat:number}>({delay:0,repeat:0})
+  const pitchFlashTimersRef=useRef(new Map<number,number>())
+  const projectRef=useRef(project)
+  const activeIdRef=useRef(activeId)
+  projectRef.current=project
+  activeIdRef.current=activeId
   const active = project.tracks.find(t => t.id === activeId) ?? project.tracks[0]
   const instrument = INSTRUMENTS.find(item => item.id === active.instrument) ?? INSTRUMENTS[0]
   const copy = {
@@ -96,6 +105,7 @@ function App() {
   useEffect(() => () => stopPlayback(), [])
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
   useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
+  useEffect(()=>()=>pitchFlashTimersRef.current.forEach(window.clearTimeout),[])
   useEffect(()=>{followPlaybackRef.current=followPlayback},[followPlayback])
   useEffect(()=>{if(copiedModeRef.current!==project.delayUnit){setCopiedNotes(null);setCopyFeedback(false);window.clearTimeout(copyFeedbackTimerRef.current)}copiedModeRef.current=project.delayUnit},[project.delayUnit])
   useEffect(() => {
@@ -126,6 +136,21 @@ function App() {
     project.tracks.forEach(t => t.notes.forEach(n => counts.set(n.step, (counts.get(n.step) ?? 0) + 1)))
     return Math.max(0, ...counts.values())
   }, [project])
+
+  const flashPitch=(pitch:number)=>{
+    setPreviewPitches(current=>current.includes(pitch)?current:[...current,pitch])
+    const previous=pitchFlashTimersRef.current.get(pitch)
+    if(previous)window.clearTimeout(previous)
+    const timer=window.setTimeout(()=>{pitchFlashTimersRef.current.delete(pitch);setPreviewPitches(current=>current.filter(value=>value!==pitch))},240)
+    pitchFlashTimersRef.current.set(pitch,timer)
+  }
+  const auditionPitch=(pitch:number)=>{void previewTone(pitch,active.volume,active.instrument).then(()=>flashPitch(pitch)).catch(error=>console.error('Pitch preview failed.',error))}
+  const currentTrackPitchesAt=(step:number)=>{
+    const current=projectRef.current,track=current.tracks.find(value=>value.id===activeIdRef.current)
+    if(!track||track.muted||(current.tracks.some(value=>value.solo)&&!track.solo))return []
+    return [...new Set(track.notes.filter(note=>note.step===step).map(note=>note.pitch))]
+  }
+  const soundingPitches=useMemo(()=>new Set([...previewPitches,...playbackPitches]),[previewPitches,playbackPitches])
 
   const commitProject = (change:(current:Project)=>Project) => setProject(current=>{
     const next = change(current)
@@ -230,7 +255,7 @@ function App() {
       const remaining=drag.baseAllNotes.filter(n=>!original.some(o=>o.step===n.step&&o.pitch===n.pitch)&&!moved.some(item=>item.step===n.step&&item.pitch===n.pitch))
       setProject(p=>({...p,tracks:p.tracks.map(track=>track.id===activeId?{...track,notes:[...remaining,...moved]}:track)}))
       setSelection({ startStep: base.startStep + ds, endStep: base.endStep + ds, startPitch: base.startPitch + dp, endPitch: base.endPitch + dp })
-      if (drag.originPitch+dp !== drag.pitch) previewTone(drag.originPitch+dp, active.volume, active.instrument)
+      if (drag.originPitch+dp !== drag.pitch) auditionPitch(drag.originPitch+dp)
       drag.moved = true; drag.step = drag.originStep+ds; drag.pitch = drag.originPitch+dp
       return
     }
@@ -241,7 +266,7 @@ function App() {
     }
     drag.moved = true
     if(drag.existed)setDragPreview({originStep:drag.originStep,originPitch:drag.originPitch,step,pitch})
-    if (pitch !== drag.pitch) previewTone(pitch, active.volume, active.instrument)
+    if (pitch !== drag.pitch) auditionPitch(pitch)
     drag.step = step; drag.pitch = pitch
   }
   const handlePointerUp = () => {
@@ -253,7 +278,7 @@ function App() {
     if (drag?.existed && drag.moved && !drag.selecting && !drag.group) setDraggedNote(drag.originStep,drag.originPitch,drag.step,drag.pitch)
     if (drag && !drag.existed && !drag.moved && !drag.selecting) {
       setDraggedNote(drag.originStep, drag.originPitch, drag.originStep, drag.originPitch)
-      previewTone(drag.originPitch, active.volume, active.instrument)
+      auditionPitch(drag.originPitch)
     }
     setDragPreview(null);dragRef.current = null
   }
@@ -282,10 +307,10 @@ function App() {
   const isBlack = (pitch: number) => [0, 2, 4, 7, 9].includes(pitch % 12)
   const isDo = (pitch: number) => pitch % 12 === 6
   const playFrom = async (step:number) => {
-    stopPlayback(); setPlayingStep(step); setFollowPlayback(true); setFollowRun({id:++followIdRef.current,step}); setPlayhead(step)
-    await playProject(project,step,value=>{setPlayingStep(value);if(value<0){setFollowPlayback(false);setFollowRun(null)}})
+    stopPlayback(); setPlaybackPitches([]); setPlayingStep(step); setFollowPlayback(true); setFollowRun({id:++followIdRef.current,step}); setPlayhead(step)
+    await playProject(project,step,value=>{setPlayingStep(value);if(value<0){setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)}else setPlaybackPitches(currentTrackPitchesAt(value))})
   }
-  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null) } else await playFrom(playhead) }
+  const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setPlaybackPitches([]); setFollowPlayback(false); setFollowRun(null) } else await playFrom(playhead) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
     const rect = event.currentTarget.getBoundingClientRect()
     const boundary = Math.min(project.steps - project.delayUnit, step + (event.clientY - rect.top > rect.height / 2 ? project.delayUnit : 0))
@@ -301,9 +326,9 @@ function App() {
     const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
     if (saveFirst) save()
     if (!window.confirm(language === 'ja' ? 'すべてのノートを削除します。この操作は取り消せません。よろしいですか？' : 'Delete every note? This cannot be undone.')) return
-    stopPlayback(); setFollowPlayback(false); setFollowRun(null)
+    stopPlayback(); setFollowPlayback(false); setFollowRun(null); setPlaybackPitches([]); setPreviewPitches([])
     const fresh = createInitialProject()
-    historyRef.current={past:[],future:[]};setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes(null); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setTitleDraft(fresh.title); setMenuOpen(false)
+    historyRef.current={past:[],future:[]};setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes(null); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setTitleDraft(fresh.title); setMenuOpen(false);setBlueprintViewState(DEFAULT_BLUEPRINT_VIEW)
   }
   const applyBars = (raw = barsDraft) => {
     const requested = Number(raw)
@@ -328,7 +353,7 @@ function App() {
         : `${next}-delay mode only accepts notes on every ${next}th base step.\n${invalid} existing note(s) do not align, so the mode was not changed.`)
       return
     }
-    stopPlayback();setPlayingStep(-1);setFollowPlayback(false);setFollowRun(null)
+    stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)
     commitProject(current=>({...current,delayUnit:next}))
     setPlayhead(value=>Math.floor(value/next)*next);setSelection(null);setDragPreview(null);setDelayMenuOpen(false)
   }
@@ -351,7 +376,7 @@ function App() {
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
-  if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} onBack={()=>setView('editor')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
+  if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);setView('editor')}} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
@@ -362,7 +387,7 @@ function App() {
 
     <section className="transport">
       <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}><img className="transport-icon" src={playingStep >= 0 ? '/assets/icons/stop.svg' : '/assets/icons/play.svg'} alt="" aria-hidden="true" /></button>
-      <button className="cue" onClick={() => { stopPlayback(); setPlayingStep(-1); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><img className="transport-icon" src="/assets/icons/cue.svg" alt="" aria-hidden="true" /></button>
+      <button className="cue" onClick={() => { stopPlayback(); setPlayingStep(-1); setPlaybackPitches([]); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><img className="transport-icon" src="/assets/icons/cue.svg" alt="" aria-hidden="true" /></button>
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><input aria-label={language==='ja'?'小節数を入力':'Enter bars'} type="text" inputMode="numeric" value={barsDraft} onChange={event=>setBarsDraft(event.target.value.replace(/[^0-9]/g,''))} onBlur={event=>applyBars(event.currentTarget.value)} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur()}}/><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
@@ -395,7 +420,7 @@ function App() {
       <button onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
 
-    <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onClick={() => previewTone(p,active.volume,active.instrument)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void previewTone(p,active.volume,active.instrument) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
+    <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onClick={() => auditionPitch(p)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
     <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
@@ -423,7 +448,7 @@ function App() {
     </footer>
     {delayMenuOpen&&<div className="delay-mode-menu" role="group" aria-label={language==='ja'?'遅延モードを選択':'Select delay mode'}>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}><b>{value}</b><small>{language==='ja'?'遅延':'DELAY'}</small></button>)}</div>}
     {menuOpen && <div className="more-menu">
-      <div className="menu-section"><button className="blueprint-menu" onClick={()=>{setView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button></div>
+      <div className="menu-section"><button className="blueprint-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null);setView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button></div>
       <div className="menu-section future"><button disabled><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">§</b><span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">◎</b><span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
       <div className="menu-section"><button className="danger" onClick={clearAll}><b className="menu-icon trash-icon" aria-hidden="true"/><span>{c[18]}</span></button></div>
     </div>}
