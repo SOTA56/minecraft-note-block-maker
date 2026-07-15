@@ -18,4 +18,5 @@
 .home-hero h1 .hero-blue{color:var(--blue)}.home-hero h1 .hero-yellow{color:var(--yellow)}
 .home-video{padding:54px 18px 64px;border-top:1px solid #263236;background:#090d0f}.home-video header small{color:var(--yellow);font-size:9px;font-weight:700;letter-spacing:.16em}.home-video h2{margin:9px 0 22px;font:30px/1.05 'Archivo Black';letter-spacing:-.035em}.home-video-frame{position:relative;overflow:hidden;width:100%;aspect-ratio:16/9;border:1px solid #2e424a;background:#050708;box-shadow:7px 7px 0 #0c5c8b}.home-video-frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 .home-keys i.black{width:100%}.home-grid i{left:calc((var(--x) - 1)*100%/16 + 2px);width:calc(100%/16 - 4px)}
+.hero-visual{height:390px;padding-top:48px}.hero-visual>p{margin:8px 2px 16px}.hero-visual .home-roll{height:238px}
 @media(prefers-reduced-motion:reduce){.home-grid i,.home-playhead{animation:none}}

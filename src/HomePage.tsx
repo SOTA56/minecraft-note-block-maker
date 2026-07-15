@@ -26,8 +26,8 @@ export default function HomePage({language,setLanguage,onStart}:Props){
       <div className="hero-meta"><span>NO INSTALL</span><span>AUTO SAVE</span><span>JAVA / BEDROCK</span></div>
       <div className="hero-visual">
         <div className="visual-label"><span>{ja?'ピアノロール':'PIANO ROLL'}</span></div>
-        <MiniRoll/>
         <p>{ja?'直感的に使えつつ機能も充実。スマートフォンでは画面を広く使える縦スクロール式を採用。':'Intuitive yet fully featured, with a mobile-first vertical workflow that makes the most of your screen.'}</p>
+        <MiniRoll/>
       </div>
     </section>
 
