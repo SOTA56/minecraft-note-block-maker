@@ -96,4 +96,5 @@
 @media(max-width:520px){.blueprint-options.fishbone{grid-template-columns:repeat(2,minmax(0,1fr))}.blueprint-options.fishbone label:nth-child(2n){border-right:0}.fishbone-assignments{max-height:min(45dvh,330px)}.fishbone-assignments article{grid-template-columns:38px minmax(64px,.82fr) minmax(96px,1.5fr) 36px;gap:5px;padding-inline:6px}.fishbone-assignments article>i{width:34px;height:34px}.fishbone-lane-picker button,.fishbone-lane-picker>span{flex-basis:32px;width:32px;height:32px}.fishbone-assignments article>em{font-size:8px}.fishbone-assignments>header b{font-size:9px}}
 
 /* Horizontal repeaters keep the pentagon on the signal axis and the number upright. */
+.blueprint-brand .brand-home{display:grid;flex:0 0 auto;padding:0;border:0;background:none;place-items:center;cursor:pointer}.blueprint-brand .brand-home:focus-visible{outline:2px solid #38aaf0;outline-offset:2px}
 .repeater-mark.left{transform:rotate(90deg)}.repeater-mark.right{transform:rotate(-90deg)}.repeater-mark.left b{top:3px;transform:rotate(-90deg)}.repeater-mark.right b{top:3px;transform:rotate(90deg)}

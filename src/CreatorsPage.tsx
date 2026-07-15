@@ -26,15 +26,10 @@ export default function CreatorsPage({language,setLanguage,onBack,onStart}:Props
       <select value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select>
     </header>
 
-    <section className="creators-hero">
-      <small>PEOPLE BEHIND OTO BLOGIC</small>
-      <h1>{ja?<>音と回路を、<br/><span>もっと身近に。</span></>:<>MAKING MUSIC<br/><span>FEEL CLOSER.</span></>}</h1>
-      <p>{ja?'OTO BLOGICをつくった人と、音符ブロックの知識で支えた人。異なる経験を持つ二人で、初心者にも扱いやすいツールを目指しました。':'Meet the creator and supervisor who combined music production and note-block expertise to make OTO BLOGIC approachable for everyone.'}</p>
-    </section>
+    <section className="creators-hero"><h1>{ja?'サイト制作 / 監修':'CREATOR / SUPERVISOR'}</h1></section>
 
     <section className="creator-profiles">
-      {profiles.map((profile,index)=><article className={`creator-card ${profile.tone}`} key={profile.name}>
-        <div className="creator-number">0{index+1}</div>
+      {profiles.map(profile=><article className={`creator-card ${profile.tone}`} key={profile.name}>
         <div className="creator-portrait"><img src={profile.image} alt={profile.name}/></div>
         <div className="creator-copy">
           <small>{ja?profile.roleJa:profile.roleEn}</small><h2>{profile.name}</h2>

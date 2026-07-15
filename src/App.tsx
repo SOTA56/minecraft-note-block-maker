@@ -399,12 +399,12 @@ function App() {
 
   if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>openView('editor')} onCreators={()=>openView('creators')}/>
   if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openView('home')} onStart={()=>openView('editor')}/>
-  if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);openView('editor',true)}} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
+  if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);openView('editor',true)}} onHome={()=>openView('home')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
-      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.svg" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} onBlur={e=>{const title=e.currentTarget.value.trim()||project.title;setTitleDraft(title);if(title!==project.title)commitProject(p=>({...p,title}))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur()}} aria-label="曲名" /></div></div>
+      <div className="brand"><button className="brand-home" onClick={()=>openView('home')} aria-label={language==='ja'?'トップページへ':'Go to home'}><img className="brand-icon" src="/assets/branding/oto-blogic-icon.svg" alt="" /></button><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} onBlur={e=>{const title=e.currentTarget.value.trim()||project.title;setTitleDraft(title);if(title!==project.title)commitProject(p=>({...p,title}))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur()}} aria-label="曲名" /></div></div>
       <div className="top-actions"><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select></div>
     </header>
 
