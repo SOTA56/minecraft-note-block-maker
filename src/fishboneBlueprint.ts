@@ -97,6 +97,7 @@ const directions=[['up',0,-1],['right',1,0],['down',0,1],['left',-1,0]] as const
 
 export function generateFishboneBlueprint(project:Project,instruments:readonly BlueprintInstrument[],mode:FishboneMode='auto',manual:Record<string,number[]>={},packColumns=false):FishboneResult{
   const allocation=allocateFishbone(project,mode,manual),allNotes=project.tracks.flatMap(track=>track.notes)
+  const laneDelay=project.delayUnit
   const firstStep=allNotes.length?Math.min(...allNotes.map(note=>note.step)):0,lastStep=allNotes.length?Math.max(...allNotes.map(note=>note.step)):0
   const laneCount=allocation.lanes.length
   if(!laneCount){
@@ -106,8 +107,8 @@ export function generateFishboneBlueprint(project:Project,instruments:readonly B
   const groups=Math.floor((lastStep-firstStep)/4)+1,centers=Math.ceil(laneCount/2)
   const laneExtents=allocation.lanes.map(lane=>{
     if(!packColumns)return 8
-    const maxOffset=Math.max(-1,...[...lane.slots.keys()].map(step=>(step-firstStep)%4))
-    return maxOffset<0?0:2+maxOffset*2
+    const maxOffsetIndex=Math.max(-1,...[...lane.slots.keys()].map(step=>Math.floor(((step-firstStep)%4)/laneDelay)))
+    return maxOffsetIndex<0?0:2+maxOffsetIndex*2
   })
   const leftExtent=(pair:number)=>packColumns?(laneExtents[pair*2]??0):8,rightExtent=(pair:number)=>packColumns?(laneExtents[pair*2+1]??0):8
   const centerXs:number[]=[leftExtent(0)]
@@ -132,16 +133,16 @@ export function generateFishboneBlueprint(project:Project,instruments:readonly B
       if(group<centerLast)add({x:centerX,y:yA-1,type:'repeater',direction:'up',delay:4,label:'4',step:groupStep+4,groupId:`fishbone-step-${groupStep+4}`})
       for(const [lane,sign] of [[left,-1],[right,1]] as const){
         if(!lane)continue
-        const offsets=Array.from({length:4},(_,offset)=>({offset,slot:lane.slots.get(groupStep+offset)}))
-        const lastOffset=Math.max(-1,...offsets.filter(item=>item.slot?.A||item.slot?.B).map(item=>item.offset))
-        if(lastOffset<0)continue
+        const offsets=Array.from({length:4/laneDelay},(_,index)=>({index,stepOffset:index*laneDelay,slot:lane.slots.get(groupStep+index*laneDelay)}))
+        const lastOffsetIndex=Math.max(-1,...offsets.filter(item=>item.slot?.A||item.slot?.B).map(item=>item.index))
+        if(lastOffsetIndex<0)continue
         add({x:centerX+sign,y:yA,type:'dust',step:groupStep,groupId:`fishbone-step-${groupStep}`})
-        for(let offset=0;offset<=lastOffset;offset++){
-          const step=groupStep+offset,slot=lane.slots.get(step),x=centerX+sign*(2+offset*2)
+        for(let offsetIndex=0;offsetIndex<=lastOffsetIndex;offsetIndex++){
+          const step=groupStep+offsetIndex*laneDelay,slot=lane.slots.get(step),x=centerX+sign*(2+offsetIndex*2)
           if(slot?.A){const instrument=instrumentFor(slot.A.instrument);add({x,y:yA,type:'note',label:String(slot.A.pitch),texture:instrument?.texture,step,instrument:slot.A.instrument,volume:slot.A.volume,pan:slot.A.pan,groupId:`fishbone-step-${step}`})}
           else add({x,y:yA,type:'rest',texture:'placeholder',step,groupId:`fishbone-step-${step}`})
           if(slot?.B){const instrument=instrumentFor(slot.B.instrument);add({x,y:yA-1,type:'note',label:String(slot.B.pitch),texture:instrument?.texture,step,instrument:slot.B.instrument,volume:slot.B.volume,pan:slot.B.pan,groupId:`fishbone-step-${step}`})}
-          if(offset<lastOffset)add({x:centerX+sign*(3+offset*2),y:yA,type:'repeater',direction:sign<0?'left':'right',delay:1,label:'1',step:step+1,groupId:`fishbone-step-${step+1}`})
+          if(offsetIndex<lastOffsetIndex)add({x:centerX+sign*(3+offsetIndex*2),y:yA,type:'repeater',direction:sign<0?'left':'right',delay:laneDelay,label:String(laneDelay),step:step+laneDelay,groupId:`fishbone-step-${step+laneDelay}`})
         }
       }
     }

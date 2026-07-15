@@ -5,7 +5,7 @@ import type {Project,Track} from './types'
 
 const instruments:BlueprintInstrument[]=[{id:'Harp',ja:'ハープ',en:'Harp',blockJa:'土',blockEn:'Dirt',texture:'earth'}]
 const track=(id:string,notes:Array<[number,number]>):Track=>({id,name:id,instrument:'Harp',volume:1,pan:0,color:'#fff',muted:false,solo:false,ghostEnabled:true,notes:notes.map(([step,pitch])=>({step,pitch}))})
-const project=(tracks:Track[],steps=128):Project=>({format:'oto-blogic',version:1,title:'TEST',edition:'both',tickRate:20,delayUnit:1,steps,tracks})
+const project=(tracks:Track[],steps=128,delayUnit:1|2|4=1):Project=>({format:'oto-blogic',version:1,title:'TEST',edition:'both',tickRate:20,delayUnit,steps,tracks})
 
 describe('fishbone allocation',()=>{
   it('pairs two monophonic tracks in fixed A and B rows',()=>{
@@ -84,6 +84,22 @@ describe('fishbone geometry',()=>{
     const {plan}=generateFishboneBlueprint(project([left,right]),instruments,'manual',{left:[1],right:[2]})
     expect(plan.cells.some(cell=>cell.type==='repeater'&&cell.direction==='left')).toBe(true)
     expect(plan.cells.some(cell=>cell.type==='repeater'&&cell.direction==='right')).toBe(true)
+  })
+
+  it('compresses each two-delay lane interval into one delay-2 repeater',()=>{
+    const {plan}=generateFishboneBlueprint(project([track('lane',[[0,1],[2,2]])],128,2),instruments)
+    const center=plan.cells.find(cell=>cell.texture==='center-placeholder')!
+    const notes=plan.cells.filter(cell=>cell.type==='note').sort((a,b)=>a.x-b.x)
+    const laneRepeaters=plan.cells.filter(cell=>cell.type==='repeater'&&cell.groupId!=='fishbone-start-distribution'&&cell.direction==='left')
+    expect(notes.map(cell=>Math.abs(cell.x-center.x)).sort((a,b)=>a-b)).toEqual([2,4])
+    expect(laneRepeaters).toHaveLength(1)
+    expect(laneRepeaters[0].delay).toBe(2)
+    expect(plan.cells.some(cell=>cell.texture==='placeholder'&&cell.step===1)).toBe(false)
+  })
+
+  it('uses no lane repeater in delay-4 mode',()=>{
+    const {plan}=generateFishboneBlueprint(project([track('lane',[[0,1],[4,2]])],128,4),instruments)
+    expect(plan.cells.some(cell=>cell.type==='repeater'&&(cell.direction==='left'||cell.direction==='right')&&cell.groupId!=='fishbone-start-distribution')).toBe(false)
   })
 
   it('keeps regular center spacing by default and packs beat-head-only lanes when enabled',()=>{
