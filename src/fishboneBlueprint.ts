@@ -139,9 +139,9 @@ export function generateFishboneBlueprint(project:Project,instruments:readonly B
         add({x:centerX+sign,y:yA,type:'dust',step:groupStep,groupId:`fishbone-step-${groupStep}`})
         for(let offsetIndex=0;offsetIndex<=lastOffsetIndex;offsetIndex++){
           const step=groupStep+offsetIndex*laneDelay,slot=lane.slots.get(step),x=centerX+sign*(2+offsetIndex*2)
-          if(slot?.A){const instrument=instrumentFor(slot.A.instrument);add({x,y:yA,type:'note',label:String(slot.A.pitch),texture:instrument?.texture,step,instrument:slot.A.instrument,volume:slot.A.volume,pan:slot.A.pan,groupId:`fishbone-step-${step}`})}
+          if(slot?.A){const instrument=instrumentFor(slot.A.instrument);add({x,y:yA,type:'note',label:String(slot.A.pitch),texture:instrument?.texture,step,trackId:slot.A.trackId,instrument:slot.A.instrument,volume:slot.A.volume,pan:slot.A.pan,groupId:`fishbone-step-${step}`})}
           else add({x,y:yA,type:'rest',texture:'placeholder',step,groupId:`fishbone-step-${step}`})
-          if(slot?.B){const instrument=instrumentFor(slot.B.instrument);add({x,y:yA-1,type:'note',label:String(slot.B.pitch),texture:instrument?.texture,step,instrument:slot.B.instrument,volume:slot.B.volume,pan:slot.B.pan,groupId:`fishbone-step-${step}`})}
+          if(slot?.B){const instrument=instrumentFor(slot.B.instrument);add({x,y:yA-1,type:'note',label:String(slot.B.pitch),texture:instrument?.texture,step,trackId:slot.B.trackId,instrument:slot.B.instrument,volume:slot.B.volume,pan:slot.B.pan,groupId:`fishbone-step-${step}`})}
           if(offsetIndex<lastOffsetIndex)add({x:centerX+sign*(3+offsetIndex*2),y:yA,type:'repeater',direction:sign<0?'left':'right',delay:laneDelay,label:String(laneDelay),step:step+laneDelay,groupId:`fishbone-step-${step+laneDelay}`})
         }
       }

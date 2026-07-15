@@ -29,7 +29,7 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,compactSize:50,fold:'right',includeSilentEdges:true,fishboneMode:'auto',fishboneManual:{},fishbonePackColumns:false} })
+const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,compactSize:50,fold:'right',includeSilentEdges:true,fishboneMode:'auto',fishboneManual:{},fishbonePackColumns:false,fishboneSpatialAudio:false,fishbonePlayerHeight:5} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const DEFAULT_BLUEPRINT_VIEW:BlueprintViewState={kind:'easy',layerIndex:0,zoom:1,scrollLeft:0,scrollTop:0}
@@ -39,7 +39,8 @@ const normalizeProject = (source:Project):Project => {
   const delayUnit:1|2|4=source.delayUnit===2||source.delayUnit===4?source.delayUnit:1
   const knownTrackIds=new Set(tracks.map(track=>track.id))
   const fishboneManual=Object.fromEntries(Object.entries(source.blueprint?.fishboneManual??{}).flatMap(([trackId,lanes])=>knownTrackIds.has(trackId)&&Array.isArray(lanes)?[[trackId,[...new Set(lanes.filter(lane=>Number.isInteger(lane)&&lane>0))]]]:[]))
-  return {...source, format:'oto-blogic', title, delayUnit, blueprint:{runLength:source.blueprint?.runLength??40,compactSize:source.blueprint?.compactSize??50,fold:source.blueprint?.fold??'right',includeSilentEdges:source.blueprint?.includeSilentEdges??true,theme:source.blueprint?.theme,fishboneMode:source.blueprint?.fishboneMode==='manual'?'manual':'auto',fishboneManual,fishbonePackColumns:source.blueprint?.fishbonePackColumns===true}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  const rawFishbonePlayerHeight=Number(source.blueprint?.fishbonePlayerHeight??5),fishbonePlayerHeight=Number.isFinite(rawFishbonePlayerHeight)?Math.max(0,Math.min(48,Math.round(rawFishbonePlayerHeight))):5
+  return {...source, format:'oto-blogic', title, delayUnit, blueprint:{runLength:source.blueprint?.runLength??40,compactSize:source.blueprint?.compactSize??50,fold:source.blueprint?.fold??'right',includeSilentEdges:source.blueprint?.includeSilentEdges??true,theme:source.blueprint?.theme,fishboneMode:source.blueprint?.fishboneMode==='manual'?'manual':'auto',fishboneManual,fishbonePackColumns:source.blueprint?.fishbonePackColumns===true,fishboneSpatialAudio:source.blueprint?.fishboneSpatialAudio===true,fishbonePlayerHeight}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 

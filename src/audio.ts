@@ -1,4 +1,4 @@
-import type { Project } from './types'
+import type { Note, Project, Track } from './types'
 
 let context: AudioContext | null = null
 let stopAt = 0
@@ -51,10 +51,10 @@ const playTone = (ctx: AudioContext, buffer: AudioBuffer, pitch: number, at: num
   source.start(at)
 }
 
-export async function previewTone(pitch: number, volume: number, instrument: string) {
+export async function previewTone(pitch: number, volume: number, instrument: string, pan=0) {
   const ctx = await getContext()
   const buffer = await loadBuffer(ctx, instrument)
-  playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume)
+  playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume, pan)
 }
 
 const schedulePlaybackTimer = (callback: () => void, delay: number) => {
@@ -65,7 +65,7 @@ const schedulePlaybackTimer = (callback: () => void, delay: number) => {
   playbackTimers.add(timer)
 }
 
-export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean;toStep?:number}) {
+export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean;toStep?:number;noteMix?:(track:Track,note:Note)=>{volume:number;pan:number}}) {
   const token = ++stopAt
   const ctx = await getContext()
   if (stopAt !== token) return
@@ -76,8 +76,10 @@ export async function playProject(project: Project, fromStep = 0, onStep?: (step
   const lastStep = Math.max(firstStep, Math.min(project.steps - 1, Math.round(options?.toStep ?? project.steps - 1)))
   const stepSeconds = 2 / project.tickRate
   const start = ctx.currentTime + 0.08
-  audible.forEach(track => track.notes.filter(note => note.step >= firstStep && note.step <= lastStep).forEach(note =>
-    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - firstStep) * stepSeconds, track.volume, options?.usePan===false?0:track.pan??0, true)))
+  audible.forEach(track => track.notes.filter(note => note.step >= firstStep && note.step <= lastStep).forEach(note => {
+    const mix=options?.noteMix?.(track,note)
+    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - firstStep) * stepSeconds, mix?.volume??track.volume, mix?.pan??(options?.usePan===false?0:track.pan??0), true)
+  }))
   for (let step = firstStep; step <= lastStep; step += 1) {
     schedulePlaybackTimer(() => { if (stopAt === token) onStep?.(step) }, 80 + (step - firstStep) * stepSeconds * 1000)
   }
