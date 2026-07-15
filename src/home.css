@@ -20,4 +20,6 @@
 .home-keys i.black{width:100%}.home-grid i{left:calc((var(--x) - 1)*100%/16 + 2px);width:calc(100%/16 - 4px)}
 .hero-visual{height:390px;padding-top:48px}.hero-visual>p{margin:8px 2px 16px}.hero-visual .home-roll{height:238px}
 .home-video header,.home-video-frame{width:100%;max-width:760px;margin-right:auto;margin-left:auto}.home-video-frame{box-shadow:none}
+.home-language{width:104px;padding-right:24px;padding-left:8px;-webkit-appearance:none;appearance:none;background-color:#0c1b22;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8dcfb' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:10px 6px}
+@media(max-width:370px){.home-language{width:96px}}
 @media(prefers-reduced-motion:reduce){.home-grid i,.home-playhead{animation:none}}
