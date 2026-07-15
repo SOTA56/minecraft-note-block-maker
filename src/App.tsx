@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
 import BlueprintView, { type BlueprintViewState } from './BlueprintView'
+import HomePage from './HomePage'
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
 const INSTRUMENTS = [
@@ -62,7 +63,7 @@ function App() {
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
   const [delayMenuOpen,setDelayMenuOpen]=useState(false)
-  const [view,setView] = useState<'editor'|'blueprint'>('editor')
+  const [view,setView] = useState<'home'|'editor'|'blueprint'>('home')
   const [blueprintViewState,setBlueprintViewState]=useState<BlueprintViewState>(DEFAULT_BLUEPRINT_VIEW)
   const [previewPitches,setPreviewPitches]=useState<number[]>([])
   const [playbackPitches,setPlaybackPitches]=useState<number[]>([])
@@ -379,12 +380,13 @@ function App() {
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
+  if(view==='home')return <HomePage language={language} onStart={()=>setView('editor')}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);setView('editor')}} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
-      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.png" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} onBlur={e=>{const title=e.currentTarget.value.trim()||project.title;setTitleDraft(title);if(title!==project.title)commitProject(p=>({...p,title}))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur()}} aria-label="曲名" /></div></div>
+      <div className="brand"><img className="brand-icon" src="/assets/branding/oto-blogic-icon.svg" alt="OTO BLOGIC" /><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} onBlur={e=>{const title=e.currentTarget.value.trim()||project.title;setTitleDraft(title);if(title!==project.title)commitProject(p=>({...p,title}))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur()}} aria-label="曲名" /></div></div>
       <div className="top-actions"><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select></div>
     </header>
 
@@ -452,7 +454,7 @@ function App() {
     {delayMenuOpen&&<div className="delay-mode-menu" role="group" aria-label={language==='ja'?'遅延モードを選択':'Select delay mode'}>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}><b>{value}</b><small>{language==='ja'?'遅延':'DELAY'}</small></button>)}</div>}
     {menuOpen && <div className="more-menu">
       <div className="menu-section"><button className="blueprint-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null);setView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button></div>
-      <div className="menu-section future"><button disabled><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">§</b><span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">◎</b><span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
+      <div className="menu-section future"><button onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);setView('home')}}><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>OPEN</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">§</b><span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">◎</b><span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
       <div className="menu-section"><button className="danger" onClick={clearAll}><b className="menu-icon trash-icon" aria-hidden="true"/><span>{c[18]}</span></button></div>
     </div>}
   </main>
