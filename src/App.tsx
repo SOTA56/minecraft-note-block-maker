@@ -4,6 +4,7 @@ import { playProject, previewTone, stopPlayback } from './audio'
 import type { Project, Track } from './types'
 import BlueprintView, { type BlueprintViewState } from './BlueprintView'
 import HomePage from './HomePage'
+import CreatorsPage from './CreatorsPage'
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
 const INSTRUMENTS = [
@@ -63,7 +64,7 @@ function App() {
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
   const [delayMenuOpen,setDelayMenuOpen]=useState(false)
-  const [view,setView] = useState<'home'|'editor'|'blueprint'>('home')
+  const [view,setView] = useState<'home'|'editor'|'blueprint'|'creators'>(()=>window.location.pathname==='/creators'?'creators':'home')
   const [blueprintViewState,setBlueprintViewState]=useState<BlueprintViewState>(DEFAULT_BLUEPRINT_VIEW)
   const [previewPitches,setPreviewPitches]=useState<number[]>([])
   const [playbackPitches,setPlaybackPitches]=useState<number[]>([])
@@ -78,6 +79,18 @@ function App() {
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseAllNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection>; baseProject?: Project } | null>(null)
   const edgeScrollRef = useRef<{ x:number; y:number; frame:number }>({x:0,y:0,frame:0})
   const playbackSwipeRef = useRef<{pointerId:number;x:number;y:number} | null>(null)
+
+  useEffect(()=>{
+    const handlePopState=()=>setView(window.location.pathname==='/creators'?'creators':'home')
+    window.addEventListener('popstate',handlePopState)
+    return()=>window.removeEventListener('popstate',handlePopState)
+  },[])
+
+  const openPublicPage=(next:'home'|'creators')=>{
+    const path=next==='creators'?'/creators':'/'
+    if(window.location.pathname!==path)window.history.pushState({},'',path)
+    setView(next)
+  }
   const labelGestureRef = useRef<{pointerId:number;x:number;y:number;moved:boolean} | null>(null)
   const followIdRef = useRef(0)
   const followPlaybackRef = useRef(false)
@@ -380,7 +393,8 @@ function App() {
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
-  if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>setView('editor')}/>
+  if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>setView('editor')} onCreators={()=>openPublicPage('creators')}/>
+  if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openPublicPage('home')} onStart={()=>{window.history.pushState({},'','/');setView('editor')}}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);setView('editor')}} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
@@ -454,7 +468,7 @@ function App() {
     {delayMenuOpen&&<div className="delay-mode-menu" role="group" aria-label={language==='ja'?'遅延モードを選択':'Select delay mode'}>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}><b>{value}</b><small>{language==='ja'?'遅延':'DELAY'}</small></button>)}</div>}
     {menuOpen && <div className="more-menu">
       <div className="menu-section"><button className="blueprint-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null);setView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button></div>
-      <div className="menu-section future"><button onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);setView('home')}}><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>OPEN</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">§</b><span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">◎</b><span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button></div>
+      <div className="menu-section future"><button onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openPublicPage('home')}}><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>OPEN</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button disabled><b className="menu-icon">§</b><span>{language==='ja'?'利用規約':'TERMS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openPublicPage('creators')}}><b className="menu-icon">◎</b><span>{language==='ja'?'制作者・監修者':'CREATORS'}</span><small>OPEN</small></button></div>
       <div className="menu-section"><button className="danger" onClick={clearAll}><b className="menu-icon trash-icon" aria-hidden="true"/><span>{c[18]}</span></button></div>
     </div>}
   </main>

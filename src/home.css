@@ -22,4 +22,6 @@
 .home-video header,.home-video-frame{width:100%;max-width:760px;margin-right:auto;margin-left:auto}.home-video-frame{box-shadow:none}
 .home-language{width:104px;padding-right:24px;padding-left:8px;-webkit-appearance:none;appearance:none;background-color:#0c1b22;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8dcfb' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:10px 6px}
 @media(max-width:370px){.home-language{width:96px}}
+.visual-label span{font-size:18px}.home-footer button{padding:0;border:0;background:none;color:#a8dcfb;font:700 9px 'IBM Plex Mono';letter-spacing:.05em}.home-footer button:hover{color:var(--yellow)}
+@media(min-width:700px){.home-hero{min-height:auto;padding-bottom:72px}.hero-visual{margin-bottom:0}.home-footer{gap:28px}.home-footer span{margin-left:auto}}
 @media(prefers-reduced-motion:reduce){.home-grid i,.home-playhead{animation:none}}

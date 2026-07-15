@@ -1,6 +1,6 @@
 import './home.css'
 
-type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void}
+type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void}
 
 const notes=[
   {x:2,y:2,c:'#35a9ec'},{x:5,y:3,c:'#35a9ec'},{x:8,y:4,c:'#f4ca3e'},
@@ -10,7 +10,7 @@ const notes=[
 
 function MiniRoll(){return <div className="home-roll" aria-hidden="true"><div className="home-keys">{Array.from({length:13},(_,index)=><i key={index} className={[1,3,6,8,10].includes(index)?'black':''}/>)}</div><div className="home-grid">{notes.map((note,index)=><i key={index} style={{'--x':note.x,'--y':note.y,'--c':note.c} as React.CSSProperties}/>)}</div><span className="home-playhead"/></div>}
 
-export default function HomePage({language,setLanguage,onStart}:Props){
+export default function HomePage({language,setLanguage,onStart,onCreators}:Props){
   const ja=language==='ja'
   return <main className="home-page">
     <header className="home-header">
@@ -20,12 +20,12 @@ export default function HomePage({language,setLanguage,onStart}:Props){
 
     <section className="home-hero" id="top">
       <div className="hero-kicker"><i/>NOTE BLOCK SEQUENCER <b>＋</b> CIRCUIT BLUEPRINT</div>
-      <h1>{ja?<><span className="hero-blue">音を置く</span>だけで、<br/><span className="hero-yellow">回路は完成</span>しています。</>:<><span className="hero-blue">PLACE THE NOTES.</span><br/><span className="hero-yellow">THE CIRCUIT IS DONE.</span></>}</h1>
+      <h1>{ja?<><span className="hero-blue">音を置く</span>だけで<br/><span className="hero-yellow">回路が完成</span>する。</>:<><span className="hero-blue">PLACE THE NOTES.</span><br/><span className="hero-yellow">THE CIRCUIT IS DONE.</span></>}</h1>
       <p>{ja?'簡単操作で音を並べて曲作り。Minecraftで組める設計図を自動生成します。子どもから大人まで、初心者から上級者まで。':'Arrange notes with simple controls, then automatically generate a blueprint ready to build in Minecraft.'}</p>
       <button className="hero-cta" onClick={onStart}><span>{ja?'曲をつくる':'START COMPOSING'}</span><b>→</b></button>
       <div className="hero-meta"><span>NO INSTALL</span><span>AUTO SAVE</span><span>JAVA / BEDROCK</span></div>
       <div className="hero-visual">
-        <div className="visual-label"><span>{ja?'ピアノロール':'PIANO ROLL'}</span></div>
+        <div className="visual-label"><span>{ja?'ピアノロール形式':'PIANO ROLL'}</span></div>
         <p>{ja?'直感的に使えつつ機能も充実。スマートフォンでは画面を広く使える縦スクロール式を採用。':'Intuitive yet fully featured, with a mobile-first vertical workflow that makes the most of your screen.'}</p>
         <MiniRoll/>
       </div>
@@ -57,6 +57,6 @@ export default function HomePage({language,setLanguage,onStart}:Props){
       <div className="home-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/9JO9FiLHzGo" title={ja?'OTO BLOGIC 関連動画':'OTO BLOGIC related video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen loading="lazy"/></div>
     </section>
 
-    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><span>© 2026 · POWERED BY SOTA56</span></footer>
+    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><button onClick={onCreators}>{ja?'制作者・監修者':'CREATORS'}</button><span>© 2026 · POWERED BY SOTA56</span></footer>
   </main>
 }
