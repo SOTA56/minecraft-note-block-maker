@@ -380,7 +380,7 @@ function App() {
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
-  if(view==='home')return <HomePage language={language} onStart={()=>setView('editor')}/>
+  if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>setView('editor')}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);setView('editor')}} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
