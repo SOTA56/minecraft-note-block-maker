@@ -4,7 +4,7 @@ import {generateCompactBlueprint,generateEasyBlueprint,generateFishboneBlueprint
 import {exportBlueprint,exportBlueprintLayers,shareBlueprintToX} from './blueprintExport'
 import {playProject,previewTone,stopPlayback} from './audio'
 import {createFishboneDistanceTable,FISHBONE_AUDIBLE_DISTANCE} from './fishboneAudio'
-import {traditionalizeRecord} from './localization'
+import {instrumentBlockName,traditionalizeRecord} from './localization'
 import './blueprint.css'
 
 export type BlueprintViewState={kind:'easy'|'packed'|'fishbone';layerIndex:number;zoom:number;scrollLeft:number;scrollTop:number}
@@ -45,7 +45,7 @@ export default function BlueprintView({project,instruments,language,initialViewS
   const fishboneReady=kind!=='fishbone'||fishbone.remainingNotes===0
   const wrapRef=useRef<HTMLElement>(null),shellRef=useRef<HTMLDivElement>(null),stageRef=useRef<HTMLDivElement>(null),zoomRef=useRef(initialViewState.zoom),restoreViewRef=useRef<BlueprintViewState|null>(initialViewState),playingRef=useRef(false),holdRef=useRef<number[]>([]),suppressClickRef=useRef(0),dragRef=useRef<{id:number;x:number;y:number;ox:number;oy:number;moved:boolean}|null>(null),pointsRef=useRef(new Map<number,{x:number;y:number;ox:number;oy:number}>()),pinchRef=useRef<PinchState|null>(null),pinchFrameRef=useRef<number|null>(null)
   const cell=40,axis=42
-  const usedBlocks=useMemo(()=>{const plans=kind==='packed'&&compact?compact.layers:plan?[plan]:[];const seen=new Set<string>();return plans.flatMap(value=>value.cells).flatMap(item=>{if(item.type!=='note'||!item.texture||seen.has(item.texture))return[];seen.add(item.texture);const instrument=instruments.find(value=>value.texture===item.texture);return[{texture:item.texture,label:item.label??'0',name:instrument?(ja?instrument.blockJa:instrument.blockEn):item.texture}]})},[kind,compact,plan,instruments,ja])
+  const usedBlocks=useMemo(()=>{const plans=kind==='packed'&&compact?compact.layers:plan?[plan]:[];const seen=new Set<string>();return plans.flatMap(value=>value.cells).flatMap(item=>{if(item.type!=='note'||!item.texture||seen.has(item.texture))return[];seen.add(item.texture);const instrument=instruments.find(value=>value.texture===item.texture);return[{texture:item.texture,label:item.label??'0',name:instrument?instrumentBlockName(instrument,language):item.texture}]})},[kind,compact,plan,instruments,language])
   const save=(next:Partial<BlueprintSettings>)=>onSettingsChange({runLength,compactSize,fold,includeSilentEdges,theme,fishboneMode,fishboneManual,fishbonePackColumns,fishboneSpatialAudio,fishbonePlayerHeight,...next})
   const changeSize=(delta:number)=>{stopBlueprintPlayback();if(kind==='packed')setCompactSize(current=>{const next=Math.max(16,Math.min(96,current+delta));setLayerIndex(0);save({compactSize:next});return next});else if(kind==='easy')setRunLength(current=>{const next=Math.max(8,Math.min(128,current+delta));save({runLength:next});return next})}
   const stopHold=()=>{holdRef.current.forEach(clearTimeout);holdRef.current=[]}

@@ -25,12 +25,16 @@
 @media(max-width:370px){.home-language{width:96px}}
 .visual-label span{font-size:18px}
 @media(min-width:700px){.home-hero{min-height:auto;padding-bottom:72px}.hero-visual{margin-bottom:0}.home-footer{gap:28px}.home-footer span{margin-left:auto}}
-@media(prefers-reduced-motion:reduce){.home-grid i,.home-playhead{animation:none}}
+@media(prefers-reduced-motion:reduce){.home-grid i{animation:none}.home-playhead{animation:home-scan 6s linear infinite}}
+
+/* Keep the capability cards and piano-roll preview inside the centered content frame. */
+.home-page .hero-meta{margin-inline:auto}
+.home-page .hero-visual .home-roll{width:100%}
 
 /* Product facts read as three compact capabilities instead of tiny footnotes. */
 .hero-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin:20px 0 0;border:1px solid #243b45;background:#243b45;color:inherit;letter-spacing:0}
-.hero-meta article{display:grid;min-width:0;align-items:center;padding:11px 12px;background:#0b1519}
-.hero-meta article>span{display:grid;min-width:0;gap:2px}.hero-meta strong{overflow:hidden;color:#dce7e8;font:9px 'Archivo Black';text-overflow:ellipsis;white-space:nowrap}.hero-meta small{overflow:hidden;color:#758b91;font-size:7px;text-overflow:ellipsis;white-space:nowrap}.hero-meta span::before{display:none}
+.hero-meta article{display:grid;min-width:0;align-items:center;justify-items:center;padding:11px 12px;background:#0b1519;text-align:center}
+.hero-meta article>span{display:grid;min-width:0;justify-items:center;gap:2px}.hero-meta strong{overflow:hidden;color:#dce7e8;font:9px 'Archivo Black';text-overflow:ellipsis;white-space:nowrap}.hero-meta small{overflow:hidden;color:#758b91;font-size:7px;text-overflow:ellipsis;white-space:nowrap}.hero-meta span::before{display:none}
 @media(max-width:370px){.hero-meta article{padding:9px 6px}.hero-meta small{display:none}}
 @media(min-width:700px){.hero-meta{width:min(680px,100%)}.hero-meta article{padding:13px 12px}.hero-meta strong{font-size:11px}.hero-meta small{font-size:8px}}
 

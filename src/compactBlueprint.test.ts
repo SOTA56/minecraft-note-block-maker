@@ -3,7 +3,7 @@ import type {Project,Track} from './types'
 import {generateCompactBlueprint,generateCompactBlueprintRect,splitCompactDelay} from './compactBlueprint'
 import type {BlueprintCell,BlueprintInstrument} from './blueprint'
 
-const instruments:BlueprintInstrument[]=[{id:'Harp',ja:'ハープ',en:'Harp',blockJa:'その他',blockEn:'Other',texture:'earth'}]
+const instruments:BlueprintInstrument[]=[{id:'Harp',ja:'ハープ',en:'Harp',blockJa:'土など',blockEn:'Dirt, etc.',texture:'earth'}]
 
 function project(polyphony:(step:number)=>number,steps:number):Project{
   const tracks:Track[]=Array.from({length:6},(_,track)=>({

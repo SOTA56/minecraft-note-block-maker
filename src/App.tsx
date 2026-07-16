@@ -6,6 +6,7 @@ import BlueprintView, { type BlueprintViewState } from './BlueprintView'
 import HomePage from './HomePage'
 import CreatorsPage from './CreatorsPage'
 import EditorGuidePage from './EditorGuidePage'
+import {instrumentBlockName} from './localization'
 
 type AppView='home'|'editor'|'blueprint'|'creators'|'guide'
 const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':'home'
@@ -13,7 +14,7 @@ const pathFromView=(view:AppView)=>view==='home'?'/':`/${view}`
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
 const INSTRUMENTS = [
-  { id: 'Harp', ja: 'ハープ', en: 'Harp', blockJa: 'その他', blockEn: 'Other blocks', texture: 'earth' },
+  { id: 'Harp', ja: 'ハープ', en: 'Harp', blockJa: '土など', blockEn: 'Dirt, etc.', texture: 'earth' },
   { id: 'Bass', ja: 'ベース', en: 'Bass', blockJa: '木材', blockEn: 'Wood', texture: 'wood' },
   { id: 'Bass Drum', ja: 'バスドラム', en: 'Bass drum', blockJa: '石', blockEn: 'Stone', texture: 'stone' },
   { id: 'Snare', ja: 'スネア', en: 'Snare', blockJa: '砂', blockEn: 'Sand', texture: 'sand' },
@@ -83,6 +84,7 @@ function App() {
   const [followRun, setFollowRun] = useState<{id:number;step:number} | null>(null)
   const desktopMedia='(min-width: 900px), (min-width: 700px) and (hover: hover) and (pointer: fine)'
   const [desktopLayout,setDesktopLayout]=useState(()=>window.matchMedia(desktopMedia).matches)
+  const [activeVolumeTrackId,setActiveVolumeTrackId]=useState<string|null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const rollViewportRef=useRef<HTMLDivElement>(null)
@@ -98,6 +100,11 @@ function App() {
   },[])
 
   useEffect(()=>{
+    document.body.classList.toggle('editor-viewport-locked',view==='editor')
+    return()=>document.body.classList.remove('editor-viewport-locked')
+  },[view])
+
+  useEffect(()=>{
     if(view==='creators')window.scrollTo(0,0)
   },[view])
 
@@ -105,6 +112,11 @@ function App() {
     const path=pathFromView(next)
     if(window.location.pathname!==path)window.history[replace?'replaceState':'pushState']({},'',path)
     setView(next)
+  }
+  const toggleTrackPanel=(next:'tracks'|'settings')=>{
+    setPanel(current=>current===next?null:next)
+    setMenuOpen(false)
+    setDelayMenuOpen(false)
   }
   const labelGestureRef = useRef<{pointerId:number;x:number;y:number;moved:boolean} | null>(null)
   const followIdRef = useRef(0)
@@ -136,6 +148,7 @@ function App() {
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(()=>{localStorage.setItem(LANGUAGE_STORAGE,language);document.documentElement.lang=language},[language])
   useEffect(()=>{const media=window.matchMedia(desktopMedia),sync=()=>setDesktopLayout(media.matches);media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
+  useEffect(()=>{if(desktopLayout){setControlsOpen(true);setPanel(current=>current==='tracks'?null:current)}},[desktopLayout,view])
   useEffect(() => () => stopPlayback(), [])
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
   useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
@@ -168,6 +181,7 @@ function App() {
     project.tracks.forEach(t => t.notes.forEach(n => counts.set(n.step, (counts.get(n.step) ?? 0) + 1)))
     return Math.max(0, ...counts.values())
   }, [project])
+  const polyphonyByStep=useMemo(()=>{const counts=new Map<number,number>();project.tracks.forEach(track=>track.notes.forEach(note=>counts.set(note.step,(counts.get(note.step)??0)+1)));return counts},[project.tracks])
 
   const flashPitch=(pitch:number)=>{
     setPreviewPitches(current=>current.includes(pitch)?current:[...current,pitch])
@@ -330,6 +344,11 @@ function App() {
     setPlayhead(Math.min(project.steps-project.delayUnit,nextBoundary))
   }
   const deleteSelection = () => normalizedSelection && changeActiveNotes(notes => notes.filter(n => !isSelected(n.step, n.pitch)))
+  const cutSelection = () => {
+    if (!normalizedSelection) return
+    copySelection()
+    deleteSelection()
+  }
   const pitchSets = {
     ja:['ファ♯','ソ','ソ♯','ラ','ラ♯','シ','ド','ド♯','レ','レ♯','ミ','ファ'],
     abc:['F♯','G','G♯','A','A♯','B','C','C♯','D','D♯','E','F'],
@@ -413,6 +432,22 @@ function App() {
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
+  useEffect(()=>{
+    if(!desktopLayout||view!=='editor')return
+    const handleShortcut=(event:KeyboardEvent)=>{
+      const target=event.target as HTMLElement|null
+      if(target&&(target.matches('input,textarea,select')||target.isContentEditable))return
+      const key=event.key.toLowerCase(),command=event.ctrlKey||event.metaKey
+      if(command&&key==='c'&&normalizedSelection){event.preventDefault();copySelection();return}
+      if(command&&key==='x'&&normalizedSelection){event.preventDefault();cutSelection();return}
+      if(command&&key==='v'&&copiedNotes?.notes.length){event.preventDefault();pasteSelection();return}
+      if(command&&key==='z'){event.preventDefault();event.shiftKey?redo():undo();return}
+      if((event.key==='Backspace'||event.key==='Delete')&&normalizedSelection){event.preventDefault();deleteSelection()}
+    }
+    window.addEventListener('keydown',handleShortcut)
+    return()=>window.removeEventListener('keydown',handleShortcut)
+  },[desktopLayout,view,normalizedSelection,copiedNotes,project,activeId,playhead])
+
   if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>openView('editor')} onCreators={()=>openView('creators')}/>
   if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openView('home')} onStart={()=>openView('editor')}/>
   if(view==='guide')return <EditorGuidePage language={language} setLanguage={setLanguage} onBack={()=>openView('editor')} onHome={()=>openView('home')}/>
@@ -431,11 +466,12 @@ function App() {
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><input aria-label={language==='ja'?'小節数を入力':'Enter bars'} type="text" inputMode="numeric" value={barsDraft} onChange={event=>setBarsDraft(event.target.value.replace(/[^0-9]/g,''))} onBlur={event=>applyBars(event.currentTarget.value)} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur()}}/><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
+      <button className="desktop-transport-menu" onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-label={c[17]}><span className="hamburger-icon" aria-hidden="true"/></button>
     </section>
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
-      <button className="track-main" onClick={() => setPanel(panel === 'tracks' ? null : 'tracks')}><span className={`block-chip ${instrument.texture}`}>{String(project.tracks.indexOf(active) + 1).padStart(2, '0')}</span><span><small>{t.activeTrack}</small><strong>{active.name}</strong></span><b>{panel === 'tracks' ? '⌃' : '⌄'}</b></button>
-      <button className="track-settings-trigger" onClick={() => setPanel(panel === 'settings' ? null : 'settings')}><img src="/assets/icons/settings.svg" alt="" aria-hidden="true" /><small>{language === 'ja' ? 'トラック設定' : 'TRACK SET'}</small></button>
+      <button className="track-main" onClick={() => toggleTrackPanel('tracks')}><span className={`block-chip ${instrument.texture}`}>{String(project.tracks.indexOf(active) + 1).padStart(2, '0')}</span><span><small>{t.activeTrack}</small><strong>{active.name}</strong></span><b>{panel === 'tracks' ? '⌃' : '⌄'}</b></button>
+      <button className="track-settings-trigger" onClick={() => toggleTrackPanel('settings')}><img src="/assets/icons/settings.svg" alt="" aria-hidden="true" /><small>{language === 'ja' ? 'トラック設定' : 'TRACK SET'}</small></button>
       <button className={ghosts ? 'on' : ''} onClick={() => setGhosts(!ghosts)}><GhostIcon /><small>{t.ghost}</small></button>
     </section>
 
@@ -448,18 +484,21 @@ function App() {
         <label className="track-volume"><span>VOL</span><input type="range" min="0" max="1" step=".01" value={track.volume} onChange={e => patchTrack({volume:+e.target.value})} /><b>{Math.round(track.volume*100)}</b></label>
       </div>
     })}</div>}
-    {panel === 'settings' && <div className="drawer settings"><label>{t.trackName}<input value={active.name} onChange={e => updateTrack({ name: e.target.value.toUpperCase() })} /></label><label>{t.instrument}<select value={active.instrument} onChange={e => updateTrack({ instrument: e.target.value })}>{INSTRUMENTS.map(x => <option key={x.id} value={x.id}>{language === 'ja' ? x.ja : x.en} — {language === 'ja' ? x.blockJa : x.blockEn}</option>)}</select></label><div className="block-guide"><i className={`block-preview ${instrument.texture}`} /><span><small>{t.block}</small><b>{language === 'ja' ? instrument.blockJa : instrument.blockEn}</b></span></div><label>{t.volume} <b>{Math.round(active.volume * 100)}</b><input type="range" min="0" max="1" step=".01" value={active.volume} onChange={e => updateTrack({ volume: +e.target.value })} /></label><label>PAN <b>{Math.round(active.pan * 100)}</b><input type="range" min="-1" max="1" step=".01" value={active.pan} onChange={e => updateTrack({ pan: +e.target.value })} /></label><div className="setting-switches"><button className={active.muted ? 'danger' : ''} onClick={() => updateTrack({muted:!active.muted})}>M {c[19]}</button><button className={active.solo ? 'solo' : ''} onClick={() => updateTrack({solo:!active.solo})}>S SOLO</button></div></div>}
+    {panel === 'settings' && <div className="drawer settings"><label>{t.trackName}<input value={active.name} onChange={e => updateTrack({ name: e.target.value.toUpperCase() })} /></label><label>{t.instrument}<select value={active.instrument} onChange={e => updateTrack({ instrument: e.target.value })}>{INSTRUMENTS.map(x => <option key={x.id} value={x.id}>{language === 'ja' ? x.ja : x.en} — {instrumentBlockName(x,language)}</option>)}</select></label><div className="block-guide"><i className={`block-preview ${instrument.texture}`} /><span><small>{t.block}</small><b>{instrumentBlockName(instrument,language)}</b></span></div><label>{t.volume} <b>{Math.round(active.volume * 100)}</b><input type="range" min="0" max="1" step=".01" value={active.volume} onChange={e => updateTrack({ volume: +e.target.value })} /></label><label>PAN <b>{Math.round(active.pan * 100)}</b><input type="range" min="-1" max="1" step=".01" value={active.pan} onChange={e => updateTrack({ pan: +e.target.value })} /></label><div className="setting-switches"><button className={active.muted ? 'danger' : ''} onClick={() => updateTrack({muted:!active.muted})}>M {c[19]}</button><button className={active.solo ? 'solo' : ''} onClick={() => updateTrack({solo:!active.solo})}>S SOLO</button></div></div>}
     <button className="panel-toggle" onClick={() => setControlsOpen(!controlsOpen)} aria-label={controlsOpen ? '操作パネルを収納' : '操作パネルを表示'}>{controlsOpen ? '⌃' : '⌄'}</button>
     <nav className="edit-tools">
       <button className={editMode === 'input' ? 'active' : ''} onClick={() => { setEditMode('input'); setSelection(null) }}><span className="tool-icon">✎</span><small>{c[10]}</small></button>
       <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}><span className="tool-icon tool-select">▧</span><small>{c[11]}</small></button>
       <button className={copyFeedback?'copied':''} onClick={copySelection} disabled={!normalizedSelection}><span className="tool-icon">{copyFeedback?'✓':'⧉'}</span><small>{c[12]}</small></button>
+      <button className="cut-tool" onClick={cutSelection} disabled={!normalizedSelection}><span className="tool-icon">✂</span><small>{language==='ja'?'カット':'CUT'}</small></button>
       <button onClick={pasteSelection} disabled={!copiedNotes?.notes.length}><span className="tool-icon tool-paste">⎘</span><small>{c[13]}</small></button>
       <button className="delete-tool" onClick={deleteSelection} disabled={!normalizedSelection}><span className="tool-icon">⌫</span><small>{c[14]}</small></button>
       <button className="desktop-utility" aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="tool-icon">↶</span><small>UNDO</small></button>
       <button className="desktop-utility" aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="tool-icon">↷</span><small>REDO</small></button>
-      <button className={`desktop-utility delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false)}}><span className="tool-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
-      <button className="desktop-utility desktop-menu" onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false)}}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`desktop-utility delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false);setPanel(null)}}><span className="tool-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className={`desktop-utility desktop-track-settings ${panel==='settings'?'active':''}`} onClick={()=>toggleTrackPanel('settings')}><img className="tool-icon" src="/assets/icons/settings.svg" alt="" aria-hidden="true"/><small>{language==='ja'?'トラック設定':'TRACK SET'}</small></button>
+      <button className={`desktop-utility desktop-ghost-toggle ${ghosts?'active':''}`} onClick={()=>setGhosts(!ghosts)}><GhostIcon/><small>{t.ghost}</small></button>
+      <button className="desktop-utility desktop-menu" onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
       <button className="zoom-out" onClick={() => zoomSteps(-4)}><span className="tool-icon">−</span><small>{c[15]}</small></button>
       <button className="zoom-in" onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
@@ -467,11 +506,19 @@ function App() {
     <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onPointerDown={event=>{if(event.isPrimary&&event.button===0)auditionPitch(p)}} onClick={event=>{if(event.detail===0)auditionPitch(p)}} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
     <div className="roll-stage">
+      <aside className="desktop-track-sidebar" aria-label={language==='ja'?'トラック一覧':'Track list'}><div className="desktop-track-scroll">{project.tracks.map((track,i)=>{
+        const trackInstrument=INSTRUMENTS.find(item=>item.id===track.instrument)??INSTRUMENTS[0]
+        const patchTrack=(patch:Partial<Track>)=>commitProject(current=>({...current,tracks:current.tracks.map(item=>item.id===track.id?{...item,...patch}:item)}))
+        return <article key={track.id} className={track.id===activeId?'selected':''} style={{'--row-color':track.color} as React.CSSProperties}>
+          <button className="desktop-track-select" onClick={()=>setActiveId(track.id)}><b className={`desktop-track-texture ${trackInstrument.texture} ${track.notes.length?'':'empty'}`}>{String(i+1).padStart(2,'0')}</b><span><strong>{track.name}</strong><small>{language==='ja'?trackInstrument.ja:trackInstrument.en}</small></span></button>
+          <div className="desktop-track-controls"><button className={track.ghostEnabled?'on':''} onClick={()=>patchTrack({ghostEnabled:!track.ghostEnabled})} title="Ghost"><GhostIcon/></button><button className={track.muted?'danger':''} onClick={()=>patchTrack({muted:!track.muted})} title="Mute">M</button><button className={track.solo?'solo':''} onClick={()=>patchTrack({solo:!track.solo})} title="Solo">S</button><label className="desktop-track-fader" style={{'--volume':track.volume} as React.CSSProperties}><input aria-label={`${track.name} volume`} type="range" min="0" max="1" step=".01" value={track.volume} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);setActiveVolumeTrackId(track.id)}} onPointerUp={()=>setActiveVolumeTrackId(null)} onPointerCancel={()=>setActiveVolumeTrackId(null)} onChange={event=>patchTrack({volume:+event.target.value})}/>{activeVolumeTrackId===track.id&&<output>{Math.round(track.volume*100)}</output>}</label></div>
+        </article>
+      })}</div></aside>
       <div className="pc-pitch-head">{[...PITCHES].reverse().map(p => <b key={p} role="button" tabIndex={0} onPointerDown={event=>{if(event.isPrimary&&event.button===0)auditionPitch(p)}} onClick={event=>{if(event.detail===0)auditionPitch(p)}} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
       <div ref={rollViewportRef} className="roll-viewport" onWheel={handleRollWheel}>
     <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label={desktopLayout ? '横方向ピアノロール' : '縦方向ピアノロール'} style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
-      {Array.from({ length: project.steps }, (_, step) => step).filter(step=>step%project.delayUnit===0).map(step => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${(step+project.delayUnit)%16===0 ? 'bar-end' : (step+project.delayUnit)%4===0 ? 'beat-end' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
+      {Array.from({ length: project.steps }, (_, step) => step).filter(step=>step%project.delayUnit===0).map(step => {const stepPolyphony=polyphonyByStep.get(step)??0;return <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${(step+project.delayUnit)%16===0 ? 'bar-end' : (step+project.delayUnit)%4===0 ? 'beat-end' : ''} ${stepPolyphony>=7?'poly-over-6':stepPolyphony>=4?'poly-over-3':''} ${playhead === step ? 'playhead' : ''}`} key={step}>
         {(desktopLayout ? [...PITCHES].reverse() : PITCHES).map(pitch => {
           const storedOwn = active.notes.some(n => n.step === step && n.pitch === pitch)
           const previewOrigin=Boolean(dragPreview&&dragPreview.originStep===step&&dragPreview.originPitch===pitch)
@@ -482,16 +529,16 @@ function App() {
           const edges = selected && normalizedSelection ? `${step === normalizedSelection.minStep ? ' selection-top' : ''}${step === normalizedSelection.maxStep ? ' selection-bottom' : ''}${pitch === normalizedSelection.minPitch ? ' selection-left' : ''}${pitch === normalizedSelection.maxPitch ? ' selection-right' : ''}` : ''
           return <button key={pitch} data-step={step} data-pitch={pitch} onPointerDown={e => handlePointerDown(e, step, pitch)} className={`${isBlack(pitch) ? 'black-key' : 'white-key'} ${isDo(pitch) ? 'do' : ''} ${own ? 'note' : ghost ? 'ghost' : ''} ${selected ? `selected-cell${edges}` : ''}`} style={own ? { '--note': active.color } as React.CSSProperties : ghost ? { '--note': ghost.color } as React.CSSProperties : undefined} aria-label={`${pitchNames[pitch]}, ${language === 'ja' ? '小節' : 'bar'} ${Math.floor(step / 16) + 1}`} />
         })}
-        <button className="step-label" onPointerDown={handleLabelDown} onPointerMove={handleLabelMove} onPointerUp={e=>handleLabelUp(e,step)} onPointerCancel={()=>{labelGestureRef.current=null}} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : ''}</button>
-      </div>)}
+        <button className="step-label" title={stepPolyphony>=7?(language==='ja'?`${stepPolyphony}音：6和音超`:`${stepPolyphony} notes: over 6`):stepPolyphony>=4?(language==='ja'?`${stepPolyphony}音：3和音超`:`${stepPolyphony} notes: over 3`):undefined} onPointerDown={handleLabelDown} onPointerMove={handleLabelMove} onPointerUp={e=>handleLabelUp(e,step)} onPointerCancel={()=>{labelGestureRef.current=null}} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : ''}</button>
+      </div>})}
     </section>
       </div>
     </div>
 
     <footer className="dock">
       <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="dock-icon">↶</span><small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="dock-icon">↷</span><small>REDO</small></button>
-      <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
-      <button className="dock-menu" onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false)}}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false);setPanel(null)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className="dock-menu" onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".obg,.nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
