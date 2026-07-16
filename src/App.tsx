@@ -81,7 +81,8 @@ function App() {
   const [titleDraft,setTitleDraft] = useState(project.title)
   const [followPlayback, setFollowPlayback] = useState(false)
   const [followRun, setFollowRun] = useState<{id:number;step:number} | null>(null)
-  const [desktopLayout,setDesktopLayout]=useState(()=>window.matchMedia('(min-width: 900px)').matches)
+  const desktopMedia='(min-width: 900px), (min-width: 700px) and (hover: hover) and (pointer: fine)'
+  const [desktopLayout,setDesktopLayout]=useState(()=>window.matchMedia(desktopMedia).matches)
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const rollViewportRef=useRef<HTMLDivElement>(null)
@@ -134,7 +135,7 @@ function App() {
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(()=>{localStorage.setItem(LANGUAGE_STORAGE,language);document.documentElement.lang=language},[language])
-  useEffect(()=>{const media=window.matchMedia('(min-width: 900px)'),sync=()=>setDesktopLayout(media.matches);media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
+  useEffect(()=>{const media=window.matchMedia(desktopMedia),sync=()=>setDesktopLayout(media.matches);media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
   useEffect(() => () => stopPlayback(), [])
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
   useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
