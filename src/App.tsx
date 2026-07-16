@@ -108,6 +108,19 @@ function App() {
     if(view==='creators')window.scrollTo(0,0)
   },[view])
 
+  useEffect(()=>{
+    if(!activeVolumeTrackId)return
+    const releaseVolumeFader=()=>setActiveVolumeTrackId(null)
+    window.addEventListener('pointerup',releaseVolumeFader)
+    window.addEventListener('pointercancel',releaseVolumeFader)
+    window.addEventListener('blur',releaseVolumeFader)
+    return()=>{
+      window.removeEventListener('pointerup',releaseVolumeFader)
+      window.removeEventListener('pointercancel',releaseVolumeFader)
+      window.removeEventListener('blur',releaseVolumeFader)
+    }
+  },[activeVolumeTrackId])
+
   const openView=(next:AppView,replace=false)=>{
     const path=pathFromView(next)
     if(window.location.pathname!==path)window.history[replace?'replaceState':'pushState']({},'',path)
@@ -511,7 +524,7 @@ function App() {
         const patchTrack=(patch:Partial<Track>)=>commitProject(current=>({...current,tracks:current.tracks.map(item=>item.id===track.id?{...item,...patch}:item)}))
         return <article key={track.id} className={track.id===activeId?'selected':''} style={{'--row-color':track.color} as React.CSSProperties}>
           <button className="desktop-track-select" onClick={()=>setActiveId(track.id)}><b className={`desktop-track-texture ${trackInstrument.texture} ${track.notes.length?'':'empty'}`}>{String(i+1).padStart(2,'0')}</b><span><strong>{track.name}</strong><small>{language==='ja'?trackInstrument.ja:trackInstrument.en}</small></span></button>
-          <div className="desktop-track-controls"><button className={track.ghostEnabled?'on':''} onClick={()=>patchTrack({ghostEnabled:!track.ghostEnabled})} title="Ghost"><GhostIcon/></button><button className={track.muted?'danger':''} onClick={()=>patchTrack({muted:!track.muted})} title="Mute">M</button><button className={track.solo?'solo':''} onClick={()=>patchTrack({solo:!track.solo})} title="Solo">S</button><label className="desktop-track-fader" style={{'--volume':track.volume} as React.CSSProperties}><input aria-label={`${track.name} volume`} type="range" min="0" max="1" step=".01" value={track.volume} onPointerDown={event=>{event.currentTarget.setPointerCapture(event.pointerId);setActiveVolumeTrackId(track.id)}} onPointerUp={()=>setActiveVolumeTrackId(null)} onPointerCancel={()=>setActiveVolumeTrackId(null)} onChange={event=>patchTrack({volume:+event.target.value})}/>{activeVolumeTrackId===track.id&&<output>{Math.round(track.volume*100)}</output>}</label></div>
+          <div className="desktop-track-controls"><button className={track.ghostEnabled?'on':''} onClick={()=>patchTrack({ghostEnabled:!track.ghostEnabled})} title="Ghost"><GhostIcon/></button><button className={track.muted?'danger':''} onClick={()=>patchTrack({muted:!track.muted})} title="Mute">M</button><button className={track.solo?'solo':''} onClick={()=>patchTrack({solo:!track.solo})} title="Solo">S</button><label className="desktop-track-fader" style={{'--volume':track.volume} as React.CSSProperties}><input aria-label={`${track.name} volume`} type="range" min="0" max="1" step=".01" value={track.volume} onPointerDown={()=>setActiveVolumeTrackId(track.id)} onPointerUp={()=>setActiveVolumeTrackId(null)} onPointerCancel={()=>setActiveVolumeTrackId(null)} onBlur={()=>setActiveVolumeTrackId(null)} onChange={event=>patchTrack({volume:+event.target.value})}/>{activeVolumeTrackId===track.id&&<output>{Math.round(track.volume*100)}</output>}</label></div>
         </article>
       })}</div></aside>
       <div className="pc-pitch-head">{[...PITCHES].reverse().map(p => <b key={p} role="button" tabIndex={0} onPointerDown={event=>{if(event.isPrimary&&event.button===0)auditionPitch(p)}} onClick={event=>{if(event.detail===0)auditionPitch(p)}} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
