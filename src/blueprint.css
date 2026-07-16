@@ -115,3 +115,25 @@ select:has(option[value="id"]:checked){font-size:7px!important;letter-spacing:-.
 @media(min-width:900px) and (max-width:1120px){.blueprint-controls>.blueprint-transport{flex-basis:164px;grid-template-columns:repeat(2,82px)}.blueprint-controls>.control-action{width:112px;flex-basis:112px}.blueprint-options label{width:210px;flex-basis:210px;min-width:150px}}
 .blueprint-desktop-zoom{display:none}
 @media(min-width:900px){.blueprint-desktop-zoom{position:fixed;z-index:19;top:242px;right:24px;display:grid;grid-template-columns:44px 58px 44px;height:42px;border:1px solid #477083;background:#0e1719e8;box-shadow:0 7px 24px #0009;backdrop-filter:blur(7px)}.blueprint-desktop-zoom button{border:0;background:#18303a;color:#9bdcff;font:25px/1 'Archivo Black'}.blueprint-desktop-zoom button:hover{background:#24546b;color:#fff}.blueprint-desktop-zoom output{display:grid;place-items:center;border-inline:1px solid #3c5963;color:#efcf51;font:10px 'Archivo Black'}.blueprint-page:has(.blueprint-options) .blueprint-desktop-zoom,.blueprint-page:has(.blueprint-export-panel) .blueprint-desktop-zoom,.blueprint-page:has(.blueprint-legend) .blueprint-desktop-zoom{top:320px}}
+
+/* Repeater click-count mode is deliberately inverted so the selected number
+   convention cannot be mistaken for the default delay display. */
+.repeater-mark.click-display{background:#fff;filter:drop-shadow(1px 0 0 #080b09) drop-shadow(-1px 0 0 #080b09) drop-shadow(0 1px 0 #080b09) drop-shadow(0 -1px 0 #080b09)}
+.repeater-mark.click-display b{color:#e51d24!important}
+
+/* Fishbone settings stay in the requested three-by-two reading order. */
+.blueprint-options.fishbone{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))}
+.blueprint-options.fishbone label{min-width:0;width:auto;max-width:none}
+.blueprint-options.fishbone label:nth-child(3n){border-right:0}
+.blueprint-options.fishbone label>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:520px){
+  .blueprint-options.fishbone{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .blueprint-options.fishbone label{padding-inline:5px;border-right:1px solid #354038}
+  .blueprint-options.fishbone label:nth-child(3n){border-right:0}
+  .blueprint-options.fishbone label>span:first-child{font-size:7px;letter-spacing:-.03em}
+  .blueprint-options.fishbone .single-toggle{font-size:8px}
+  .blueprint-options.fishbone .fishbone-height-control{grid-template-columns:28px minmax(34px,1fr) 28px}
+}
+@media(min-width:900px){
+  .blueprint-options.fishbone{grid-template-columns:repeat(3,minmax(190px,230px));width:max-content}
+}
