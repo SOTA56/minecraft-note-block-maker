@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://minecraft-note-block-maker.pages.dev/sitemap.xml

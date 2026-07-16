@@ -8,6 +8,18 @@ const notes=[
   {x:4,y:10,c:'#f06d55'},{x:7,y:11,c:'#f06d55'},{x:12,y:12,c:'#a982dc'},
 ]
 
+const heroFacts:Record<string,[string,string][]>= {
+  ja:[['インストール不要','ブラウザですぐ開始'],['自動保存','作業を端末に保持'],['両エディション','Java / Bedrock']],
+  en:[['NO INSTALL','Start in your browser'],['AUTO SAVE','Kept on this device'],['BOTH EDITIONS','Java / Bedrock']],
+  es:[['SIN INSTALAR','Empieza en el navegador'],['AUTOGUARDADO','Guardado en el dispositivo'],['DOS EDICIONES','Java / Bedrock']],
+  fr:[['SANS INSTALLATION','Directement dans le navigateur'],['SAUVEGARDE AUTO','Conservé sur cet appareil'],['DEUX ÉDITIONS','Java / Bedrock']],
+  de:[['OHNE INSTALLATION','Direkt im Browser'],['AUTOSPEICHERN','Auf diesem Gerät'],['BEIDE EDITIONEN','Java / Bedrock']],
+  zh:[['无需安装','打开浏览器即可使用'],['自动保存','保存在此设备'],['双版本支持','Java / Bedrock']],
+  'zh-tw':[['免安裝','開啟瀏覽器即可使用'],['自動儲存','保存在此裝置'],['雙版本支援','Java / Bedrock']],
+  ko:[['설치 불필요','브라우저에서 바로 시작'],['자동 저장','이 기기에 보관'],['두 에디션 지원','Java / Bedrock']],
+  id:[['TANPA INSTALASI','Langsung di browser'],['SIMPAN OTOMATIS','Tersimpan di perangkat'],['DUA EDISI','Java / Bedrock']],
+}
+
 function MiniRoll(){return <div className="home-roll" aria-hidden="true"><div className="home-keys">{Array.from({length:13},(_,index)=><i key={index} className={[1,3,6,8,10].includes(index)?'black':''}/>)}</div><div className="home-grid">{notes.map((note,index)=><i key={index} style={{'--x':note.x,'--y':note.y,'--c':note.c} as React.CSSProperties}/>)}</div><span className="home-playhead"/></div>}
 
 const homeLocales:Record<string,string[]>={
@@ -24,6 +36,7 @@ const homeLocales:Record<string,string[]>={
 export default function HomePage({language,setLanguage,onStart,onCreators}:Props){
   const ja=language==='ja'
   const x=homeLocales[language]??homeLocales.en
+  const facts=heroFacts[language]??heroFacts.en
   return <main className="home-page">
     <header className="home-header">
       <a className="home-brand" href="#top" aria-label="OTO BLOGIC"><img src="/assets/branding/oto-blogic-icon.svg" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></a>
@@ -42,7 +55,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
       <h1>{ja?<><span className="hero-blue">音を置く</span>だけで、<br/><span className="hero-yellow">回路が完成</span>する。</>:<><span className="hero-blue">{x[2]}</span><br/><span className="hero-yellow">{x[3]}</span></>}</h1>
       <p>{ja?'簡単操作で音を並べて曲作り。Minecraftで組める設計図を自動生成します。初心者から上級者まで、子どもから大人まで。':x[4]}</p>
       <button className="hero-cta" onClick={onStart}><span>{ja?'曲をつくる':x[5]}</span><b>→</b></button>
-      <div className="hero-meta"><span>NO INSTALL</span><span>AUTO SAVE</span><span>JAVA / BEDROCK</span></div>
+      <div className="hero-meta">{facts.map(([title,detail],index)=><article key={title}><b>{index===0?'↗':index===1?'◆':'Ⅱ'}</b><span><strong>{title}</strong><small>{detail}</small></span></article>)}</div>
       <div className="hero-visual">
         <div className="visual-label"><span>{ja?'ピアノロール形式':x[6]}</span></div>
         <p>{ja?'直感的に使えつつ機能も充実。スマートフォンでは画面を広く使える縦スクロール式を採用。':x[7]}</p>
@@ -73,7 +86,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
 
     <section className="home-video">
       <header><small>RELATED VIDEO</small><h2>{ja?'関連動画':x[24]}</h2></header>
-      <div className="home-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/9JO9FiLHzGo" title={ja?'OTO BLOGIC 関連動画':'OTO BLOGIC related video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen loading="lazy"/></div>
+      <div className="home-video-grid"><div className="home-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/9JO9FiLHzGo" title={ja?'OTO BLOGIC 関連動画':'OTO BLOGIC related video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen loading="lazy"/></div></div>
     </section>
 
     <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><span>© 2026 · POWERED BY SOTA56</span></footer>

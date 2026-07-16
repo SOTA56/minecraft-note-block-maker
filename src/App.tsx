@@ -81,8 +81,10 @@ function App() {
   const [titleDraft,setTitleDraft] = useState(project.title)
   const [followPlayback, setFollowPlayback] = useState(false)
   const [followRun, setFollowRun] = useState<{id:number;step:number} | null>(null)
+  const [desktopLayout,setDesktopLayout]=useState(()=>window.matchMedia('(min-width: 900px)').matches)
   const fileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
+  const rollViewportRef=useRef<HTMLDivElement>(null)
   const playbackCursorRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseAllNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection>; baseProject?: Project } | null>(null)
   const edgeScrollRef = useRef<{ x:number; y:number; frame:number }>({x:0,y:0,frame:0})
@@ -132,6 +134,7 @@ function App() {
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(()=>{localStorage.setItem(LANGUAGE_STORAGE,language);document.documentElement.lang=language},[language])
+  useEffect(()=>{const media=window.matchMedia('(min-width: 900px)'),sync=()=>setDesktopLayout(media.matches);media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
   useEffect(() => () => stopPlayback(), [])
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
   useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
@@ -139,16 +142,14 @@ function App() {
   useEffect(()=>{followPlaybackRef.current=followPlayback},[followPlayback])
   useEffect(()=>{if(copiedModeRef.current!==project.delayUnit){setCopiedNotes(null);setCopyFeedback(false);window.clearTimeout(copyFeedbackTimerRef.current)}copiedModeRef.current=project.delayUnit},[project.delayUnit])
   useEffect(() => {
-    if (!followRun || !rollRef.current || !playbackCursorRef.current) return
-    const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
-    const bottom = document.querySelector('.dock')?.getBoundingClientRect().top ?? window.innerHeight
-    const center = (top+bottom)/2
-    const rollTop = window.scrollY+rollRef.current.getBoundingClientRect().top
+    const viewport=rollViewportRef.current
+    if (!followRun || !rollRef.current || !playbackCursorRef.current || !viewport) return
     const startedAt = performance.now()+80
     const stepMs = 2000/project.tickRate
     const renderStep = (step:number) => {
-      playbackCursorRef.current?.style.setProperty('transform',`translateY(${step/project.delayUnit*stepHeight}px)`)
-      if (followPlaybackRef.current) window.scrollTo({top:Math.max(0,rollTop+step/project.delayUnit*stepHeight-center),behavior:'auto'})
+      const position=step/project.delayUnit*stepHeight
+      playbackCursorRef.current?.style.setProperty('transform',desktopLayout?`translateX(${position}px)`:`translateY(${position}px)`)
+      if(followPlaybackRef.current){if(desktopLayout)viewport.scrollLeft=Math.max(0,position-viewport.clientWidth/2);else viewport.scrollTop=Math.max(0,position-viewport.clientHeight/2)}
     }
     renderStep(followRun.step)
     let frame = 0
@@ -159,7 +160,7 @@ function App() {
     }
     frame = window.requestAnimationFrame(follow)
     return ()=>window.cancelAnimationFrame(frame)
-  },[followRun,project.steps,project.tickRate,project.delayUnit,stepHeight])
+  },[followRun,project.steps,project.tickRate,project.delayUnit,stepHeight,desktopLayout])
 
   const polyphony = useMemo(() => {
     const counts = new Map<number, number>()
@@ -219,15 +220,16 @@ function App() {
   }
   const runEdgeScroll = () => {
     edgeScrollRef.current.frame = 0
-    if (!dragRef.current?.selecting) return
-    const top = document.querySelector('.pitch-head')?.getBoundingClientRect().bottom ?? 0
-    const bottom = document.querySelector('.dock')?.getBoundingClientRect().top ?? window.innerHeight
+    const viewport=rollViewportRef.current
+    if (!dragRef.current?.selecting||!viewport) return
+    const rect=viewport.getBoundingClientRect()
     const zone = 56
-    const y = edgeScrollRef.current.y
-    const speed = y < top+zone ? -Math.min(14,(top+zone-y)/4) : y > bottom-zone ? Math.min(14,(y-(bottom-zone))/4) : 0
+    const pointer=desktopLayout?edgeScrollRef.current.x:edgeScrollRef.current.y
+    const start=desktopLayout?rect.left:rect.top,end=desktopLayout?rect.right:rect.bottom
+    const speed = pointer < start+zone ? -Math.min(14,(start+zone-pointer)/4) : pointer > end-zone ? Math.min(14,(pointer-(end-zone))/4) : 0
     if (!speed) return
-    window.scrollBy({top:speed,behavior:'auto'})
-    updateSelectionEndAt(edgeScrollRef.current.x,Math.max(top+2,Math.min(bottom-2,y)))
+    if(desktopLayout)viewport.scrollLeft+=speed;else viewport.scrollTop+=speed
+    updateSelectionEndAt(Math.max(rect.left+2,Math.min(rect.right-2,edgeScrollRef.current.x)),Math.max(rect.top+2,Math.min(rect.bottom-2,edgeScrollRef.current.y)))
     edgeScrollRef.current.frame = window.requestAnimationFrame(runEdgeScroll)
   }
   const handlePlaybackSwipeDown = (event:React.PointerEvent<HTMLElement>) => {
@@ -343,7 +345,8 @@ function App() {
   const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setPlaybackPitches([]); setFollowPlayback(false); setFollowRun(null) } else await playFrom(playhead) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
     const rect = event.currentTarget.getBoundingClientRect()
-    const boundary = Math.min(project.steps - project.delayUnit, step + (event.clientY - rect.top > rect.height / 2 ? project.delayUnit : 0))
+    const after=desktopLayout?event.clientX-rect.left>rect.width/2:event.clientY-rect.top>rect.height/2
+    const boundary = Math.min(project.steps - project.delayUnit, step + (after ? project.delayUnit : 0))
     setPlayhead(boundary)
     if (play || playingStep >= 0) void playFrom(boundary)
   }
@@ -396,13 +399,16 @@ function App() {
   const zoomSteps = (delta:number) => {
     const next = Math.max(6,Math.min(30,stepHeight+delta))
     if (next === stepHeight) return
-    const head = document.querySelector('.pitch-head')?.getBoundingClientRect()
-    const anchorY = head?.bottom ?? 0
-    const anchorStep = document.elementFromPoint(Math.min(100,window.innerWidth / 2),anchorY + 1)?.closest<HTMLElement>('.step')
-    const oldTop = anchorStep?.getBoundingClientRect().top ?? anchorY
+    const viewport=rollViewportRef.current
+    const anchor=viewport?(desktopLayout?viewport.scrollLeft+viewport.clientWidth/2:viewport.scrollTop+viewport.clientHeight/2):0
+    const stepAtAnchor=anchor/stepHeight
     flushSync(() => setStepHeight(next))
-    const newTop = anchorStep?.getBoundingClientRect().top ?? oldTop
-    window.scrollBy({top:newTop-oldTop,behavior:'auto'})
+    if(viewport){if(desktopLayout)viewport.scrollLeft=Math.max(0,stepAtAnchor*next-viewport.clientWidth/2);else viewport.scrollTop=Math.max(0,stepAtAnchor*next-viewport.clientHeight/2)}
+  }
+  const handleRollWheel=(event:React.WheelEvent<HTMLDivElement>)=>{
+    if(!desktopLayout)return
+    if(event.ctrlKey||event.metaKey){event.preventDefault();zoomSteps(event.deltaY<0?2:-2);return}
+    if(Math.abs(event.deltaY)>Math.abs(event.deltaX)){event.preventDefault();event.currentTarget.scrollLeft+=event.deltaY}
   }
   const bpm = Math.round(project.tickRate * 7.5)
 
@@ -449,16 +455,23 @@ function App() {
       <button className={copyFeedback?'copied':''} onClick={copySelection} disabled={!normalizedSelection}><span className="tool-icon">{copyFeedback?'✓':'⧉'}</span><small>{c[12]}</small></button>
       <button onClick={pasteSelection} disabled={!copiedNotes?.notes.length}><span className="tool-icon tool-paste">⎘</span><small>{c[13]}</small></button>
       <button className="delete-tool" onClick={deleteSelection} disabled={!normalizedSelection}><span className="tool-icon">⌫</span><small>{c[14]}</small></button>
-      <button onClick={() => zoomSteps(-4)}><span className="tool-icon">−</span><small>{c[15]}</small></button>
-      <button onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
+      <button className="desktop-utility" aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="tool-icon">↶</span><small>UNDO</small></button>
+      <button className="desktop-utility" aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="tool-icon">↷</span><small>REDO</small></button>
+      <button className={`desktop-utility delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false)}}><span className="tool-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className="desktop-utility desktop-menu" onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false)}}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
+      <button className="zoom-out" onClick={() => zoomSteps(-4)}><span className="tool-icon">−</span><small>{c[15]}</small></button>
+      <button className="zoom-in" onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
 
     <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onPointerDown={event=>{if(event.isPrimary&&event.button===0)auditionPitch(p)}} onClick={event=>{if(event.detail===0)auditionPitch(p)}} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
-    <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label="縦方向ピアノロール" style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+    <div className="roll-stage">
+      <div className="pc-pitch-head">{[...PITCHES].reverse().map(p => <b key={p} role="button" tabIndex={0} onPointerDown={event=>{if(event.isPrimary&&event.button===0)auditionPitch(p)}} onClick={event=>{if(event.detail===0)auditionPitch(p)}} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
+      <div ref={rollViewportRef} className="roll-viewport" onWheel={handleRollWheel}>
+    <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label={desktopLayout ? '横方向ピアノロール' : '縦方向ピアノロール'} style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
       {Array.from({ length: project.steps }, (_, step) => step).filter(step=>step%project.delayUnit===0).map(step => <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${(step+project.delayUnit)%16===0 ? 'bar-end' : (step+project.delayUnit)%4===0 ? 'beat-end' : ''} ${playhead === step ? 'playhead' : ''}`} key={step}>
-        {PITCHES.map(pitch => {
+        {(desktopLayout ? [...PITCHES].reverse() : PITCHES).map(pitch => {
           const storedOwn = active.notes.some(n => n.step === step && n.pitch === pitch)
           const previewOrigin=Boolean(dragPreview&&dragPreview.originStep===step&&dragPreview.originPitch===pitch)
           const previewTarget=Boolean(dragPreview&&dragPreview.step===step&&dragPreview.pitch===pitch)
@@ -471,6 +484,8 @@ function App() {
         <button className="step-label" onPointerDown={handleLabelDown} onPointerMove={handleLabelMove} onPointerUp={e=>handleLabelUp(e,step)} onPointerCancel={()=>{labelGestureRef.current=null}} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : ''}</button>
       </div>)}
     </section>
+      </div>
+    </div>
 
     <footer className="dock">
       <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="dock-icon">↶</span><small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="dock-icon">↷</span><small>REDO</small></button>

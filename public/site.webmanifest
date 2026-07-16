@@ -1,0 +1,13 @@
+{
+  "name": "OTO BLOGIC",
+  "short_name": "OTO BLOGIC",
+  "description": "Minecraft音符ブロック作曲・回路設計図メーカー",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080b0c",
+  "theme_color": "#111412",
+  "icons": [
+    { "src": "/assets/branding/oto-blogic-icon.png", "sizes": "160x160", "type": "image/png" },
+    { "src": "/assets/branding/oto-blogic-icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
