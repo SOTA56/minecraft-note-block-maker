@@ -15,13 +15,20 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
   return <main className="home-page">
     <header className="home-header">
       <a className="home-brand" href="#top" aria-label="OTO BLOGIC"><img src="/assets/branding/oto-blogic-icon.svg" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></a>
-      <select className="home-language" value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select>
+      <div className="home-header-actions">
+        <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
+          <button onClick={onCreators}>{ja?'制作者':'CREATORS'}</button>
+          <i aria-hidden="true"/>
+          <a href="https://matmaker.sota56.com" target="_blank" rel="noreferrer">{ja?'おんぷマットメーカー':'MUSIC MAT MAKER'}</a>
+        </nav>
+        <select className="home-language" value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select>
+      </div>
     </header>
 
     <section className="home-hero" id="top">
       <div className="hero-kicker"><i/>NOTE BLOCK SEQUENCER <b>＋</b> CIRCUIT BLUEPRINT</div>
-      <h1>{ja?<><span className="hero-blue">音を置く</span>だけで<br/><span className="hero-yellow">回路が完成</span>する。</>:<><span className="hero-blue">PLACE THE NOTES.</span><br/><span className="hero-yellow">THE CIRCUIT IS DONE.</span></>}</h1>
-      <p>{ja?'簡単操作で音を並べて曲作り。Minecraftで組める設計図を自動生成します。子どもから大人まで、初心者から上級者まで。':'Arrange notes with simple controls, then automatically generate a blueprint ready to build in Minecraft.'}</p>
+      <h1>{ja?<><span className="hero-blue">音を置く</span>だけで、<br/><span className="hero-yellow">回路が完成</span>する。</>:<><span className="hero-blue">PLACE THE NOTES.</span><br/><span className="hero-yellow">THE CIRCUIT IS DONE.</span></>}</h1>
+      <p>{ja?'簡単操作で音を並べて曲作り。Minecraftで組める設計図を自動生成します。初心者から上級者まで、子どもから大人まで。':'Arrange notes with simple controls, then automatically generate a blueprint ready to build in Minecraft.'}</p>
       <button className="hero-cta" onClick={onStart}><span>{ja?'曲をつくる':'START COMPOSING'}</span><b>→</b></button>
       <div className="hero-meta"><span>NO INSTALL</span><span>AUTO SAVE</span><span>JAVA / BEDROCK</span></div>
       <div className="hero-visual">
@@ -57,6 +64,6 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
       <div className="home-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/9JO9FiLHzGo" title={ja?'OTO BLOGIC 関連動画':'OTO BLOGIC related video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen loading="lazy"/></div>
     </section>
 
-    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><button onClick={onCreators}>{ja?'制作者・監修者':'CREATORS'}</button><span>© 2026 · POWERED BY SOTA56</span></footer>
+    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><span>© 2026 · POWERED BY SOTA56</span></footer>
   </main>
 }

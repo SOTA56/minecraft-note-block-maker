@@ -14,7 +14,7 @@ const profiles=[
   {roleJa:'監修',roleEn:'SUPERVISOR',name:'アンズ@DJ Minecraft / Anzu',image:'/assets/creators/anzu.jpg',tone:'yellow',bioJa:[
     'YouTubeに音符ブロック回路の作り方動画を投稿し、チャンネル登録者は20万人超。投稿動画は3000本を超える。特に初心者が音符ブロック演奏で躓きやすいポイントを対策した解説動画には定評がある。',
     '音符ブロック演奏投稿企画を多数開催し、多くのプレイヤーが参加。',
-    '晋遊舎「ゲーム完璧バイブル Vol.5」にて、制作した音符ブロック回路を掲載。'
+    '晋遊舎「ゲーム完璧バイブル」シリーズにて、制作した音符ブロック回路を掲載。'
   ],bioEn:['A Minecraft educator with over 200,000 YouTube subscribers and more than 3,000 videos. Her practical guides are especially known for helping beginners through common note-block problems.','She has organized numerous community note-block performance projects with many participating players.','Her note-block circuit was featured in Shinyusha’s Game Kanpeki Bible Vol.5.'],youtube:'https://youtube.com/@djminecraft8889',youtubeLabel:'youtube.com/@djminecraft8889',x:'https://x.com/anzu0312',xLabel:'x.com/anzu0312'}
 ]
 

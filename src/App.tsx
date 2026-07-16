@@ -5,9 +5,10 @@ import type { Project, Track } from './types'
 import BlueprintView, { type BlueprintViewState } from './BlueprintView'
 import HomePage from './HomePage'
 import CreatorsPage from './CreatorsPage'
+import EditorGuidePage from './EditorGuidePage'
 
-type AppView='home'|'editor'|'blueprint'|'creators'
-const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':'home'
+type AppView='home'|'editor'|'blueprint'|'creators'|'guide'
+const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':'home'
 const pathFromView=(view:AppView)=>view==='home'?'/':`/${view}`
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
@@ -89,6 +90,10 @@ function App() {
     window.addEventListener('popstate',handlePopState)
     return()=>window.removeEventListener('popstate',handlePopState)
   },[])
+
+  useEffect(()=>{
+    if(view==='creators')window.scrollTo(0,0)
+  },[view])
 
   const openView=(next:AppView,replace=false)=>{
     const path=pathFromView(next)
@@ -399,13 +404,14 @@ function App() {
 
   if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>openView('editor')} onCreators={()=>openView('creators')}/>
   if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openView('home')} onStart={()=>openView('editor')}/>
+  if(view==='guide')return <EditorGuidePage language={language} setLanguage={setLanguage} onBack={()=>openView('editor')} onHome={()=>openView('home')}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);openView('editor',true)}} onHome={()=>openView('home')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
       <div className="brand"><button className="brand-home" onClick={()=>openView('home')} aria-label={language==='ja'?'トップページへ':'Go to home'}><img className="brand-icon" src="/assets/branding/oto-blogic-icon.svg" alt="" /></button><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} onBlur={e=>{const title=e.currentTarget.value.trim()||project.title;setTitleDraft(title);if(title!==project.title)commitProject(p=>({...p,title}))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur()}} aria-label="曲名" /></div></div>
-      <div className="top-actions"><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select></div>
+      <div className="top-actions"><button className="editor-guide-trigger" onClick={()=>openView('guide')}>{language==='ja'?'使い方':'GUIDE'}</button><select className="language" value={language} onChange={e => setLanguage(e.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">中文</option><option value="ko">한국어</option></select></div>
     </header>
 
     <section className="transport">
