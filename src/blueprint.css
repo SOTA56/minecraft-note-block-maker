@@ -135,5 +135,5 @@ select:has(option[value="id"]:checked){font-size:7px!important;letter-spacing:-.
   .blueprint-options.fishbone .fishbone-height-control{grid-template-columns:28px minmax(34px,1fr) 28px}
 }
 @media(min-width:900px){
-  .blueprint-options.fishbone{grid-template-columns:repeat(3,minmax(190px,230px));width:max-content}
+  .blueprint-options.fishbone{grid-template-columns:repeat(6,minmax(0,1fr));width:100%}
 }
