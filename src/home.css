@@ -29,10 +29,9 @@
 
 /* Product facts read as three compact capabilities instead of tiny footnotes. */
 .hero-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin:20px 0 0;border:1px solid #243b45;background:#243b45;color:inherit;letter-spacing:0}
-.hero-meta article{display:grid;min-width:0;grid-template-columns:28px 1fr;align-items:center;gap:7px;padding:10px 8px;background:#0b1519}
-.hero-meta article>b{display:grid;width:25px;height:25px;place-items:center;border:1px solid #267cae;color:var(--blue);font:13px 'Archivo Black'}
+.hero-meta article{display:grid;min-width:0;align-items:center;padding:11px 12px;background:#0b1519}
 .hero-meta article>span{display:grid;min-width:0;gap:2px}.hero-meta strong{overflow:hidden;color:#dce7e8;font:9px 'Archivo Black';text-overflow:ellipsis;white-space:nowrap}.hero-meta small{overflow:hidden;color:#758b91;font-size:7px;text-overflow:ellipsis;white-space:nowrap}.hero-meta span::before{display:none}
-@media(max-width:370px){.hero-meta article{grid-template-columns:1fr;gap:4px;padding:8px 5px}.hero-meta article>b{width:22px;height:22px}.hero-meta small{display:none}}
+@media(max-width:370px){.hero-meta article{padding:9px 6px}.hero-meta small{display:none}}
 @media(min-width:700px){.hero-meta{width:min(680px,100%)}.hero-meta article{padding:13px 12px}.hero-meta strong{font-size:11px}.hero-meta small{font-size:8px}}
 
 /* Related videos scale to a reusable two-column library on larger screens. */

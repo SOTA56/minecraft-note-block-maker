@@ -55,7 +55,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
       <h1>{ja?<><span className="hero-blue">音を置く</span>だけで、<br/><span className="hero-yellow">回路が完成</span>する。</>:<><span className="hero-blue">{x[2]}</span><br/><span className="hero-yellow">{x[3]}</span></>}</h1>
       <p>{ja?'簡単操作で音を並べて曲作り。Minecraftで組める設計図を自動生成します。初心者から上級者まで、子どもから大人まで。':x[4]}</p>
       <button className="hero-cta" onClick={onStart}><span>{ja?'曲をつくる':x[5]}</span><b>→</b></button>
-      <div className="hero-meta">{facts.map(([title,detail],index)=><article key={title}><b>{index===0?'↗':index===1?'◆':'Ⅱ'}</b><span><strong>{title}</strong><small>{detail}</small></span></article>)}</div>
+      <div className="hero-meta">{facts.map(([title,detail])=><article key={title}><span><strong>{title}</strong><small>{detail}</small></span></article>)}</div>
       <div className="hero-visual">
         <div className="visual-label"><span>{ja?'ピアノロール形式':x[6]}</span></div>
         <p>{ja?'直感的に使えつつ機能も充実。スマートフォンでは画面を広く使える縦スクロール式を採用。':x[7]}</p>
