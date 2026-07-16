@@ -183,3 +183,33 @@ body{overflow:hidden;background:#0e110f}.app{width:100%;max-width:none;margin:0;
 .roll-viewport{touch-action:auto}.roll{display:flex;width:max-content;height:100%;min-width:100%;overflow:visible;touch-action:none}.step{display:grid;flex:0 0 var(--step-height);width:var(--step-height);height:100%;grid-template-columns:1fr;grid-template-rows:repeat(25,minmax(13px,1fr)) 38px}.step>button:not(.step-label){border:0;border-right:1px solid #555d55;border-bottom:1px solid #626962}.step>button.do{box-shadow:inset 0 2px #707770}.step.first-step>button:not(.step-label){border-top:0;border-left:3px solid #b8bdb7}.step.beat-end>button:not(.step-label){border-bottom:1px solid #626962;border-right:2px solid #858c84}.step.bar-end>button:not(.step-label){border-bottom:1px solid #626962;border-right:3px solid #b8bdb7}.step-label{border:0!important;border-top:2px solid #737b73!important;border-right:1px solid #555d55!important;font-size:11px}.step.playhead::before{inset:0 auto 0 -1px;width:2px;height:auto}.playback-cursor{top:0;right:auto;bottom:0;width:2px;height:auto}.step button.selection-top{--sel-top:transparent;--sel-left:#f3c84a}.step button.selection-bottom{--sel-bottom:transparent;--sel-right:#f3c84a}.step button.selection-left{--sel-left:transparent;--sel-top:#f3c84a}.step button.selection-right{--sel-right:transparent;--sel-bottom:#f3c84a}.more-menu{right:10px;bottom:12px}.delay-mode-menu{left:auto;right:82px;bottom:12px;transform:none}
 }
 @media(min-width:900px){.step button.selection-left{--sel-top:transparent;--sel-bottom:#f3c84a}.step button.selection-right{--sel-bottom:transparent;--sel-top:#f3c84a}}
+
+/* Desktop piano-roll alignment and fixed-width control cards */
+@media(min-width:900px){
+  .transport{display:flex;justify-content:flex-start}
+  .transport>button{flex:0 0 auto}
+  .transport>button:first-child{width:68px}
+  .transport>button:nth-child(2){width:56px}
+  .transport>.tick.bpm{flex:0 0 250px;width:250px}
+  .transport>.poly{flex:0 0 190px;width:190px}
+  .transport>.tick.bars{flex:0 0 210px;width:210px}
+
+  .pc-pitch-head{grid-template-rows:38px repeat(25,minmax(13px,1fr))}
+  .pc-pitch-head>.pitch-toggle{grid-row:1;border-top:0;border-bottom:1px solid #555d55}
+  .pc-pitch-head b{display:flex;align-items:center;justify-content:center;white-space:nowrap;line-height:1}
+  .pc-pitch-head b .sharp{display:inline!important;flex:0 0 auto;line-height:1}
+  .pc-pitch-head b.do{border-top:0;border-bottom:2px solid #858c84}
+
+  .step{grid-template-rows:38px repeat(25,minmax(13px,1fr))}
+  .step>.step-label{grid-row:1;place-items:center;padding:0;border:0!important;border-right:1px solid #555d55!important;border-bottom:1px solid #555d55!important}
+  .step>button.do{box-shadow:inset 0 -2px #858c84}
+
+  .drawer.mixer-list{width:min(calc(100% - 24px),980px);grid-template-columns:repeat(auto-fit,470px);justify-content:start;gap:8px;padding:12px}
+  .mixer-list .track-row{width:470px;grid-template-columns:minmax(160px,1fr) 160px 96px}
+  .mixer-list .track-select strong{font-size:12px}
+  .mixer-list .track-select small{font-size:9px}
+  .mixer-list .track-number{font-size:13px}
+  .mixer-list .track-switches{grid-template-columns:repeat(3,32px)}
+  .mixer-list .track-switches button{width:32px;font-size:11px}
+  .mixer-list .track-volume span,.mixer-list .track-volume b{font-size:8px}
+}
