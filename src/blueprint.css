@@ -137,3 +137,17 @@ select:has(option[value="id"]:checked){font-size:7px!important;letter-spacing:-.
 @media(min-width:900px){
   .blueprint-options.fishbone{grid-template-columns:repeat(6,minmax(0,1fr));width:100%}
 }
+
+/* Keep construction lines at least one rendered CSS pixel at deep zoom. */
+.blueprint-grid-shell{--blueprint-line:.75px;--blueprint-inner-line:1.5px}
+.blueprint-board{
+  background-image:linear-gradient(rgba(255,255,255,.78) var(--blueprint-line),transparent var(--blueprint-line)),linear-gradient(90deg,rgba(255,255,255,.78) var(--blueprint-line),transparent var(--blueprint-line));
+  border-width:var(--blueprint-line)
+}
+.theme-light .blueprint-board{
+  background-image:linear-gradient(rgba(0,0,0,.28) var(--blueprint-line),transparent var(--blueprint-line)),linear-gradient(90deg,rgba(0,0,0,.28) var(--blueprint-line),transparent var(--blueprint-line))
+}
+.bp-cell,.bp-cell.note,.bp-cell.rest,.bp-cell.repeater,.bp-cell.dust,.bp-cell.source,.bp-cell.layer-link{border-width:var(--blueprint-line)}
+.bp-cell.note,.bp-cell.rest{box-shadow:inset 0 0 0 var(--blueprint-inner-line) #050706}
+.column-labels b{border-right-width:var(--blueprint-line)}
+.row-labels b{border-bottom-width:var(--blueprint-line)}
