@@ -60,6 +60,17 @@ export async function exportBlueprint(plan:Plan,format:'png'|'pdf',title:string,
   const {jsPDF}=await import('jspdf');const pdf=new jsPDF({orientation:canvas.width>=canvas.height?'landscape':'portrait',unit:'px',format:[canvas.width,canvas.height],compress:true});pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,canvas.width,canvas.height);pdf.save(`${name}-blueprint.pdf`)
 }
 
+export async function shareBlueprintToX(plan:Plan,title:string,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean,text:string){
+  const supportsFileShare='share' in navigator&&typeof navigator.canShare==='function'&&navigator.canShare({files:[new File([''],'oto-blogic.png',{type:'image/png'})]}),popup=supportsFileShare?null:window.open('about:blank','_blank')
+  if(popup)popup.opener=null
+  const canvas=await render(plan,theme,legendBlocks,ja),blob=await canvasBlob(canvas),name=`${safeName(title)}-blueprint.png`,file=new File([blob],name,{type:'image/png'})
+  if(supportsFileShare){
+    try{await navigator.share({files:[file],text});return}catch(error){if(error instanceof DOMException&&error.name==='AbortError')return}
+  }
+  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)
+  const intent=`https://x.com/intent/post?text=${encodeURIComponent(text)}`;if(popup)popup.location.href=intent;else window.open(intent,'_blank','noopener,noreferrer')
+}
+
 export async function exportBlueprintLayers(plans:BlueprintPlan[],format:'png'|'pdf',title:string,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean){
   if(plans.length<=1)return exportBlueprint(plans[0],format,title,theme,legendBlocks,ja)
   const canvases=[] as HTMLCanvasElement[]

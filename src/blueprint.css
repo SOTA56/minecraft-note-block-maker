@@ -101,3 +101,6 @@
 /* Horizontal repeaters keep the pentagon on the signal axis and the number upright. */
 .blueprint-brand .brand-home{display:grid;flex:0 0 auto;padding:0;border:0;background:none;place-items:center;cursor:pointer}.blueprint-brand .brand-home:focus-visible{outline:2px solid #38aaf0;outline-offset:2px}
 .repeater-mark.left{transform:rotate(90deg)}.repeater-mark.right{transform:rotate(-90deg)}.repeater-mark.left b{top:3px;transform:rotate(-90deg)}.repeater-mark.right b{top:3px;transform:rotate(90deg)}
+.setting-help-button:active{background:#102a38!important;color:#8cd5ff!important}.setting-help-button.help-active{background:#167eb7!important;color:#fff!important}
+.blueprint-export-panel:has(.x-share){grid-template-columns:repeat(3,1fr)}.blueprint-export-panel .x-share{color:#f0f2ee}.blueprint-export-panel .x-share b{font-size:18px}@media(max-width:520px){.blueprint-export-panel:has(.x-share){grid-template-columns:repeat(3,minmax(0,1fr))}.blueprint-export-panel button{gap:6px;padding-inline:7px}.blueprint-export-panel span{line-height:1.35}}
+select:has(option[value="id"]:checked){font-size:7px!important;letter-spacing:-.03em}
