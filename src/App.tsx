@@ -39,6 +39,9 @@ const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK
 const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:40,compactSize:50,fold:'right',includeSilentEdges:true,fishboneMode:'auto',fishboneManual:{},fishbonePackColumns:false,fishboneSpatialAudio:false,fishbonePlayerHeight:5} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
+const LANGUAGE_STORAGE='oto-blogic:language'
+const SUPPORTED_LANGUAGES=['ja','en','es','fr','de','zh','ko'] as const
+const initialLanguage=()=>{const saved=localStorage.getItem(LANGUAGE_STORAGE);if(saved&&SUPPORTED_LANGUAGES.includes(saved as typeof SUPPORTED_LANGUAGES[number]))return saved;const browser=navigator.language.toLowerCase().split('-')[0];return SUPPORTED_LANGUAGES.includes(browser as typeof SUPPORTED_LANGUAGES[number])?browser:'en'}
 const DEFAULT_BLUEPRINT_VIEW:BlueprintViewState={kind:'easy',layerIndex:0,zoom:1,scrollLeft:0,scrollTop:0}
 const normalizeProject = (source:Project):Project => {
   const tracks = source.tracks.map((track:Partial<Track>) => ({...track, pan:track.pan ?? 0, ghostEnabled:track.ghostEnabled ?? true})) as Track[]
@@ -58,7 +61,7 @@ function App() {
   const [playingStep, setPlayingStep] = useState(-1)
   const [playhead, setPlayhead] = useState(0)
   const [panel, setPanel] = useState<'tracks' | 'settings' | null>(null)
-  const [language, setLanguage] = useState(() => navigator.language.toLowerCase().startsWith('ja') ? 'ja' : 'en')
+  const [language, setLanguage] = useState(initialLanguage)
   const [stepHeight, setStepHeight] = useState(30)
   const [controlsOpen, setControlsOpen] = useState(true)
   const [editMode, setEditMode] = useState<'input' | 'select'>('input')
@@ -128,6 +131,7 @@ function App() {
   const t = { autosaved:c[0], bpm:c[1], maxPoly:c[2], notes:c[3], activeTrack:c[4], ghost:c[5], trackName:c[6], instrument:c[7], volume:c[8], block:c[9] }
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
+  useEffect(()=>{localStorage.setItem(LANGUAGE_STORAGE,language);document.documentElement.lang=language},[language])
   useEffect(() => () => stopPlayback(), [])
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
   useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
