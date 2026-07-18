@@ -44,3 +44,8 @@ export function BuyMeCoffeeWidget(){
   },[])
   return fallback?<><button className="buy-me-coffee-widget-fallback" onClick={()=>setOpen(true)} aria-label="Buy Me a Coffee">☕</button>{open&&<div className="buy-me-coffee-modal" role="dialog" aria-modal="true" aria-label="Buy Me a Coffee"><button className="buy-me-coffee-modal-close" onClick={()=>setOpen(false)} aria-label="Close">×</button><iframe title="Buy Me a Coffee" src="https://www.buymeacoffee.com/widget/page/sota56"/></div>}</>:null
 }
+
+export function BuyMeCoffeeSupport({className='',onActivate}:{className?:string;onActivate?:()=>void}){
+  const [open,setOpen]=useState(false)
+  return <><button className={className} onClick={()=>{onActivate?.();setOpen(true)}}><b className="menu-icon">☕</b><span>制作者を支援</span><small>OPEN</small></button>{open&&<div className="buy-me-coffee-modal" role="dialog" aria-modal="true" aria-label="Buy Me a Coffee"><button className="buy-me-coffee-modal-close" onClick={()=>setOpen(false)} aria-label="Close">×</button><iframe title="Buy Me a Coffee" src="https://www.buymeacoffee.com/widget/page/sota56"/></div>}</>
+}
