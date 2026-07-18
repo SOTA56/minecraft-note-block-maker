@@ -308,3 +308,4 @@ body.editor-viewport-locked{overflow:hidden;background:#0e110f}.app{width:100%;m
 }
 
 .more-menu .buy-me-coffee-modal-close{position:absolute!important;top:18px!important;right:18px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important;display:grid!important;grid-template-columns:1fr!important;place-items:center!important;justify-items:center!important;align-self:auto!important;justify-self:auto!important;flex:none!important;margin:0!important;padding:0!important;overflow:hidden!important;text-align:center!important;border-radius:50%!important}
+.placement-guide-link{display:inline-flex;align-items:center;justify-content:center;min-height:36px;margin:4px 0;padding:8px 12px;border:1px solid #159af1;background:#0b1f2a;color:#a8dcfb;font-size:12px;font-weight:700;text-decoration:none}.placement-guide-link:hover{background:#159af1;color:#071218}

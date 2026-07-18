@@ -6,11 +6,12 @@ import BlueprintView, { type BlueprintViewState } from './BlueprintView'
 import HomePage from './HomePage'
 import CreatorsPage from './CreatorsPage'
 import EditorGuidePage from './EditorGuidePage'
+import PlacementGuidePage from './PlacementGuidePage'
 import {instrumentBlockName} from './localization'
 import {BuyMeCoffeeSupport} from './BuyMeCoffee'
 
-type AppView='home'|'editor'|'blueprint'|'creators'|'guide'
-const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':'home'
+type AppView='home'|'editor'|'blueprint'|'creators'|'guide'|'placement'
+const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':path==='/placement'?'placement':'home'
 const pathFromView=(view:AppView)=>view==='home'?'/':`/${view}`
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
@@ -465,6 +466,7 @@ function App() {
   if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>openView('editor')} onCreators={()=>openView('creators')}/>
   if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openView('home')} onStart={()=>openView('editor')}/>
   if(view==='guide')return <EditorGuidePage language={language} setLanguage={setLanguage} onBack={()=>openView('editor')} onHome={()=>openView('home')}/>
+  if(view==='placement')return <PlacementGuidePage language={language} onBack={()=>openView('blueprint')} onHome={()=>openView('home')}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);openView('editor',true)}} onHome={()=>openView('home')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
