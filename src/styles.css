@@ -294,3 +294,8 @@ body.editor-viewport-locked{overflow:hidden;background:#0e110f}.app{width:100%;m
   .step>.step-label{border-bottom:0!important;box-shadow:none!important;font-size:12px}
   .roll::after{content:'';position:absolute;z-index:7;top:35px;left:0;width:100%;height:3px;background:#858c84;pointer-events:none}
 }
+
+@media(min-width:900px){
+  .step button.do.note:not(.selected-cell){outline:1px solid #111512;outline-offset:-1px}
+  .step.poly-over-3>.step-label::after,.step.poly-over-6>.step-label::after{bottom:0;height:9px;box-sizing:border-box}
+}
