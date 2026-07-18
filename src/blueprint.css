@@ -118,8 +118,9 @@ select:has(option[value="id"]:checked){font-size:7px!important;letter-spacing:-.
 
 /* Repeater click-count mode is deliberately inverted so the selected number
    convention cannot be mistaken for the default delay display. */
-.repeater-mark.click-display{background:#fff;filter:drop-shadow(1px 0 0 #080b09) drop-shadow(-1px 0 0 #080b09) drop-shadow(0 1px 0 #080b09) drop-shadow(0 -1px 0 #080b09)}
-.repeater-mark.click-display b{color:#e51d24!important}
+.repeater-mark.click-display{background:#080b09;filter:none}
+.repeater-mark.click-display::before{content:'';position:absolute;z-index:0;inset:1px;background:#fff;clip-path:inherit}
+.repeater-mark.click-display b{z-index:1;color:#e51d24!important}
 
 /* Fishbone settings stay in the requested three-by-two reading order. */
 .blueprint-options.fishbone{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))}
