@@ -466,7 +466,7 @@ function App() {
   if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>openView('editor')} onCreators={()=>openView('creators')}/>
   if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openView('home')} onStart={()=>openView('editor')}/>
   if(view==='guide')return <EditorGuidePage language={language} setLanguage={setLanguage} onBack={()=>openView('editor')} onHome={()=>openView('home')}/>
-  if(view==='placement')return <PlacementGuidePage language={language} onBack={()=>openView('blueprint')} onHome={()=>openView('home')}/>
+  if(view==='placement')return <PlacementGuidePage language={language} setLanguage={setLanguage} onBack={()=>openView('blueprint')} onHome={()=>openView('home')}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);openView('editor',true)}} onHome={()=>openView('home')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
