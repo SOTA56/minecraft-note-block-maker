@@ -164,7 +164,11 @@ function transformCells(cells:BlueprintCell[],width:number,height:number,entry:C
 }
 
 function layerExit(entry:Corner,runCount:number):Corner{
-  return{x:opposite(entry.x) as 'left'|'right',y:(runCount%2?opposite(entry.y):entry.y) as 'top'|'bottom'}
+  // Every layer uses the same bottom-to-top fold cycle.  Only the horizontal
+  // starting side alternates, so the upper and lower circuit bounds stay on
+  // identical board rows on Layer 1 and every following layer.
+  void runCount
+  return{x:opposite(entry.x) as 'left'|'right',y:'bottom'}
 }
 
 const threeRunsPerLayer=(width:number)=>Math.max(1,Math.floor((width-4)/2)+1)
@@ -191,7 +195,14 @@ function renderThreeLayer(runs:Run[],width:number,height:number,entry:Corner,lay
   runs.slice(0,-1).forEach((run,index)=>{
     const up=index%2===0,current=framePoints[index].at(-1) as Point,next=framePoints[index+1][0],foldY=up?0:height-1,step=run.frames.at(-1)?.step??firstStep,groupId=`fold-${run.globalIndex}`
     const path:Array<Point>=[];for(let x=current.x;x<=next.x;x++)path.push({x,y:foldY})
-    builder.path(path,step,groupId);builder.arm(path[0],current);builder.arm(path.at(-1) as Point,next)
+    builder.path(path,step,groupId)
+    // At the end of a three-chord column the dust remains a straight
+    // horizontal run extending to both sides of its centre dot.  The block
+    // still supplies the signal in Minecraft, so a vertical arm here would
+    // render the misleading ┏/┛ corner.
+    builder.arm(path[0],{x:path[0].x-1,y:foldY})
+    // The next column keeps its normal bent entry connection.
+    builder.arm(path.at(-1) as Point,next)
   })
   const cells=transformCells(builder.finish(),width,height,entry),steps=runs.flatMap(run=>run.frames.map(frame=>frame.step)),lastRunIndex=runs.length-1,rawExit=framePoints[lastRunIndex]?.at(-1)
   const exit=rawExit?{...transformPoint(rawExit,width,height,entry),direction:transformVerticalDirection(lastRunIndex%2===0?'up':'down',entry)}:undefined
@@ -342,31 +353,35 @@ function addLayerNavigation(layers:BlueprintPlan[]){
   })
 }
 
-function generate(project:Project,instruments:readonly BlueprintInstrument[],width:number,height:number,includeSilentEdges:boolean):CompactBlueprint{
+function generate(project:Project,instruments:readonly BlueprintInstrument[],width:number,height:number,includeSilentEdges:boolean,firstFold:'right'|'left'):CompactBlueprint{
   const timeline=collectFrames(project,includeSilentEdges)
   if(timeline.maxPolyphony>6)throw new Error('Compact circuits support at most six simultaneous notes.')
   const mixed=timeline.maxPolyphony>3
-  const routeHeight=mixed&&height%2===0?height-1:height
-  const runs=partitionRuns(timeline.frames,mixed?routeHeight-6:height-3,mixed?routeHeight-5:height-2,mixed,mixed?0:threeRunsPerLayer(width))
+  // The single-lane (three-chord-and-under) pattern has a two-row period.
+  // Treat an odd requested height as the preceding even route and leave the
+  // extra board row as breathing room, rather than changing the fold parity.
+  const routeHeight=mixed&&height%2===0?height-1:!mixed&&height%2===1?height-1:height
+  const runs=partitionRuns(timeline.frames,mixed?routeHeight-6:routeHeight-3,mixed?routeHeight-5:routeHeight-2,mixed,mixed?0:threeRunsPerLayer(width))
   const mixedGrouped=mixed?groupMixedLayers(runs,width,routeHeight):null
   const grouped=mixed?(mixedGrouped as Array<{runs:Run[];positions:RunPosition[]}>).map(item=>item.runs):groupThreeLayers(runs,width)
   const layers:BlueprintPlan[]=[]
-  let entry:Corner={x:'left',y:'bottom'}
+  let entry:Corner={x:firstFold==='right'?'left':'right',y:'bottom'}
   grouped.forEach((layerRuns,index)=>{
     const routePlan=mixed
       ?renderMixedLayer((mixedGrouped as Array<{runs:Run[];positions:RunPosition[]}>)[index],width,routeHeight,entry,index,timeline.firstStep,timeline.lastStep,instruments)
-      :renderThreeLayer(layerRuns,width,height,entry,index,timeline.firstStep,timeline.lastStep,instruments)
-    const plan=mixed?alignRouteToBoard(routePlan,height,entry):routePlan
+      :renderThreeLayer(layerRuns,width,routeHeight,entry,index,timeline.firstStep,timeline.lastStep,instruments)
+    const aligned=routeHeight===height?routePlan:alignRouteToBoard(routePlan,height,entry)
+    const plan={...aligned,columnCountDirection:entry.x==='right'?'left' as const:'right' as const}
     layers.push(plan);entry=layerExit(entry,layerRuns.length)
   })
   return{layers:addLayerNavigation(layers),firstStep:timeline.firstStep,lastStep:timeline.lastStep,size:Math.max(width,height)}
 }
 
-export function generateCompactBlueprintRect(project:Project,instruments:readonly BlueprintInstrument[],width:number,height:number,includeSilentEdges=true){
-  return generate(project,instruments,Math.max(10,Math.round(width)),Math.max(10,Math.round(height)),includeSilentEdges)
+export function generateCompactBlueprintRect(project:Project,instruments:readonly BlueprintInstrument[],width:number,height:number,includeSilentEdges=true,firstFold:'right'|'left'='right'){
+  return generate(project,instruments,Math.max(10,Math.round(width)),Math.max(10,Math.round(height)),includeSilentEdges,firstFold)
 }
 
-export function generateCompactBlueprint(project:Project,instruments:readonly BlueprintInstrument[],size=50,includeSilentEdges=true){
+export function generateCompactBlueprint(project:Project,instruments:readonly BlueprintInstrument[],size=50,includeSilentEdges=true,firstFold:'right'|'left'='right'){
   const side=Math.max(16,Math.min(96,Math.round(size)))
-  return generate(project,instruments,side,side,includeSilentEdges)
+  return generate(project,instruments,side,side,includeSilentEdges,firstFold)
 }

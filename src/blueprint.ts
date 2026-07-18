@@ -2,8 +2,11 @@ import type { Project } from './types'
 
 export type BlueprintInstrument = { id:string; ja:string; en:string; blockJa:string; blockEn:string; texture:string }
 export type BlueprintCell = { x:number; y:number; type:'note'|'rest'|'repeater'|'dust'|'source'|'layer-link'; label?:string; sub?:string; texture?:string; direction?:'up'|'down'|'left'|'right'; delay?:number; connections?:Array<'up'|'right'|'down'|'left'>; step?:number; groupId?:string; trackId?:string; instrument?:string; volume?:number; pan?:number; targetLayer?:number }
-export type BlueprintPlan={cells:BlueprintCell[];width:number;height:number;eventsPerRun:number;runCount:number;firstStep:number;lastStep:number;layer?:number;exit?:{x:number;y:number;direction:'up'|'down'}}
+export type BlueprintPlan={cells:BlueprintCell[];width:number;height:number;eventsPerRun:number;runCount:number;firstStep:number;lastStep:number;columnCountDirection?:'left'|'right';layer?:number;exit?:{x:number;y:number;direction:'up'|'down'}}
 export type CompactBlueprint={layers:BlueprintPlan[];firstStep:number;lastStep:number;size:number}
+
+export const blueprintColumnNumber=(plan:Pick<BlueprintPlan,'width'|'columnCountDirection'>,x:number)=>plan.columnCountDirection==='left'?plan.width-x:x+1
+export const blueprintRowNumber=(plan:Pick<BlueprintPlan,'height'>,y:number)=>plan.height-y
 
 type TimedNote = { trackId:string; trackIndex:number; pitch:number; instrument:string; volume:number; pan:number }
 
@@ -97,7 +100,7 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   const occupied=new Set(normalized.map(cell=>`${cell.x},${cell.y}`))
   const vectors=[['up',0,-1],['right',1,0],['down',0,1],['left',-1,0]] as const
   normalized.forEach(cell=>{if(cell.type==='dust')cell.connections=vectors.filter(([,dx,dy])=>occupied.has(`${cell.x+dx},${cell.y+dy}`)).map(([direction])=>direction)})
-  return {cells:normalized,width:Math.max(...normalized.map(cell=>cell.x))+2,height:Math.max(...normalized.map(cell=>cell.y))+2,eventsPerRun,runCount,firstStep,lastStep}
+  return {cells:normalized,width:Math.max(...normalized.map(cell=>cell.x))+2,height:Math.max(...normalized.map(cell=>cell.y))+2,eventsPerRun,runCount,firstStep,lastStep,columnCountDirection:fold}
 }
 
 export {generateCompactBlueprint,generateCompactBlueprintRect,splitCompactDelay} from './compactBlueprint'

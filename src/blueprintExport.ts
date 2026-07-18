@@ -1,7 +1,7 @@
-import type { BlueprintCell,BlueprintPlan } from './blueprint'
+import {blueprintColumnNumber,blueprintRowNumber,type BlueprintCell,type BlueprintPlan} from './blueprint'
 import type {RepeaterDisplay} from './types'
 
-type Plan={cells:BlueprintCell[];width:number;height:number}
+type Plan=Pick<BlueprintPlan,'cells'|'width'|'height'|'columnCountDirection'>
 export type ExportLegendBlock={texture:string;label:string;name:string}
 const textureFiles:Record<string,string>={earth:'grass_block_side.png',wood:'oak_planks.png',stone:'cobblestone.png',sand:'sand.png',glass:'glass.png',wool:'pink_wool.png',clay:'clay.png',gold:'gold_block.png',ice:'ice.png',bone:'bone_block_side.png',iron:'iron_block.png',soul:'soul_sand.png',pumpkin:'pumpkin_side.png',emerald:'emerald_block.png',hay:'hay_block_side.png',glow:'glowstone.png',copper:'copper_block.png','copper-exposed':'exposed_copper.png','copper-weathered':'weathered_copper.png','copper-oxidized':'oxidized_copper.png',placeholder:'light_blue_concrete.png','center-placeholder':'magenta_concrete.png'}
 const copperColors:Record<string,string>={copper:'#963247','copper-exposed':'#8a5427','copper-weathered':'#2f6f67','copper-oxidized':'#2946a3'}
@@ -21,12 +21,9 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
   await document.fonts.load('22px "Archivo Black"');await document.fonts.ready
   const dark=theme==='dark',background=dark?'#111713':'#fff',foreground=dark?'#eef2ed':'#111',grid=dark?'rgba(255,255,255,.78)':'#b8b8b8'
   context.fillStyle=background;context.fillRect(0,0,width,height)
-  context.strokeStyle=grid;context.lineWidth=.75
-  for(let x=0;x<=plan.width;x++){const px=axis+x*cell+.5;context.beginPath();context.moveTo(px,axis);context.lineTo(px,axis+plan.height*cell);context.stroke()}
-  for(let y=0;y<=plan.height;y++){const py=axis+y*cell+.5;context.beginPath();context.moveTo(axis,py);context.lineTo(axis+plan.width*cell,py);context.stroke()}
   context.fillStyle=foreground;context.font='15px "Archivo Black"';context.textAlign='center';context.textBaseline='middle'
-  for(let x=0;x<plan.width;x++){const px=axis+x*cell+cell/2;context.fillText(String(x+1),px,axis/2);context.fillText(String(x+1),px,axis+plan.height*cell+axis/2)}
-  for(let y=0;y<plan.height;y++){const py=axis+y*cell+cell/2;context.fillText(String(y+1),axis/2,py);context.fillText(String(y+1),axis+plan.width*cell+axis/2,py)}
+  for(let x=0;x<plan.width;x++){const px=axis+x*cell+cell/2,label=String(blueprintColumnNumber(plan,x));context.fillText(label,px,axis/2);context.fillText(label,px,axis+plan.height*cell+axis/2)}
+  for(let y=0;y<plan.height;y++){const py=axis+y*cell+cell/2,label=String(blueprintRowNumber(plan,y));context.fillText(label,axis/2,py);context.fillText(label,axis+plan.width*cell+axis/2,py)}
   const textures=new Map<string,HTMLImageElement>()
   await Promise.all([...new Set(plan.cells.map(item=>item.texture).filter(Boolean) as string[])].map(async key=>{const file=textureFiles[key];if(file)textures.set(key,await loadImage(`/assets/block-textures/${file}`))}))
   for(const item of plan.cells){const x=axis+item.x*cell,y=axis+item.y*cell,cx=x+cell/2,cy=y+cell/2
@@ -36,6 +33,11 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
     else if(item.type==='dust'){context.strokeStyle='#e51d24';context.fillStyle='#e51d24';context.lineWidth=5;for(const direction of item.connections??[]){context.beginPath();context.moveTo(cx,cy);context.lineTo(cx+(direction==='right'?cell/2:direction==='left'?-cell/2:0),cy+(direction==='down'?cell/2:direction==='up'?-cell/2:0));context.stroke()}context.beginPath();context.arc(cx,cy,6,0,Math.PI*2);context.fill()}
     else if(item.type==='layer-link'){context.strokeStyle='#35a9ec';context.lineWidth=2;context.strokeRect(x+2,y+2,cell-4,cell-4);context.fillStyle='#35a9ec';context.font='30px "Archivo Black"';context.fillText(item.label??(item.direction==='up'?'↑':'↓'),cx,cy)}
   }
+  // Draw the construction grid once, above every cell.  Drawing borders on
+  // individual occupied cells makes shared edges appear twice as thick.
+  context.strokeStyle=grid;context.lineWidth=.75
+  for(let x=0;x<=plan.width;x++){const px=axis+x*cell+.5;context.beginPath();context.moveTo(px,axis);context.lineTo(px,axis+plan.height*cell);context.stroke()}
+  for(let y=0;y<=plan.height;y++){const py=axis+y*cell+.5;context.beginPath();context.moveTo(axis,py);context.lineTo(axis+plan.width*cell,py);context.stroke()}
   context.textAlign='left';context.textBaseline='middle';context.fillStyle=foreground;context.font='14px "Archivo Black"';context.fillText(ja?'図の説明':'LEGEND',legendLeft,legendTop+10)
   const allLegend:Array<({kind:'block'}&ExportLegendBlock)|{kind:'repeater'|'placeholder'|'center-placeholder'|'dust'|'source'|'layer-link';name:string}>=[...legendBlocks.map(block=>({kind:'block' as const,...block})),{kind:'repeater',name:repeaterDisplay==='clicks'?(ja?'リピーターの向きとクリック数':'Repeater direction and clicks'):(ja?'リピーターの向きと遅延数':'Repeater direction and delay')},{kind:'placeholder',name:ja?'任意の不透過ブロック':'Any solid opaque block'},...(hasCenterPlaceholder?[{kind:'center-placeholder' as const,name:ja?'任意の不透過ブロック':'Any solid opaque block'}]:[]),{kind:'dust',name:ja?'レッドストーンダスト':'Redstone dust'},...(hasSource?[{kind:'source' as const,name:ja?'スタート':'Start'}]:[]),...(hasLayerLink?[{kind:'layer-link' as const,name:ja?'レイヤー移動':'Layer link'}]:[])]
   const itemWidth=sideWidth-36

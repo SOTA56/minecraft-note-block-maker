@@ -121,6 +121,42 @@ describe('mixed six-note PDF geometry',()=>{
 })
 
 describe('compact routing edge cases',()=>{
+  it('mirrors Layer 1 when its first fold direction is changed',()=>{
+    const input=project(()=>3,96)
+    const right=generateCompactBlueprintRect(input,instruments,16,16,false,'right').layers[0]
+    const left=generateCompactBlueprintRect(input,instruments,16,16,false,'left').layers[0]
+    const horizontalMirror=(direction:BlueprintCell['direction']):BlueprintCell['direction']=>direction==='left'?'right':direction==='right'?'left':direction
+    const signature=(cells:BlueprintCell[])=>cells.map(cell=>({
+      ...cell,
+      connections:cell.connections?.slice().sort(),
+    })).sort((a,b)=>a.y-b.y||a.x-b.x||a.type.localeCompare(b.type))
+    const mirrored=right.cells.map(cell=>({
+      ...cell,
+      x:right.width-1-cell.x,
+      direction:horizontalMirror(cell.direction),
+      connections:cell.connections?.map(direction=>horizontalMirror(direction) as NonNullable<BlueprintCell['connections']>[number]),
+    }))
+    expect(signature(left.cells)).toEqual(signature(mirrored))
+    expect(right.columnCountDirection).toBe('right')
+    expect(left.columnCountDirection).toBe('left')
+  })
+
+  it.each([
+    ['three-note',project(()=>3,1000)],
+    ['six-note',project(()=>6,1000)],
+  ])('keeps the %s upper and lower fold rows aligned on every layer',(_,input)=>{
+    const compact=generateCompactBlueprintRect(input,instruments,16,16,false)
+    expect(compact.layers.length).toBeGreaterThan(2)
+    const signature=(layer:typeof compact.layers[number])=>[...new Set(layer.cells
+      .filter(cell=>cell.type==='dust'&&cell.groupId?.startsWith('fold-'))
+      .map(cell=>cell.groupId))].map(groupId=>layer.cells
+        .filter(cell=>cell.type==='dust'&&cell.groupId===groupId)
+        .map(cell=>cell.y)
+        .sort((a,b)=>a-b))
+    const expected=signature(compact.layers[0])
+    compact.layers.slice(1,-1).forEach(layer=>expect(signature(layer)).toEqual(expected))
+  })
+
   it.each([[15,16],[25,26],[49,50],[95,96]])('keeps the %i-row mixed route shape inside an even %i-row board',(oddHeight,evenHeight)=>{
     const input=project(()=>6,240)
     const odd=generateCompactBlueprintRect(input,instruments,16,oddHeight,false)
@@ -162,6 +198,16 @@ describe('compact routing edge cases',()=>{
     const plan=generateCompactBlueprintRect(sparse,instruments,16,16,false).layers[0]
     expect(at(plan.cells,2,1)).toMatchObject({type:'rest',groupId:'fold-0'})
     expect(at(plan.cells,4,1)?.type).toBe('repeater')
+  })
+
+  it('draws three-note column-end dust straight through both sides of its centre',()=>{
+    const plan=generateCompactBlueprintRect(project(()=>3,64),instruments,16,16,false).layers[0]
+    const foldIds=[...new Set(plan.cells.filter(cell=>cell.type==='dust'&&cell.groupId?.startsWith('fold-')).map(cell=>cell.groupId))]
+    foldIds.forEach(groupId=>{
+      const dust=plan.cells.filter(cell=>cell.type==='dust'&&cell.groupId===groupId)
+      const terminal=dust.find(cell=>cell.connections?.includes('left')&&cell.connections?.includes('right'))
+      expect(terminal,`${groupId} must have a straight-through terminal dust cell`).toBeDefined()
+    })
   })
 
   it('adds a fold block only when a long delay chain itself crosses the fold',()=>{
