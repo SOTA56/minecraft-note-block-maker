@@ -25,6 +25,7 @@ export function BuyMeCoffeeButton({className=''}:{className?:string}){
 
 export function BuyMeCoffeeWidget(){
   const [fallback,setFallback]=useState(true)
+  const [open,setOpen]=useState(false)
   useEffect(()=>{
     const script=document.createElement('script')
     script.dataset.name='BMC-Widget'
@@ -41,5 +42,5 @@ export function BuyMeCoffeeWidget(){
     const timer=window.setTimeout(()=>setFallback(!document.querySelector('#bmc-wbtn')),1800)
     return()=>{window.clearTimeout(timer);script.remove()}
   },[])
-  return fallback?<a className="buy-me-coffee-widget-fallback" href="https://www.buymeacoffee.com/sota56" target="_blank" rel="noreferrer">☕</a>:null
+  return fallback?<><button className="buy-me-coffee-widget-fallback" onClick={()=>setOpen(true)} aria-label="Buy Me a Coffee">☕</button>{open&&<div className="buy-me-coffee-modal" role="dialog" aria-modal="true" aria-label="Buy Me a Coffee"><button className="buy-me-coffee-modal-close" onClick={()=>setOpen(false)} aria-label="Close">×</button><iframe title="Buy Me a Coffee" src="https://www.buymeacoffee.com/widget/page/sota56"/></div>}</>:null
 }

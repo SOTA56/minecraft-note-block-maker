@@ -163,9 +163,10 @@
 .edit-tools .tool-select{transform:translateY(-3px)}.edit-tools .tool-paste{font-size:30px;transform:translateY(-5px)}.edit-tools .delete-tool{color:#ff6658}.edit-tools .delete-tool:disabled{color:#ff6658}.edit-tools .delete-tool .tool-icon{font-size:30px}
 .dock>.dock-menu small{transform:none}
 .more-menu .menu-icon{transform:translateY(-2px)}.more-menu .trash-icon{mask-size:17px 17px;-webkit-mask-size:17px 17px}
-.more-menu .creator-menu-icon{width:24px;height:24px!important;background:currentColor!important;mask:url('/assets/icons/creator.svg') center/contain no-repeat;-webkit-mask:url('/assets/icons/creator.svg') center/contain no-repeat}
+.more-menu .creator-menu{border-color:#318cca!important}.more-menu .creator-menu-icon{width:19px;height:19px!important;background:currentColor!important;mask:url('/assets/icons/creator.svg') center/contain no-repeat;-webkit-mask:url('/assets/icons/creator.svg') center/contain no-repeat}
 .more-menu .support-menu{color:#f0d35e!important}
 .buy-me-coffee-widget-fallback{position:fixed;z-index:100;right:18px;bottom:18px;display:grid;place-items:center;width:54px;height:54px;border-radius:50%;background:#ffdd00;color:#000;font-size:26px;text-decoration:none;box-shadow:0 4px 14px #0008}
+.buy-me-coffee-modal{position:fixed;z-index:110;inset:0;display:grid;place-items:center;background:#000b;padding:20px}.buy-me-coffee-modal iframe{width:min(420px,100%);height:min(680px,88dvh);border:0;border-radius:12px;background:#fff}.buy-me-coffee-modal-close{position:absolute;top:18px;right:18px;z-index:111;width:36px;height:36px;border:1px solid #fff;background:#111;color:#fff;border-radius:50%;font-size:24px;line-height:1}
 .dock{grid-template-columns:repeat(4,1fr)}
 .delay-mode-icon{position:relative;color:#82c9f0}
 .delay-mode-icon::before{content:'';position:absolute;inset:1px 5px;background:currentColor;mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat;-webkit-mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat}

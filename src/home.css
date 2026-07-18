@@ -46,9 +46,9 @@
 .buy-me-coffee-button{display:inline-flex;align-items:center;min-width:0}
 .buy-me-coffee-button .bmc-btn{white-space:nowrap!important}
 .buy-me-coffee-fallback{display:inline-flex;align-items:center;justify-content:center;min-height:34px;padding:0 11px;border:1px solid #000;border-radius:8px;background:#ffdd00;color:#000;font:700 11px Cookie,cursive;text-decoration:none;white-space:nowrap}
-.buy-me-coffee-button .bmc-btn{border-radius:8px!important;font-family:Cookie,cursive!important}
+.buy-me-coffee-button .bmc-btn{border-radius:8px!important;font-family:Cookie,cursive!important;font-size:16px!important;line-height:1.1!important;padding:9px 15px!important;min-height:42px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important}
 .buy-me-coffee-button:has(.bmc-btn) .buy-me-coffee-fallback{display:none}
-.header-buy-me-coffee .bmc-btn{transform:scale(.78);transform-origin:right center}
+.header-buy-me-coffee .bmc-btn{transform:scale(1);transform-origin:right center}
 .footer-buy-me-coffee .bmc-btn{transform:scale(.72);transform-origin:left center}
 .home-footer{flex-wrap:wrap}
-@media(max-width:520px){.header-buy-me-coffee .bmc-btn{transform:scale(.65);transform-origin:left center}.footer-buy-me-coffee .bmc-btn{transform:scale(.62);transform-origin:left center}.home-header-actions{flex-wrap:wrap;justify-content:flex-end;gap:4px}.home-header-actions .home-language{order:1}.home-header-actions .header-buy-me-coffee{order:2}.home-header-actions .home-related-links{order:3}}
+@media(max-width:520px){.header-buy-me-coffee .bmc-btn{transform:none;font-size:13px!important;padding:7px 10px!important;min-height:34px!important}.footer-buy-me-coffee .bmc-btn{transform:scale(.62);transform-origin:left center}.home-header-actions{display:grid;grid-template-columns:auto 1fr;grid-template-areas:"language language" "support related";align-items:center;gap:4px;width:auto}.home-header-actions .home-language{grid-area:language;justify-self:end}.home-header-actions .header-buy-me-coffee{grid-area:support;justify-self:start}.home-header-actions .home-related-links{position:static;grid-area:related;justify-self:end}}
