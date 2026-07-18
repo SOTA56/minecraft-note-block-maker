@@ -163,12 +163,9 @@ function transformCells(cells:BlueprintCell[],width:number,height:number,entry:C
   }))
 }
 
-function layerExit(entry:Corner,runCount:number):Corner{
-  // Every layer uses the same bottom-to-top fold cycle.  Only the horizontal
-  // starting side alternates, so the upper and lower circuit bounds stay on
-  // identical board rows on Layer 1 and every following layer.
-  void runCount
-  return{x:opposite(entry.x) as 'left'|'right',y:'bottom'}
+function layerEntryFromExit(exit:BlueprintPlan['exit'],width:number,height:number, fallback:Corner):Corner{
+  if(!exit)return fallback
+  return{x:exit.x>=width/2?'right':'left',y:exit.y<=height/2?'top':'bottom'}
 }
 
 const threeRunsPerLayer=(width:number)=>Math.max(1,Math.floor((width-4)/2)+1)
@@ -372,7 +369,12 @@ function generate(project:Project,instruments:readonly BlueprintInstrument[],wid
       :renderThreeLayer(layerRuns,width,routeHeight,entry,index,timeline.firstStep,timeline.lastStep,instruments)
     const aligned=routeHeight===height?routePlan:alignRouteToBoard(routePlan,height,entry)
     const plan={...aligned,columnCountDirection:entry.x==='right'?'left' as const:'right' as const}
-    layers.push(plan);entry=layerExit(entry,layerRuns.length)
+    layers.push(plan)
+    // A new layer begins at the same board corner where the previous layer
+    // ended. This preserves both the horizontal side and the vertical band;
+    // e.g. a right/top exit continues from right/top instead of resetting to
+    // the bottom edge.
+    entry=layerEntryFromExit(aligned.exit,width,height,entry)
   })
   return{layers:addLayerNavigation(layers),firstStep:timeline.firstStep,lastStep:timeline.lastStep,size:Math.max(width,height)}
 }

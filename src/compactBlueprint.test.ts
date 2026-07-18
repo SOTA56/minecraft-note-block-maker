@@ -153,8 +153,12 @@ describe('compact routing edge cases',()=>{
         .filter(cell=>cell.type==='dust'&&cell.groupId===groupId)
         .map(cell=>cell.y)
         .sort((a,b)=>a-b))
-    const expected=signature(compact.layers[0])
-    compact.layers.slice(1,-1).forEach(layer=>expect(signature(layer)).toEqual(expected))
+    const bounds=(layer:typeof compact.layers[number])=>{
+      const values=signature(layer).flat()
+      return values.length?[Math.min(...values),Math.max(...values)]:[]
+    }
+    const expected=bounds(compact.layers[0])
+    compact.layers.slice(1,-1).forEach(layer=>expect(bounds(layer)).toEqual(expected))
   })
 
   it.each([[15,16],[25,26],[49,50],[95,96]])('keeps the %i-row mixed route shape inside an even %i-row board',(oddHeight,evenHeight)=>{
