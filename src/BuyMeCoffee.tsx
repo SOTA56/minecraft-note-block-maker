@@ -1,26 +1,7 @@
-import {useEffect,useRef,useState} from 'react'
+import {useEffect,useState} from 'react'
 
 export function BuyMeCoffeeButton({className=''}:{className?:string}){
-  const host=useRef<HTMLSpanElement>(null)
-  useEffect(()=>{
-    const target=host.current
-    if(!target)return
-    const script=document.createElement('script')
-    script.type='text/javascript'
-    script.src='https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js'
-    script.dataset.name='bmc-button'
-    script.dataset.slug='sota56'
-    script.dataset.color='#FFDD00'
-    script.dataset.emoji='☕'
-    script.dataset.font='Cookie'
-    script.dataset.text='Buy me a coffee'
-    script.dataset.outlineColor='#000000'
-    script.dataset.fontColor='#000000'
-    script.dataset.coffeeColor='#ffffff'
-    target.appendChild(script)
-    return()=>target.replaceChildren()
-  },[])
-  return <span ref={host} className={`buy-me-coffee-button ${className}`}><a className="buy-me-coffee-fallback" href="https://www.buymeacoffee.com/sota56" target="_blank" rel="noreferrer">☕ Buy me a coffee</a></span>
+  return <span className={`buy-me-coffee-button ${className}`}><a className="buy-me-coffee-fallback" href="https://www.buymeacoffee.com/sota56" target="_blank" rel="noreferrer">☕ Buy me a coffee</a></span>
 }
 
 export function BuyMeCoffeeWidget(){
@@ -42,10 +23,10 @@ export function BuyMeCoffeeWidget(){
     const timer=window.setTimeout(()=>setFallback(!document.querySelector('#bmc-wbtn')),1800)
     return()=>{window.clearTimeout(timer);script.remove()}
   },[])
-  return fallback?<><button className="buy-me-coffee-widget-fallback" onClick={()=>setOpen(true)} aria-label="Buy Me a Coffee">☕</button>{open&&<div className="buy-me-coffee-modal" role="dialog" aria-modal="true" aria-label="Buy Me a Coffee"><button className="buy-me-coffee-modal-close" onClick={()=>setOpen(false)} aria-label="Close">×</button><iframe title="Buy Me a Coffee" src="https://www.buymeacoffee.com/widget/page/sota56"/></div>}</>:null
+  return fallback?<><button className="buy-me-coffee-widget-fallback" onClick={()=>setOpen(true)} aria-label="Buy Me a Coffee">☕</button>{open&&<div className="buy-me-coffee-modal" role="dialog" aria-modal="true" aria-label="Buy Me a Coffee"><button type="button" className="buy-me-coffee-modal-close" style={{width:36,height:36,minWidth:36,maxWidth:36,minHeight:36,maxHeight:36,padding:0,borderRadius:'50%',display:'grid',placeItems:'center',flex:'none',lineHeight:1}} onClick={()=>setOpen(false)} aria-label="Close">×</button><iframe title="Buy Me a Coffee" src="https://www.buymeacoffee.com/widget/page/sota56"/></div>}</>:null
 }
 
 export function BuyMeCoffeeSupport({className='',onActivate}:{className?:string;onActivate?:()=>void}){
   const [open,setOpen]=useState(false)
-  return <><button className={className} onClick={()=>{onActivate?.();setOpen(true)}}><b className="menu-icon">☕</b><span>制作者を支援</span><small>OPEN</small></button>{open&&<div className="buy-me-coffee-modal" role="dialog" aria-modal="true" aria-label="Buy Me a Coffee"><button className="buy-me-coffee-modal-close" onClick={()=>setOpen(false)} aria-label="Close">×</button><iframe title="Buy Me a Coffee" src="https://www.buymeacoffee.com/widget/page/sota56"/></div>}</>
+  return <><button type="button" className={className} onClick={()=>{onActivate?.();setOpen(true)}}><b className="menu-icon">☕</b><span>制作者を支援</span><small>OPEN</small></button>{open&&<div className="buy-me-coffee-modal" role="dialog" aria-modal="true" aria-label="Buy Me a Coffee"><button type="button" className="buy-me-coffee-modal-close" style={{width:36,height:36,minWidth:36,maxWidth:36,minHeight:36,maxHeight:36,padding:0,borderRadius:'50%',display:'grid',placeItems:'center',flex:'none',lineHeight:1}} onClick={()=>setOpen(false)} aria-label="Close">×</button><iframe title="Buy Me a Coffee" src="https://www.buymeacoffee.com/widget/page/sota56"/></div>}</>
 }
