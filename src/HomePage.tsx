@@ -1,4 +1,5 @@
 import './home.css'
+import {BuyMeCoffeeButton} from './BuyMeCoffee'
 
 type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void}
 
@@ -46,6 +47,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
           <i aria-hidden="true"/>
           <a href="https://matmaker.sota56.com" target="_blank" rel="noreferrer">{ja?'おんぷマットメーカー':x[1]}</a>
         </nav>
+        <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <select className="home-language" value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="ko">한국어</option><option value="id">Bahasa Indonesia</option></select>
       </div>
     </header>
@@ -89,6 +91,6 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
       <div className="home-video-grid"><div className="home-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/9JO9FiLHzGo" title={ja?'OTO BLOGIC 関連動画':'OTO BLOGIC related video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen loading="lazy"/></div></div>
     </section>
 
-    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><span>© 2026 · POWERED BY SOTA56</span></footer>
+    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><BuyMeCoffeeButton className="footer-buy-me-coffee"/><span>© 2026 · POWERED BY SOTA56</span></footer>
   </main>
 }
