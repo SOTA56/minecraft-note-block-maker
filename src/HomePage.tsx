@@ -42,12 +42,12 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
     <header className="home-header">
       <a className="home-brand" href="#top" aria-label="OTO BLOGIC"><img src="/assets/branding/oto-blogic-icon.svg" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></a>
       <div className="home-header-actions">
+        <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
           <button onClick={onCreators}>{ja?'制作者':x[0]}</button>
           <i aria-hidden="true"/>
           <a href="https://matmaker.sota56.com" target="_blank" rel="noreferrer">{ja?'おんぷマットメーカー':x[1]}</a>
         </nav>
-        <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <select className="home-language" value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="ko">한국어</option><option value="id">Bahasa Indonesia</option></select>
       </div>
     </header>

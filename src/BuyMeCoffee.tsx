@@ -33,7 +33,7 @@ export function BuyMeCoffeeWidget(){
     script.dataset.id='sota56'
     script.dataset.description='Support me on Buy me a coffee!'
     script.dataset.message='Like this site? Please consider supporting it!'
-    script.dataset.color='#5F7FFF'
+    script.dataset.color='#FFDD00'
     script.dataset.position='Right'
     script.dataset.x_margin='18'
     script.dataset.y_margin='18'
