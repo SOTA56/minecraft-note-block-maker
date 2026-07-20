@@ -91,7 +91,7 @@ export default function PlacementGuidePage({language,setLanguage,onBack,onHome,o
   const imageAlt={flat:t.flat,raised:t.raised,pitch:t.pitch,start:t.start,layers:t.layers}
   return <main className="placement-page" lang={language}>
     <header className="placement-header">
-      <button className="placement-brand" onClick={onHome} aria-label={t.home}><img src="/assets/branding/oto-blogic-icon.svg" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></button>
+      <button className="placement-brand" onClick={onHome} aria-label={t.home}><img src="/assets/branding/oto-blogic-icon-04.png" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></button>
       <div className="placement-header-actions"><button className="placement-back" onClick={onBack}>← <span className="placement-back-long">{t.back}</span><span className="placement-back-short">{t.backShort}</span></button><select className="placement-language" value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language">{languageOptions.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></div>
     </header>
     <section className="placement-hero"><small>HOW TO BUILD</small><h1>{t.title}</h1><p>{t.lead}</p></section>

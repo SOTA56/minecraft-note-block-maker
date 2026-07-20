@@ -56,7 +56,7 @@ export default function ResourcePackPage({language,setLanguage,onHome}:Props){
   const selected=packs.find(pack=>pack.file===selectedFile)??packs[0]
   return <main className="resource-pack-page">
     <header className="resource-pack-header">
-      <button className="resource-pack-brand" onClick={onHome} aria-label={t.home}><img src="/assets/branding/oto-blogic-icon.svg" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></button>
+      <button className="resource-pack-brand" onClick={onHome} aria-label={t.home}><img src="/assets/branding/oto-blogic-icon-04.png" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></button>
       <div><button className="resource-pack-home" onClick={onHome}>← {t.home}</button><select value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language">{languageOptions.map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></div>
     </header>
     <section className="resource-pack-hero">

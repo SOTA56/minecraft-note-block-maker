@@ -37,7 +37,7 @@ export default function CreatorsPage({language,setLanguage,onBack,onStart}:Props
   return <main className="creators-page">
     <BuyMeCoffeeWidget/>
     <header className="creators-topbar">
-      <button className="creators-brand" onClick={onBack} aria-label={ja?'ホームへ戻る':'Back to home'}><img src="/assets/branding/oto-blogic-icon.svg" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></button>
+      <button className="creators-brand" onClick={onBack} aria-label={ja?'ホームへ戻る':'Back to home'}><img src="/assets/branding/oto-blogic-icon-04.png" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></button>
       <select value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="ko">한국어</option><option value="id">Bahasa Indonesia</option></select>
     </header>
 

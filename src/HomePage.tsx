@@ -40,7 +40,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
   const facts=heroFacts[language]??heroFacts.en
   return <main className="home-page">
     <header className="home-header">
-      <a className="home-brand" href="#top" aria-label="OTO BLOGIC"><img src="/assets/branding/oto-blogic-icon.svg" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></a>
+      <a className="home-brand" href="#top" aria-label="OTO BLOGIC"><img src="/assets/branding/oto-blogic-icon-04.png" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></a>
       <div className="home-header-actions">
         <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
@@ -82,7 +82,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
     </section>
 
     <section className="home-final">
-      <img src="/assets/branding/oto-blogic-icon.svg" alt=""/>
+      <img src="/assets/branding/oto-blogic-icon-04.png" alt=""/>
       <small>YOUR SOUND. YOUR LOGIC.</small>
       <h2>{ja?'最初の1音を、\n置いてみよう。':x[22]}</h2>
       <button onClick={onStart}>{ja?'OTO BLOGICを開く':x[23]}<b>→</b></button>
