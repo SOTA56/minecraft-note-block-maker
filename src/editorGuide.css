@@ -1,2 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
 .editor-guide-page{--blue:#129af3;--yellow:#ffbe0b;min-height:100dvh;background:#090d0f;color:#f1f0e8;font-family:'IBM Plex Mono',monospace}.editor-guide-topbar{display:flex;min-height:74px;align-items:center;justify-content:space-between;padding:calc(9px + env(safe-area-inset-top)) 16px 9px;border-bottom:1px solid #26363d;background:#0b1113}.editor-guide-brand{display:flex;align-items:center;gap:9px;padding:0;border:0;background:none}.editor-guide-brand img:first-child{width:40px;height:40px}.editor-guide-brand img:last-child{width:126px;image-rendering:pixelated}.editor-guide-topbar>div{display:flex;align-items:center;gap:8px}.editor-guide-back,.editor-guide-topbar select{height:36px;border:1px solid #276f98;background:#10202a;color:#9ddcff;font:700 9px 'IBM Plex Mono'}.editor-guide-back{padding:0 10px}.editor-guide-topbar select{width:96px;padding:0 8px;text-align:center}.editor-guide-hero{padding:54px 18px 48px;background:radial-gradient(circle at 95% 5%,#0b5b8f77,transparent 42%),#0a1013}.editor-guide-hero small{color:var(--yellow);font-size:9px;font-weight:700;letter-spacing:.16em}.editor-guide-hero h1{max-width:760px;margin:12px 0 20px;font:38px/1.06 'Archivo Black';letter-spacing:-.035em}.editor-guide-hero p{max-width:720px;margin:0;color:#bcc8c6;font-size:12px;line-height:1.9}.editor-guide-content{padding:0 18px 60px}.editor-guide-section{padding:46px 0 8px;border-bottom:1px solid #334147}.editor-guide-section>header{display:grid;grid-template-columns:36px 1fr;gap:10px;margin-bottom:22px}.editor-guide-section>header>b{color:var(--blue);font:12px 'Archivo Black'}.editor-guide-section h2{margin:0 0 7px;font:24px/1.1 'Archivo Black'}.editor-guide-section>header p{margin:0;color:#8f9d9a;font-size:10px;line-height:1.7}.editor-guide-grid{display:grid;gap:10px}.editor-guide-grid article{display:grid;grid-template-columns:54px 1fr;gap:13px;min-height:92px;padding:15px;border:1px solid #2f4045;background:#101719}.editor-guide-icon{display:grid;width:50px;height:50px;place-items:center;border:1px solid #318cca;background:#102734;color:#8ed8ff;font:16px 'Archivo Black';text-align:center}.editor-guide-icon img{display:block;width:25px;height:25px;object-fit:contain}.editor-guide-icon.invert img{filter:invert(1)}.editor-guide-icon.danger{border-color:#9a463a;background:#2d1714;color:#ff7764}.editor-guide-grid h3{margin:2px 0 7px;font:14px 'Archivo Black'}.editor-guide-grid p{margin:0;color:#aeb9b6;font-size:10px;line-height:1.75}.editor-guide-footer{display:grid;gap:24px;padding:48px 18px calc(30px + env(safe-area-inset-bottom));background:#0b1113}.editor-guide-footer button{height:56px;border:1px solid #369ddd;background:var(--blue);color:#071116;font:13px 'Archivo Black'}.editor-guide-footer span{color:#687673;font-size:8px;text-align:center}@media(max-width:520px){.editor-guide-brand img:last-child{width:103px}.editor-guide-topbar{padding-inline:10px}.editor-guide-topbar>div{gap:5px}.editor-guide-back{padding-inline:7px;font-size:8px}.editor-guide-topbar select{width:82px;font-size:9px}.editor-guide-hero h1{font-size:33px}.editor-guide-grid article{grid-template-columns:48px 1fr;padding:12px}.editor-guide-icon{width:44px;height:44px}}@media(min-width:700px){.editor-guide-topbar,.editor-guide-hero,.editor-guide-content,.editor-guide-footer{padding-right:max(18px,calc((100vw - 960px)/2));padding-left:max(18px,calc((100vw - 960px)/2))}.editor-guide-hero h1{font-size:52px}.editor-guide-grid{grid-template-columns:1fr 1fr}.editor-guide-footer button{width:420px;justify-self:center}}
+
+.editor-guide-section>header>b{font-size:18px;line-height:1}
+.editor-guide-section>header p,.editor-guide-grid p{white-space:pre-line}
+.editor-guide-copy-desktop{display:none}
+.editor-guide-copy-mobile{display:inline}
+
+@media(min-width:700px){
+  .editor-guide-hero p{font-size:14px}
+  .editor-guide-section>header{grid-template-columns:54px 1fr;gap:14px}
+  .editor-guide-section>header>b{font-size:24px}
+  .editor-guide-section h2{font-size:28px}
+  .editor-guide-section>header p{font-size:13px;line-height:1.8}
+  .editor-guide-grid{gap:12px}
+  .editor-guide-grid article{grid-template-columns:60px 1fr;gap:16px;min-height:112px;padding:18px}
+  .editor-guide-icon{width:56px;height:56px;font-size:18px}
+  .editor-guide-icon img{width:29px;height:29px}
+  .editor-guide-grid h3{font-size:16px}
+  .editor-guide-grid p{font-size:12px;line-height:1.8}
+  .editor-guide-copy-mobile{display:none}
+  .editor-guide-copy-desktop{display:inline}
+}
