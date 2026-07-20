@@ -1,6 +1,6 @@
 import './placement.css'
 
-type Props={language:string;setLanguage:(language:string)=>void;onBack:()=>void;onHome:()=>void}
+type Props={language:string;setLanguage:(language:string)=>void;onBack:()=>void;onHome:()=>void;onResourcePack:()=>void}
 
 const languageOptions=[
   ['ja','日本語'],['en','English'],['es','Español'],['fr','Français'],['de','Deutsch'],
@@ -73,8 +73,21 @@ const copy={
   }
 } as const
 
-export default function PlacementGuidePage({language,setLanguage,onBack,onHome}:Props){
+const resourcePackCopy:Record<string,{caption:string;button:string;javaOnly:string}>={
+  ja:{caption:'OTO BLOGIC VISUALSを使うと、音符ブロックの音程や音の種類をゲーム内で見分けやすくなります。',button:'リソースパックをダウンロード',javaOnly:'Minecraft Java版専用です。統合版（Bedrock版）では使用できません。'},
+  en:{caption:'OTO BLOGIC VISUALS makes note-block pitches and sound types easier to identify in the game.',button:'DOWNLOAD THE RESOURCE PACK',javaOnly:'For Minecraft Java Edition only. It does not work in Bedrock Edition.'},
+  es:{caption:'OTO BLOGIC VISUALS permite distinguir mejor las notas y los tipos de sonido dentro del juego.',button:'DESCARGAR EL PAQUETE',javaOnly:'Solo para Minecraft Java Edition. No funciona en Bedrock Edition.'},
+  fr:{caption:'OTO BLOGIC VISUALS aide à reconnaître les hauteurs et les types de son directement dans le jeu.',button:'TÉLÉCHARGER LE PACK',javaOnly:'Uniquement pour Minecraft Java Edition. Incompatible avec Bedrock Edition.'},
+  de:{caption:'OTO BLOGIC VISUALS macht Tonhöhen und Klangarten direkt im Spiel leichter erkennbar.',button:'RESSOURCENPAKET LADEN',javaOnly:'Nur für Minecraft Java Edition. Nicht mit Bedrock Edition kompatibel.'},
+  zh:{caption:'使用 OTO BLOGIC VISUALS，可以在游戏中更容易分辨音符盒的音高和声音种类。',button:'下载资源包',javaOnly:'仅适用于 Minecraft Java 版，不支持基岩版。'},
+  'zh-tw':{caption:'使用 OTO BLOGIC VISUALS，可以在遊戲中更容易分辨音階盒的音高與聲音種類。',button:'下載資源包',javaOnly:'僅適用於 Minecraft Java 版，不支援基岩版。'},
+  ko:{caption:'OTO BLOGIC VISUALS를 사용하면 게임 안에서 소리 블록의 음높이와 소리 종류를 쉽게 구분할 수 있습니다.',button:'리소스 팩 다운로드',javaOnly:'Minecraft Java Edition 전용이며 Bedrock Edition에서는 사용할 수 없습니다.'},
+  id:{caption:'OTO BLOGIC VISUALS membantu membedakan nada dan jenis suara note block langsung di dalam game.',button:'UNDUH RESOURCE PACK',javaOnly:'Khusus Minecraft Java Edition. Tidak dapat digunakan di Bedrock Edition.'},
+}
+
+export default function PlacementGuidePage({language,setLanguage,onBack,onHome,onResourcePack}:Props){
   const t=copy[language as keyof typeof copy]??copy.en
+  const resourcePack=resourcePackCopy[language]??resourcePackCopy.en
   const imageAlt={flat:t.flat,raised:t.raised,pitch:t.pitch,start:t.start,layers:t.layers}
   return <main className="placement-page" lang={language}>
     <header className="placement-header">
@@ -84,7 +97,7 @@ export default function PlacementGuidePage({language,setLanguage,onBack,onHome}:
     <section className="placement-hero"><small>HOW TO BUILD</small><h1>{t.title}</h1><p>{t.lead}</p></section>
     <div className="placement-content">
       <section className="placement-section"><h2>{t.basic}</h2><p>{t.basicText}</p><div className="placement-image-grid"><figure><img src="/assets/placement/flat-placement.png" alt={imageAlt.flat}/><figcaption><b>{t.flat}</b><span>{t.flatText}</span></figcaption></figure><figure><img src="/assets/placement/raised-placement.png" alt={imageAlt.raised}/><figcaption><b>{t.raised}</b><span>{t.raisedText}</span></figcaption></figure></div></section>
-      <section className="placement-section"><h2>{t.pitch}</h2><p>{t.pitchText}</p><figure className="wide-image"><img src="/assets/placement/note-block-clicks.png" alt={imageAlt.pitch}/><figcaption>{t.pitchCaption}</figcaption></figure></section>
+      <section className="placement-section"><h2>{t.pitch}</h2><p>{t.pitchText}</p><figure className="wide-image"><img src="/assets/placement/note-block-clicks.png" alt={imageAlt.pitch}/><figcaption>{t.pitchCaption}</figcaption></figure><aside className="placement-resource-pack"><figure><img src="/assets/resource-pack/visuals-in-game.jpg" alt="OTO BLOGIC VISUALS"/><figcaption>{resourcePack.caption}</figcaption></figure><div><strong>OTO BLOGIC VISUALS</strong><p>{resourcePack.javaOnly}</p><button onClick={onResourcePack}>{resourcePack.button} →</button></div></aside></section>
       <section className="placement-section"><h2>{t.repeater}</h2><p>{t.repeaterText}</p><div className="repeater-examples">{[1,2,3,4].map(n=><figure key={n}><img src={`/assets/placement/repeater-delay-${n}.png`} alt={`${t.repeater} ${n}`}/><figcaption><span className="repeater-label"><i className="placement-repeater delay-mark right"><b>{n}</b></i><strong>{t.delay} {n}</strong></span><span className="repeater-label"><i className="placement-repeater click-mark right"><b>{n-1}</b></i><strong>{t.clicks} {n-1}</strong></span></figcaption></figure>)}</div><p className="repeater-operation">{t.repeaterOperation}</p></section>
       <section className="placement-section"><h2>{t.start}</h2><p>{t.startText}</p><figure className="wide-image"><img src="/assets/placement/start-button.png" alt={imageAlt.start}/><figcaption>{t.startText}</figcaption></figure></section>
       <section className="placement-section"><h2>{t.layers}</h2><p>{t.layersText}</p><div className="placement-image-grid"><figure><img src="/assets/placement/compact-layer-stack.png" alt={imageAlt.layers}/><figcaption>{t.layersText}</figcaption></figure><figure><img src="/assets/placement/compact-layer-connect.png" alt={t.layerConnect}/><figcaption>{t.layerConnect}</figcaption></figure></div></section>

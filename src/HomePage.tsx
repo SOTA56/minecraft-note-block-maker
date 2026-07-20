@@ -1,7 +1,7 @@
 import './home.css'
 import {BuyMeCoffeeButton} from './BuyMeCoffee'
 
-type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void}
+type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void;onResourcePack:()=>void}
 
 const notes=[
   {x:2,y:2,c:'#35a9ec'},{x:5,y:3,c:'#35a9ec'},{x:8,y:4,c:'#f4ca3e'},
@@ -34,7 +34,7 @@ const homeLocales:Record<string,string[]>={
   id:['KREATOR','ONPU MAT MAKER','LETAKKAN NOT.', 'RANGKAIAN SELESAI.','Susun not dengan mudah lalu buat denah rangkaian Minecraft secara otomatis. Untuk pemula dan mahir, anak-anak dan dewasa.','MULAI MEMBUAT MUSIK','PIANO ROLL','Intuitif dan lengkap. Di ponsel, gulir vertikal memaksimalkan ruang layar.','LIHAT SUARANYA.\nTAK PERLU BINGUNG.','TINGGI DAN POSISI TERLIHAT','Ganti nama not dan jumlah klik, lalu dengarkan sebelum meletakkan not.','20 TRACK. 20 WARNA SUARA.','Gabungkan akor, instrumen, volume, PAN, dan ghost note.','DARI NOT KE BLOK','Buat denah Easy, Compact, atau Fishbone.','PILIH RANGKAIAN\nSESUAI TUJUAN.','RANGKAIAN EASY','Jelas dan mudah dibangun.','RANGKAIAN COMPACT','Lagu panjang dalam ruang lebih kecil.','FISHBONE','Untuk pertunjukan sambil bergerak.','LETAKKAN\nNOT PERTAMA.','BUKA OTO BLOGIC','VIDEO TERKAIT']
 }
 
-export default function HomePage({language,setLanguage,onStart,onCreators}:Props){
+export default function HomePage({language,setLanguage,onStart,onCreators,onResourcePack}:Props){
   const ja=language==='ja'
   const x=homeLocales[language]??homeLocales.en
   const facts=heroFacts[language]??heroFacts.en
@@ -44,6 +44,8 @@ export default function HomePage({language,setLanguage,onStart,onCreators}:Props
       <div className="home-header-actions">
         <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
+          <button onClick={onResourcePack}>{ja?'リソースパック':'RESOURCE PACK'}</button>
+          <i aria-hidden="true"/>
           <button onClick={onCreators}>{ja?'制作者':x[0]}</button>
           <i aria-hidden="true"/>
           <a href="https://matmaker.sota56.com" target="_blank" rel="noreferrer">{ja?'おんぷマットメーカー':x[1]}</a>
