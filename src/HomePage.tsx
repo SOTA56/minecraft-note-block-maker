@@ -46,9 +46,9 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
         <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
           <a className="home-x-link" href="https://x.com/OTOBLOGIC" target="_blank" rel="noreferrer" aria-label="OTO BLOGIC on X"><span aria-hidden="true">𝕏</span></a>
           <i aria-hidden="true"/>
-          <button onClick={onResourcePack}>{ja?'リソースパック':'RESOURCE PACK'}</button>
+          <a href="/resource-pack" onClick={event=>{event.preventDefault();onResourcePack()}}>{ja?'リソースパック':'RESOURCE PACK'}</a>
           <i aria-hidden="true"/>
-          <button onClick={onCreators}>{ja?'制作者':x[0]}</button>
+          <a href="/creators" onClick={event=>{event.preventDefault();onCreators()}}>{ja?'制作者':x[0]}</a>
           <i aria-hidden="true"/>
           <a href="https://matmaker.sota56.com" target="_blank" rel="noreferrer">{ja?'おんぷマットメーカー':x[1]}</a>
         </nav>
@@ -96,7 +96,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
     </section>
 
     <aside className="home-unofficial">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</aside>
-    <nav className="home-legal-links"><button onClick={onTerms}>{ja?'利用規約':'TERMS'}</button><i/><button onClick={onPrivacy}>{ja?'プライバシーポリシー':'PRIVACY'}</button><i/><button onClick={()=>window.openCookieSettings?.()}>{ja?'Cookie設定':'COOKIE SETTINGS'}</button></nav>
+    <nav className="home-legal-links"><a href="/terms" onClick={event=>{event.preventDefault();onTerms()}}>{ja?'利用規約':'TERMS'}</a><i/><a href="/privacy" onClick={event=>{event.preventDefault();onPrivacy()}}>{ja?'プライバシーポリシー':'PRIVACY'}</a><i/><button onClick={()=>window.openCookieSettings?.()}>{ja?'Cookie設定':'COOKIE SETTINGS'}</button></nav>
     <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><span>© 2026 · POWERED BY SOTA56</span></footer>
   </main>
 }

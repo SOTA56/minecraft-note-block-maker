@@ -15,6 +15,17 @@ import LegalPage from './LegalPages'
 type AppView='home'|'editor'|'blueprint'|'creators'|'guide'|'placement'|'resource-pack'|'terms'|'privacy'
 const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':path==='/placement'?'placement':path==='/resource-pack'?'resource-pack':path==='/terms'?'terms':path==='/privacy'?'privacy':'home'
 const pathFromView=(view:AppView)=>view==='home'?'/':`/${view}`
+const PAGE_SEO:Record<AppView,{title:string;description:string;index:boolean}>={
+  home:{title:'OTO BLOGIC｜Minecraft音符ブロック作曲・回路設計図メーカー',description:'OTO BLOGICは、Minecraftの音符ブロック演奏をピアノロールで作曲し、回路設計図を自動生成できる無料Webツールです。',index:true},
+  editor:{title:'打ち込み画面｜OTO BLOGIC',description:'OTO BLOGICの音符ブロック演奏用ピアノロールです。',index:false},
+  blueprint:{title:'回路設計図｜OTO BLOGIC',description:'OTO BLOGICで作成した曲のMinecraft音符ブロック回路設計図です。',index:false},
+  creators:{title:'制作者・監修｜OTO BLOGIC',description:'Minecraft音符ブロック作曲・回路設計図メーカー OTO BLOGICの制作者と監修者を紹介します。',index:true},
+  guide:{title:'打ち込み画面の使い方｜OTO BLOGIC',description:'OTO BLOGICのピアノロールでMinecraft音符ブロック演奏を作る操作方法を紹介します。',index:true},
+  placement:{title:'音符ブロック回路の設置方法｜OTO BLOGIC',description:'OTO BLOGICの設計図を見ながらMinecraftで音符ブロック回路を組み立てる方法を紹介します。',index:true},
+  'resource-pack':{title:'OTO BLOGIC VISUALS｜音符ブロック用リソースパック',description:'Minecraft Java版の音符ブロックとリピーターを読み取りやすくする公式リソースパックです。',index:true},
+  terms:{title:'利用規約｜OTO BLOGIC',description:'OTO BLOGICの利用規約です。',index:true},
+  privacy:{title:'プライバシーポリシー｜OTO BLOGIC',description:'OTO BLOGICのプライバシーポリシーです。',index:true},
+}
 
 const COLORS = ['#ef5b3d','#e9b949','#68c3a3','#58a6d6','#a78bca','#ef83ad','#8ec45b','#e68245','#55c7c2','#d66fa8','#9bb95e','#cb765f','#6f9ed8','#c3a457','#67b97a','#d57cce','#6bb3df','#d99a62','#8e86d5','#b6b86a']
 const INSTRUMENTS = [
@@ -106,6 +117,14 @@ function App() {
   useEffect(()=>{
     document.body.classList.toggle('editor-viewport-locked',view==='editor')
     return()=>document.body.classList.remove('editor-viewport-locked')
+  },[view])
+
+  useEffect(()=>{
+    const seo=PAGE_SEO[view]
+    document.title=seo.title
+    document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content',seo.description)
+    document.querySelector<HTMLMetaElement>('meta[name="robots"]')?.setAttribute('content',seo.index?'index,follow,max-image-preview:large':'noindex,follow')
+    document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href',`https://otoblogic.com${pathFromView(view)}`)
   },[view])
 
   useEffect(()=>{
