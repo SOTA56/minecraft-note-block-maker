@@ -4,6 +4,7 @@
 .editor-guide-section>header>b{font-size:18px;line-height:1}
 .editor-guide-section>header p,.editor-guide-grid p{white-space:pre-line}
 .editor-guide-copy-desktop{display:none}
+.editor-guide-shortcut{display:none}
 
 /* Match the landing-page language control at every viewport size. */
 .editor-guide-topbar select{width:104px;height:38px;padding:0 24px 0 8px;border:1px solid #257aac;border-radius:0;-webkit-appearance:none;appearance:none;background-color:#0c1b22;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23a8dcfb' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center;background-size:10px 6px;color:#a8dcfb;font:700 12px 'IBM Plex Mono';text-align:center;text-align-last:center}
@@ -24,4 +25,9 @@
   .editor-guide-grid p{font-size:12px;line-height:1.8}
   .editor-guide-copy-mobile{display:none}
   .editor-guide-copy-desktop{display:inline}
+}
+
+@media(min-width:900px){
+  .editor-guide-shortcut{display:inline-flex;align-items:center;gap:9px;margin-top:11px;padding:6px 9px;border-left:3px solid var(--yellow);background:#13242b;color:#c9d7d5;font:600 11px/1.45 'IBM Plex Mono';white-space:pre-line}
+  .editor-guide-shortcut b{color:var(--yellow);font-size:9px;letter-spacing:.04em;text-transform:uppercase}
 }

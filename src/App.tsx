@@ -452,8 +452,9 @@ function App() {
     if(!desktopLayout||view!=='editor')return
     const handleShortcut=(event:KeyboardEvent)=>{
       const target=event.target as HTMLElement|null
-      if(target&&(target.matches('input,textarea,select')||target.isContentEditable))return
+      if(target&&(target.matches('input,textarea,select,button,a')||target.isContentEditable))return
       const key=event.key.toLowerCase(),command=event.ctrlKey||event.metaKey
+      if(event.code==='Space'&&!event.repeat){event.preventDefault();void togglePlay();return}
       if(command&&key==='c'&&normalizedSelection){event.preventDefault();copySelection();return}
       if(command&&key==='x'&&normalizedSelection){event.preventDefault();cutSelection();return}
       if(command&&key==='v'&&copiedNotes?.notes.length){event.preventDefault();pasteSelection();return}
@@ -462,7 +463,7 @@ function App() {
     }
     window.addEventListener('keydown',handleShortcut)
     return()=>window.removeEventListener('keydown',handleShortcut)
-  },[desktopLayout,view,normalizedSelection,copiedNotes,project,activeId,playhead])
+  },[desktopLayout,view,normalizedSelection,copiedNotes,project,activeId,playhead,playingStep])
 
   if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>openView('editor')} onCreators={()=>openView('creators')} onResourcePack={()=>openView('resource-pack')}/>
   if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openView('home')} onStart={()=>openView('editor')}/>
