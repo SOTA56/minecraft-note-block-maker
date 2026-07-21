@@ -1,7 +1,7 @@
 import './home.css'
 import {BuyMeCoffeeButton} from './BuyMeCoffee'
 
-type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void;onResourcePack:()=>void}
+type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void;onResourcePack:()=>void;onTerms:()=>void;onPrivacy:()=>void}
 
 const notes=[
   {x:2,y:2,c:'#35a9ec'},{x:5,y:3,c:'#35a9ec'},{x:8,y:4,c:'#f4ca3e'},
@@ -34,7 +34,7 @@ const homeLocales:Record<string,string[]>={
   id:['KREATOR','ONPU MAT MAKER','LETAKKAN NOT.', 'RANGKAIAN SELESAI.','Susun not dengan mudah lalu buat denah rangkaian Minecraft secara otomatis. Untuk pemula dan mahir, anak-anak dan dewasa.','MULAI MEMBUAT MUSIK','PIANO ROLL','Intuitif dan lengkap. Di ponsel, gulir vertikal memaksimalkan ruang layar.','LIHAT SUARANYA.\nTAK PERLU BINGUNG.','TINGGI DAN POSISI TERLIHAT','Ganti nama not dan jumlah klik, lalu dengarkan sebelum meletakkan not.','20 TRACK. 20 WARNA SUARA.','Gabungkan akor, instrumen, volume, PAN, dan ghost note.','DARI NOT KE BLOK','Buat denah Easy, Compact, atau Fishbone.','PILIH RANGKAIAN\nSESUAI TUJUAN.','RANGKAIAN EASY','Jelas dan mudah dibangun.','RANGKAIAN COMPACT','Lagu panjang dalam ruang lebih kecil.','FISHBONE','Untuk pertunjukan sambil bergerak.','LETAKKAN\nNOT PERTAMA.','BUKA OTO BLOGIC','VIDEO TERKAIT']
 }
 
-export default function HomePage({language,setLanguage,onStart,onCreators,onResourcePack}:Props){
+export default function HomePage({language,setLanguage,onStart,onCreators,onResourcePack,onTerms,onPrivacy}:Props){
   const ja=language==='ja'
   const x=homeLocales[language]??homeLocales.en
   const facts=heroFacts[language]??heroFacts.en
@@ -95,6 +95,8 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
       <div className="home-video-grid"><div className="home-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/9JO9FiLHzGo" title={ja?'OTO BLOGIC 関連動画':'OTO BLOGIC related video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen loading="lazy"/></div></div>
     </section>
 
+    <aside className="home-unofficial">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</aside>
+    <nav className="home-legal-links"><button onClick={onTerms}>{ja?'利用規約':'TERMS'}</button><i/><button onClick={onPrivacy}>{ja?'プライバシーポリシー':'PRIVACY'}</button><i/><button onClick={()=>window.openCookieSettings?.()}>{ja?'Cookie設定':'COOKIE SETTINGS'}</button></nav>
     <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><BuyMeCoffeeButton className="footer-buy-me-coffee"/><span>© 2026 · POWERED BY SOTA56</span></footer>
   </main>
 }
