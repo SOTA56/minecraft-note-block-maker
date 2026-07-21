@@ -15,10 +15,48 @@ const SOUND_FILES: Record<string, string> = {
   'Trumpet Oxidized': 'trumpet_oxidized',
 }
 
+const createContext = () => new AudioContext({ latencyHint: 'interactive' })
+
+const clearAudioCache = () => {
+  buffers.clear()
+  loading.clear()
+}
+
+const resumeExistingContext = () => {
+  const active = context
+  if (!active || active.state === 'running' || active.state === 'closed') return
+  // Safari can interrupt Web Audio after the tab, browser, or audio device loses focus.
+  // A later user gesture still performs the guaranteed recovery path in getContext().
+  void active.resume().catch(() => undefined)
+}
+
 const getContext = async () => {
-  context ??= new AudioContext({ latencyHint: 'interactive' })
-  if (context.state !== 'running') await context.resume()
-  return context
+  if (!context || context.state === 'closed') {
+    context = createContext()
+    clearAudioCache()
+  }
+  let active = context
+  if (active.state !== 'running') {
+    try { await active.resume() } catch { /* Recover with a fresh context below. */ }
+  }
+  if (active.state !== 'running') {
+    try { await active.close() } catch { /* Safari may already have discarded it. */ }
+    if (context === active) {
+      context = createContext()
+      clearAudioCache()
+    }
+    active = context
+    try { await active.resume() } catch { /* The next direct user gesture can try again. */ }
+  }
+  return active
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('pageshow', resumeExistingContext)
+  window.addEventListener('focus', resumeExistingContext)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') resumeExistingContext()
+  })
 }
 
 const loadBuffer = async (ctx: AudioContext, instrument: string) => {
