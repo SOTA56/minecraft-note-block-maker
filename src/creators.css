@@ -7,3 +7,7 @@
 .creators-hero{padding-top:38px;padding-bottom:38px}.creators-hero::after{display:none}.creators-hero h1{margin:0;font-size:30px;letter-spacing:-.035em}.creator-profiles{padding-top:1px}
 .message-copy p:first-child::first-letter{float:none;margin:0;color:inherit;font:inherit}
 @media(max-width:520px){.creator-copy h2{font-size:clamp(19px,5.5vw,23px);line-height:1.22;overflow-wrap:anywhere}.creator-card.yellow .creator-copy h2{font-size:clamp(18px,5.1vw,22px)}}
+
+/* Keep profile details and the creator's message comfortably readable at every breakpoint. */
+.creators-hero small,.creator-message small,.creators-cta small,.creator-copy>small{font-size:10px}.creators-hero p{font-size:14px}.creator-copy p{font-size:13px}.creator-copy a span{font-size:11px}.message-copy p{font-size:14px}.creators-footer{font-size:9px}.creators-footer button{font-size:11px}
+@media(min-width:700px){.creators-hero p{font-size:15px}.creator-copy p{font-size:14px}.creator-copy a span{font-size:12px}.message-copy p{font-size:15px}.creators-footer{font-size:10px}.creators-footer button{font-size:12px}}

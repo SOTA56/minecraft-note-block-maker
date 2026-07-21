@@ -92,11 +92,11 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
 
     <section className="home-video">
       <header><small>RELATED VIDEO</small><h2>{ja?'関連動画':x[24]}</h2></header>
-      <div className="home-video-grid"><div className="home-video-frame"><iframe src="https://www.youtube-nocookie.com/embed/9JO9FiLHzGo" title={ja?'OTO BLOGIC 関連動画':'OTO BLOGIC related video'} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen loading="lazy"/></div></div>
+      <div className="home-video-grid"><div className="home-video-frame home-video-placeholder" aria-label={ja?'関連動画は準備中です':'Related videos are coming soon'}><span>COMING SOON</span></div></div>
     </section>
 
     <aside className="home-unofficial">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</aside>
     <nav className="home-legal-links"><button onClick={onTerms}>{ja?'利用規約':'TERMS'}</button><i/><button onClick={onPrivacy}>{ja?'プライバシーポリシー':'PRIVACY'}</button><i/><button onClick={()=>window.openCookieSettings?.()}>{ja?'Cookie設定':'COOKIE SETTINGS'}</button></nav>
-    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><BuyMeCoffeeButton className="footer-buy-me-coffee"/><span>© 2026 · POWERED BY SOTA56</span></footer>
+    <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><span>© 2026 · POWERED BY SOTA56</span></footer>
   </main>
 }
