@@ -44,6 +44,8 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
       <div className="home-header-actions">
         <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
+          <a className="home-x-link" href="https://x.com/OTOBLOGIC" target="_blank" rel="noreferrer" aria-label="OTO BLOGIC on X"><span aria-hidden="true">𝕏</span></a>
+          <i aria-hidden="true"/>
           <button onClick={onResourcePack}>{ja?'リソースパック':'RESOURCE PACK'}</button>
           <i aria-hidden="true"/>
           <button onClick={onCreators}>{ja?'制作者':x[0]}</button>

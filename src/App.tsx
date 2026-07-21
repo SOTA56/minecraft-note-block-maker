@@ -484,12 +484,12 @@ function App() {
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><input aria-label={language==='ja'?'小節数を入力':'Enter bars'} type="text" inputMode="numeric" value={barsDraft} onChange={event=>setBarsDraft(event.target.value.replace(/[^0-9]/g,''))} onBlur={event=>applyBars(event.currentTarget.value)} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur()}}/><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
-      <button className="desktop-transport-menu" onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-label={c[17]}><span className="hamburger-icon" aria-hidden="true"/></button>
+      <button className={`desktop-transport-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-label={c[17]} aria-expanded={menuOpen}><span className="hamburger-icon" aria-hidden="true"/></button>
     </section>
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
       <button className="track-main" onClick={() => toggleTrackPanel('tracks')}><span className={`block-chip ${instrument.texture}`}>{String(project.tracks.indexOf(active) + 1).padStart(2, '0')}</span><span><small>{t.activeTrack}</small><strong>{active.name}</strong></span><b>{panel === 'tracks' ? '⌃' : '⌄'}</b></button>
-      <button className="track-settings-trigger" onClick={() => toggleTrackPanel('settings')}><img src="/assets/icons/settings.svg" alt="" aria-hidden="true" /><small>{language === 'ja' ? 'トラック設定' : 'TRACK SET'}</small></button>
+      <button className={`track-settings-trigger ${panel==='settings'?'active':''}`} onClick={() => toggleTrackPanel('settings')} aria-expanded={panel==='settings'}><img src="/assets/icons/settings.svg" alt="" aria-hidden="true" /><small>{language === 'ja' ? 'トラック設定' : 'TRACK SET'}</small></button>
       <button className={ghosts ? 'on' : ''} onClick={() => setGhosts(!ghosts)}><GhostIcon /><small>{t.ghost}</small></button>
     </section>
 
@@ -516,7 +516,7 @@ function App() {
       <button className={`desktop-utility delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false);setPanel(null)}}><span className="tool-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
       <button className={`desktop-utility desktop-track-settings ${panel==='settings'?'active':''}`} onClick={()=>toggleTrackPanel('settings')}><img className="tool-icon" src="/assets/icons/settings.svg" alt="" aria-hidden="true"/><small>{language==='ja'?'トラック設定':'TRACK SET'}</small></button>
       <button className={`desktop-utility desktop-ghost-toggle ${ghosts?'active':''}`} onClick={()=>setGhosts(!ghosts)}><GhostIcon/><small>{t.ghost}</small></button>
-      <button className="desktop-utility desktop-menu" onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`desktop-utility desktop-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
       <button className="zoom-out" onClick={() => zoomSteps(-4)}><span className="tool-icon">−</span><small>{c[15]}</small></button>
       <button className="zoom-in" onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
@@ -561,7 +561,7 @@ function App() {
     <footer className="dock">
       <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="dock-icon">↶</span><small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="dock-icon">↷</span><small>REDO</small></button>
       <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false);setPanel(null)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
-      <button className="dock-menu" onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`dock-menu ${menuOpen?'active':''}`} onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".obg,.nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>

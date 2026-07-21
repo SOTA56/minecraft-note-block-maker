@@ -85,6 +85,18 @@ const resourcePackCopy:Record<string,{caption:string;button:string;javaOnly:stri
   id:{caption:'OTO BLOGIC VISUALS membantu membedakan nada dan jenis suara note block langsung di dalam game.',button:'UNDUH RESOURCE PACK',javaOnly:'Khusus Minecraft Java Edition. Tidak dapat digunakan di Bedrock Edition.'},
 }
 
+const useControlNotes:Record<string,string>={
+  ja:'※このページの「右クリック」は、ブロックや道具を使う操作です。スマホでは対象をタップ、Nintendo Switchなどのコントローラーでは左トリガー（Switchの初期設定はZL）に相当します。操作設定を変えている場合は「使う／ブロックを置く」に割り当てたボタンを使ってください。',
+  en:'Note: “Right-click” on this page means the Use / Place Block action. On touch devices, tap the target. On a controller, use the left trigger (ZL by default on Nintendo Switch). If you changed the controls, use the button assigned to Use / Place Block.',
+  es:'Nota: «Clic derecho» significa la acción Usar / Colocar bloque. En pantalla táctil, toca el objetivo. Con mando, usa el gatillo izquierdo (ZL por defecto en Nintendo Switch).',
+  fr:'Remarque : «clic droit» désigne l’action Utiliser / Placer un bloc. Sur écran tactile, touchez la cible. Avec une manette, utilisez la gâchette gauche (ZL par défaut sur Nintendo Switch).',
+  de:'Hinweis: „Rechtsklick“ meint die Aktion Benutzen / Block platzieren. Auf Touch-Geräten tippst du das Ziel an. Am Controller nutzt du den linken Trigger (auf Nintendo Switch standardmäßig ZL).',
+  zh:'注：本页的“右键”指“使用物品／放置方块”操作。手机上请点按目标；手柄上请按左扳机键（Nintendo Switch 默认为 ZL）。',
+  'zh-tw':'※本頁的「右鍵」是指「使用物品／放置方塊」操作。手機上請點選目標；控制器請按左扳機鍵（Nintendo Switch 預設為 ZL）。',
+  ko:'※이 페이지의 ‘오른쪽 클릭’은 아이템 사용 / 블록 놓기 조작입니다. 모바일에서는 대상을 누르고, 컨트롤러에서는 왼쪽 트리거(Nintendo Switch 기본 ZL)를 사용하세요.',
+  id:'Catatan: “Klik kanan” berarti tindakan Gunakan / Letakkan Blok. Pada layar sentuh, ketuk target. Pada kontroler, gunakan pemicu kiri (ZL secara default di Nintendo Switch).'
+}
+
 export default function PlacementGuidePage({language,setLanguage,onBack,onHome,onResourcePack}:Props){
   const t=copy[language as keyof typeof copy]??copy.en
   const resourcePack=resourcePackCopy[language]??resourcePackCopy.en
@@ -97,7 +109,7 @@ export default function PlacementGuidePage({language,setLanguage,onBack,onHome,o
     <section className="placement-hero"><small>HOW TO BUILD</small><h1>{t.title}</h1><p>{t.lead}</p></section>
     <div className="placement-content">
       <section className="placement-section"><h2>{t.basic}</h2><p>{t.basicText}</p><div className="placement-image-grid"><figure><img src="/assets/placement/flat-placement.png" alt={imageAlt.flat}/><figcaption><b>{t.flat}</b><span>{t.flatText}</span></figcaption></figure><figure><img src="/assets/placement/raised-placement.png" alt={imageAlt.raised}/><figcaption><b>{t.raised}</b><span>{t.raisedText}</span></figcaption></figure></div></section>
-      <section className="placement-section"><h2>{t.pitch}</h2><p>{t.pitchText}</p><figure className="wide-image"><img src="/assets/placement/note-block-clicks.png" alt={imageAlt.pitch}/><figcaption>{t.pitchCaption}</figcaption></figure><aside className="placement-resource-pack"><figure><img src="/assets/resource-pack/visuals-in-game.jpg" alt="OTO BLOGIC VISUALS"/><figcaption>{resourcePack.caption}</figcaption></figure><div><strong>OTO BLOGIC VISUALS</strong><p>{resourcePack.javaOnly}</p><button onClick={onResourcePack}>{resourcePack.button} →</button></div></aside></section>
+      <section className="placement-section"><h2>{t.pitch}</h2><p>{t.pitchText}</p><p className="placement-control-note">{useControlNotes[language]??useControlNotes.en}</p><figure className="wide-image"><img src="/assets/placement/note-block-clicks.png" alt={imageAlt.pitch}/><figcaption>{t.pitchCaption}</figcaption></figure><aside className="placement-resource-pack"><figure><img src="/assets/resource-pack/visuals-in-game.jpg" alt="OTO BLOGIC VISUALS"/><figcaption>{resourcePack.caption}</figcaption></figure><div><strong>OTO BLOGIC VISUALS</strong><p>{resourcePack.javaOnly}</p><button onClick={onResourcePack}>{resourcePack.button} →</button></div></aside></section>
       <section className="placement-section"><h2>{t.repeater}</h2><p>{t.repeaterText}</p><div className="repeater-examples">{[1,2,3,4].map(n=><figure key={n}><img src={`/assets/placement/repeater-delay-${n}.png`} alt={`${t.repeater} ${n}`}/><figcaption><span className="repeater-label"><i className="placement-repeater delay-mark right"><b>{n}</b></i><strong>{t.delay} {n}</strong></span><span className="repeater-label"><i className="placement-repeater click-mark right"><b>{n-1}</b></i><strong>{t.clicks} {n-1}</strong></span></figcaption></figure>)}</div><p className="repeater-operation">{t.repeaterOperation}</p></section>
       <section className="placement-section"><h2>{t.start}</h2><p>{t.startText}</p><figure className="wide-image"><img src="/assets/placement/start-button.png" alt={imageAlt.start}/><figcaption>{t.startText}</figcaption></figure></section>
       <section className="placement-section"><h2>{t.layers}</h2><p>{t.layersText}</p><div className="placement-image-grid"><figure><img src="/assets/placement/compact-layer-stack.png" alt={imageAlt.layers}/><figcaption>{t.layersText}</figcaption></figure><figure><img src="/assets/placement/compact-layer-connect.png" alt={t.layerConnect}/><figcaption>{t.layerConnect}</figcaption></figure></div></section>
