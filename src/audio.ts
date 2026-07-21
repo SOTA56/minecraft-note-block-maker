@@ -65,23 +65,39 @@ const schedulePlaybackTimer = (callback: () => void, delay: number) => {
   playbackTimers.add(timer)
 }
 
-export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean;toStep?:number;noteMix?:(track:Track,note:Note)=>{volume:number;pan:number}}) {
+export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean;toStep?:number;noteMix?:(track:Track,note:Note)=>{volume:number;pan:number};getProject?:()=>Project}) {
   const token = ++stopAt
   const ctx = await getContext()
   if (stopAt !== token) return
+  const dynamicMix = Boolean(options?.getProject)
   const audible = project.tracks.filter(track => !track.muted && (!project.tracks.some(item => item.solo) || track.solo))
-  const loaded = new Map(await Promise.all([...new Set(audible.map(track => track.instrument))].map(async instrument => [instrument, await loadBuffer(ctx, instrument)] as const)))
+  // Live mute/solo changes may make any track audible after playback begins, so preload every
+  // instrument used by this project once. Static blueprint playback retains its smaller preload.
+  const instruments = dynamicMix ? project.tracks.map(track => track.instrument) : audible.map(track => track.instrument)
+  const loaded = new Map(await Promise.all([...new Set(instruments)].map(async instrument => [instrument, await loadBuffer(ctx, instrument)] as const)))
   if (stopAt !== token) return
   const firstStep = Math.max(0, Math.min(project.steps - 1, Math.round(fromStep)))
   const lastStep = Math.max(firstStep, Math.min(project.steps - 1, Math.round(options?.toStep ?? project.steps - 1)))
   const stepSeconds = 2 / project.tickRate
   const start = ctx.currentTime + 0.08
-  audible.forEach(track => track.notes.filter(note => note.step >= firstStep && note.step <= lastStep).forEach(note => {
+  if (!dynamicMix) audible.forEach(track => track.notes.filter(note => note.step >= firstStep && note.step <= lastStep).forEach(note => {
     const mix=options?.noteMix?.(track,note)
     playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - firstStep) * stepSeconds, mix?.volume??track.volume, mix?.pan??(options?.usePan===false?0:track.pan??0), true)
   }))
   for (let step = firstStep; step <= lastStep; step += 1) {
-    schedulePlaybackTimer(() => { if (stopAt === token) onStep?.(step) }, 80 + (step - firstStep) * stepSeconds * 1000)
+    schedulePlaybackTimer(() => {
+      if (stopAt !== token) return
+      if (dynamicMix) {
+        const liveProject=options?.getProject?.()
+        const liveTracks=liveProject?.tracks ?? []
+        const hasSolo=liveTracks.some(track=>track.solo)
+        liveTracks.filter(track=>!track.muted&&(!hasSolo||track.solo)).forEach(track=>track.notes.filter(note=>note.step===step).forEach(note=>{
+          const mix=options?.noteMix?.(track,note)
+          playTone(ctx,loaded.get(track.instrument)!,note.pitch,ctx.currentTime+.008,mix?.volume??track.volume,mix?.pan??(options?.usePan===false?0:track.pan??0),true)
+        }))
+      }
+      onStep?.(step)
+    }, 80 + (step - firstStep) * stepSeconds * 1000)
   }
   schedulePlaybackTimer(() => { if (stopAt === token) onStep?.(-1) }, 90 + (lastStep - firstStep + 1) * stepSeconds * 1000)
 }

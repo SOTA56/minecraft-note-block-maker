@@ -377,7 +377,7 @@ function App() {
   const isDo = (pitch: number) => pitch % 12 === 6
   const playFrom = async (step:number) => {
     stopPlayback(); setPlaybackPitches([]); setPlayingStep(step); setFollowPlayback(true); setFollowRun({id:++followIdRef.current,step}); setPlayhead(step)
-    await playProject(project,step,value=>{setPlayingStep(value);if(value<0){setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)}else setPlaybackPitches(currentTrackPitchesAt(value))})
+    await playProject(project,step,value=>{setPlayingStep(value);if(value<0){setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)}else setPlaybackPitches(currentTrackPitchesAt(value))},{getProject:()=>projectRef.current})
   }
   const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setPlaybackPitches([]); setFollowPlayback(false); setFollowRun(null) } else await playFrom(playhead) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
