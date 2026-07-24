@@ -82,13 +82,27 @@ const loadBuffer = async (ctx: AudioContext, instrument: string, edition:AudioEd
 
 const playTone = (ctx: AudioContext, buffer: AudioBuffer, pitch: number, at: number, volume: number, pan = 0, playback = false) => {
   const source = ctx.createBufferSource()
-  const gain = ctx.createGain()
-  const panner = ctx.createStereoPanner()
   source.buffer = buffer
   source.playbackRate.value = 2 ** ((pitch - 12) / 12)
-  gain.gain.value = volume
-  panner.pan.value = pan
-  source.connect(gain).connect(panner).connect(ctx.destination)
+  const needsGain = volume !== 1
+  const needsPanner = pan !== 0
+  if (!needsGain && !needsPanner) {
+    source.connect(ctx.destination)
+  } else if (needsGain && !needsPanner) {
+    const gain = ctx.createGain()
+    gain.gain.value = volume
+    source.connect(gain).connect(ctx.destination)
+  } else if (!needsGain && needsPanner) {
+    const panner = ctx.createStereoPanner()
+    panner.pan.value = pan
+    source.connect(panner).connect(ctx.destination)
+  } else {
+    const gain = ctx.createGain()
+    const panner = ctx.createStereoPanner()
+    gain.gain.value = volume
+    panner.pan.value = pan
+    source.connect(gain).connect(panner).connect(ctx.destination)
+  }
   if (playback) {
     playbackSources.add(source)
     source.addEventListener('ended', () => playbackSources.delete(source), { once: true })
