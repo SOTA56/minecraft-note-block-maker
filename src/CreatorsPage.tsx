@@ -20,6 +20,18 @@ const profiles=[
   ],bioEn:['A Minecraft educator with over 200,000 YouTube subscribers and more than 3,000 videos. Her practical guides are especially known for helping beginners through common note-block problems.','She has organized numerous community note-block performance projects with many participating players.','Her note-block circuit was featured in Shinyusha’s Game Kanpeki Bible Vol.5.'],youtube:'https://youtube.com/@djminecraft8889',youtubeLabel:'youtube.com/@djminecraft8889',x:'https://x.com/anzu0312',xLabel:'x.com/anzu0312'}
 ]
 
+const collaboratorLocales:Record<string,{role:string;bio:string}>={
+  ja:{role:'システム改善協力',bio:'バグ報告や統合版音源切り替え等のご提案いただきました！'},
+  en:{role:'SYSTEM IMPROVEMENT SUPPORT',bio:'Provided bug reports and suggestions, including the Bedrock Edition sound switch.'},
+  es:{role:'COLABORACIÓN DE MEJORAS',bio:'Nos ayudó con informes de errores y sugerencias, incluido el cambio de sonidos de Bedrock.'},
+  fr:{role:'COLLABORATION À L’AMÉLIORATION',bio:'A fourni des rapports de bugs et des suggestions, notamment pour les sons Bedrock.'},
+  de:{role:'MITWIRKUNG AN VERBESSERUNGEN',bio:'Lieferte Fehlerberichte und Vorschläge, darunter den Wechsel zu Bedrock-Sounds.'},
+  zh:{role:'系统改进协力',bio:'提供了错误报告和改进建议，包括切换基岩版音源。'},
+  'zh-tw':{role:'系統改進協力',bio:'提供錯誤回報與改進建議，包括切換基岩版音源。'},
+  ko:{role:'시스템 개선 협력',bio:'버그 제보와 베드락 에디션 음원 전환 등의 제안을 보내 주셨습니다.'},
+  id:{role:'KOLABORASI PENINGKATAN SISTEM',bio:'Memberikan laporan bug dan saran, termasuk perpindahan suara Bedrock Edition.'}
+}
+
 type CreatorLocale={heading:string;roles:string[];bios:string[][];messageTitle:string;message:string[];cta:string;open:string;home:string}
 const creatorLocales:Record<string,CreatorLocale>={
   es:{heading:'CREACIÓN / SUPERVISIÓN',roles:['CREACIÓN DEL SITIO','SUPERVISIÓN'],bios:[['Músico de “banda unipersonal” que arregla, interpreta y canta J-pop. Su canal de YouTube supera los 10.000 suscriptores y también produce pistas y grabaciones para otros creadores.','Empezó Minecraft en 2021 y pronto se aficionó a los bloques de notas. Una obra enviada a un proyecto de Usada Pekora obtuvo más del 99 % de apoyo del público.','Miembro ocasional de JAPAN MENSA.'],['Creadora de tutoriales de circuitos de bloques de notas, con más de 200.000 suscriptores y 3.000 vídeos. Sus guías para resolver problemas de principiantes son especialmente valoradas.','Ha organizado numerosos proyectos comunitarios de interpretación con bloques de notas.','Sus circuitos han aparecido en la serie Game Kanpeki Bible de Shinyusha.']],messageTitle:'MENSAJE DEL CREADOR',message:['OTO BLOGIC nació cuando Anzu vio mi anterior herramienta, Onpu Mat Maker, y comentó que le gustaría una versión para Minecraft.','Compartíamos la idea de acercar la música a principiantes, así que le pedí supervisar el proyecto. Sus catorce años con la comunidad aportaron ideas y correcciones decisivas.','Diseñamos OTO BLOGIC para músicos y adultos, pero también para niños y personas sin experiencia musical. Crear una canción, construirla y oírla en Minecraft puede ser el primer pequeño logro que haga divertida la música.','Imagino que dentro de cinco o diez años alguien dirá que empezó a hacer música gracias a este sitio. Si ocurre, nos encantará saberlo.'],cta:'COLOCA TU PRIMERA NOTA.',open:'ABRIR OTO BLOGIC',home:'INICIO'},
@@ -52,6 +64,18 @@ export default function CreatorsPage({language,setLanguage,onBack,onStart}:Props
           <nav aria-label={`${profile.name} social links`}><a href={profile.youtube} target="_blank" rel="noreferrer"><YouTubeIcon/><span>{profile.youtubeLabel}</span></a><a href={profile.x} target="_blank" rel="noreferrer"><XIcon/><span>{profile.xLabel}</span></a></nav>
         </div>
       </article>)}
+      {(()=>{const copy=collaboratorLocales[language]??collaboratorLocales.en;return <article className="creator-collaborator">
+        <div className="collaborator-portrait"><img src="/assets/creators/yuchin.jpg" alt="ゆうちんさん"/></div>
+        <div className="collaborator-copy">
+          <small>{copy.role}</small>
+          <h2>ゆうちんさん</h2>
+          <p>{copy.bio}</p>
+          <nav aria-label="ゆうちんさん social links">
+            <a href="https://www.youtube.com/@ゆうちんMusic" target="_blank" rel="noreferrer"><YouTubeIcon/><span>youtube.com/channel/UCRuf9Brb-3wEIbsVTb9WWCQ</span></a>
+            <a href="https://x.com/MUSIC_mine_cube" target="_blank" rel="noreferrer"><XIcon/><span>x.com/MUSIC_mine_cube</span></a>
+          </nav>
+        </div>
+      </article>})()}
     </section>
 
     <section className="creator-message">
