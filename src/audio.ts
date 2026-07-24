@@ -11,7 +11,9 @@ const playbackOutputs = new Map<AudioEdition, GainNode>()
 // Keep the Java / Bedrock balance intact while leaving enough headroom for
 // dense chords. The compressor only catches the combined peak of many notes;
 // it does not alter individual instrument balances at ordinary volumes.
-const MASTER_PLAYBACK_GAIN = 0.55
+// A further conservative ~3 dB reduction leaves quiet passages usable while
+// giving dense chords a little more headroom.
+const MASTER_PLAYBACK_GAIN = 0.39
 const BEDROCK_PLAYBACK_RATIO = 0.3
 
 const SOUND_FILES: Record<string, string> = {
