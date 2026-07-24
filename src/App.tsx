@@ -11,6 +11,7 @@ import ResourcePackPage from './ResourcePackPage'
 import {instrumentBlockName} from './localization'
 import {BuyMeCoffeeSupport} from './BuyMeCoffee'
 import LegalPage from './LegalPages'
+import { parseMidi, type ParsedMidi } from './midi'
 
 type AppView='home'|'editor'|'blueprint'|'creators'|'guide'|'placement'|'resource-pack'|'terms'|'privacy'
 const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':path==='/placement'?'placement':path==='/resource-pack'?'resource-pack':path==='/terms'?'terms':path==='/privacy'?'privacy':'home'
@@ -52,6 +53,7 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
+type MidiPending = { parsed: ParsedMidi; candidates: number[][] }
 const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'java', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:16,compactSize:50,fold:'right',compactFold:'right',includeSilentEdges:true,repeaterDisplay:'delay',fishboneMode:'auto',fishboneManual:{},fishbonePackColumns:false,fishboneSpatialAudio:false,fishbonePlayerHeight:5} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
@@ -90,6 +92,8 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [delayMenuOpen,setDelayMenuOpen]=useState(false)
   const [editionMenuOpen,setEditionMenuOpen]=useState(false)
+  const [midiPending,setMidiPending]=useState<MidiPending|null>(null)
+  const [midiChoices,setMidiChoices]=useState<Record<number,number>>({})
   const [view,setView] = useState<AppView>(()=>viewFromPath(window.location.pathname))
   const [blueprintViewState,setBlueprintViewState]=useState<BlueprintViewState>(DEFAULT_BLUEPRINT_VIEW)
   const [previewPitches,setPreviewPitches]=useState<number[]>([])
@@ -103,6 +107,7 @@ function App() {
   const [desktopLayout,setDesktopLayout]=useState(()=>window.matchMedia(desktopMedia).matches)
   const [activeVolumeTrackId,setActiveVolumeTrackId]=useState<string|null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const midiFileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
   const rollViewportRef=useRef<HTMLDivElement>(null)
   const playbackCursorRef = useRef<HTMLDivElement>(null)
@@ -414,6 +419,36 @@ function App() {
   const handleLabelUp = (event:React.PointerEvent,step:number) => {const gesture=labelGestureRef.current;labelGestureRef.current=null;if(gesture?.pointerId===event.pointerId&&!gesture.moved)seekFromLabel(event,step)}
   const save = () => { const exportProject={...project,format:'oto-blogic'};const blob = new Blob([JSON.stringify(exportProject, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${project.title || 'untitled'}.obg`; a.click(); URL.revokeObjectURL(a.href) }
   const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (!['oto-blogic','note-block-maker'].includes(data.format) || data.version !== 1) throw new Error('対応していない.obg/.nbmファイルです'); const migrated = normalizeProject(data);commitProject(()=>migrated);setActiveId(migrated.tracks[0].id);setBarsDraft(String(migrated.steps/16));setBpmDraft(String(Math.round(migrated.tickRate*7.5))) }
+  const importMidi = async (file?: File) => {
+    if (!file) return
+    const parsed = parseMidi(await file.arrayBuffer())
+    if (!parsed.tracks.length) throw new Error(language === 'ja' ? 'ノートが入っているMIDIトラックが見つかりません。' : 'No MIDI tracks containing notes were found.')
+    if (parsed.tracks.length > 20) throw new Error(language === 'ja' ? 'MIDIのトラック数が20を超えています。不要なトラックを減らしてから読み込んでください。' : 'This MIDI has more than 20 note tracks.')
+    const candidates = parsed.tracks.map(track => {
+      const min = Math.min(...track.notes.map(note => note.midi)), max = Math.max(...track.notes.map(note => note.midi))
+      const valid = Array.from({ length: 11 }, (_, index) => 6 + index * 12).filter(base => min >= base && max <= base + 24)
+      // Keep the three octave choices nearest to the track's centre. A narrow melody
+      // can otherwise produce many technically valid but confusing octave choices.
+      const centre = (min + max) / 2
+      return valid.sort((a, b) => Math.abs(a - centre) - Math.abs(b - centre)).slice(0, 3).sort((a, b) => a - b)
+    })
+    const invalid = candidates.findIndex(value => value.length === 0)
+    if (invalid >= 0) throw new Error(language === 'ja' ? `「${parsed.tracks[invalid].name}」の音域が、F♯から2オクターブ上のF♯に収まりません。読み込みを中止しました。` : `The range of “${parsed.tracks[invalid].name}” does not fit within two octaves. Import was cancelled.`)
+    const ambiguous = candidates.some(value => value.length > 1)
+    if (ambiguous) { setMidiChoices(Object.fromEntries(candidates.map((value,index)=>[index,value[0]]))); setMidiPending({ parsed, candidates }); return }
+    applyMidi(parsed, candidates.map(value => value[0]))
+  }
+  const applyMidi = (parsed: ParsedMidi, bases: number[]) => {
+    const grid = parsed.ppq / 4
+    const imported = parsed.tracks.map((track, index) => ({
+      ...makeTrack(index), name: track.name || `TRACK ${String(index + 1).padStart(2, '0')}`,
+      notes: [...new Map(track.notes.map(note => { const step = Math.max(0, Math.round(note.tick / grid)); return [`${step}:${note.midi}`, { step, pitch: note.midi - bases[index] }] as const })).values()]
+    }))
+    const maxStep = Math.max(0, ...imported.flatMap(track => track.notes.map(note => note.step)))
+    const steps = Math.max(16, Math.ceil((maxStep + 1) / 16) * 16)
+    const next: Project = { ...createInitialProject(), title: project.title, edition: project.edition, delayUnit: project.delayUnit, blueprint: project.blueprint, tickRate: Math.round(parsed.bpm) / 7.5, steps, tracks: [...imported, ...Array.from({ length: 20 - imported.length }, (_, i) => makeTrack(imported.length + i))] }
+    historyRef.current = { past: [], future: [] }; commitProject(() => next); setActiveId(next.tracks[0].id); setBarsDraft(String(steps / 16)); setBpmDraft(String(Math.round(parsed.bpm))); setSelection(null); setCopiedNotes(null); setPlayhead(0); setMidiPending(null); setMidiChoices({})
+  }
   const clearAll = () => {
     const saveFirst = window.confirm(language === 'ja' ? '全削除の前に現在のデータを保存しますか？\n「キャンセル」で保存せず次へ進みます。' : 'Save the current data before clearing?\nCancel continues without saving.')
     if (saveFirst) save()
@@ -618,14 +653,16 @@ function App() {
       <button className={`edition-button ${editionMenuOpen?'active':''}`} onClick={()=>{setEditionMenuOpen(value=>!value);setDelayMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.edition==='bedrock'?'Bedrock':'Java'} Edition`} aria-expanded={editionMenuOpen}><span className="dock-icon edition-icon">{project.edition==='bedrock'?'B':'J'}</span><small>EDITION</small></button>
       <button className={`dock-menu ${menuOpen?'active':''}`} onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".obg,.nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
+      <input ref={midiFileRef} hidden type="file" accept=".mid,.midi,audio/midi" onChange={e => { const file=e.target.files?.[0]; e.currentTarget.value=''; importMidi(file).catch(err => alert(err instanceof Error ? err.message : String(err))) }} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
     {delayMenuOpen&&<div className="delay-mode-menu" role="group" aria-label={language==='ja'?'遅延モードを選択':'Select delay mode'}>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}><b>{value}</b><small>{language==='ja'?'遅延':'DELAY'}</small></button>)}</div>}
     {editionMenuOpen&&<div className="edition-menu" role="group" aria-label={language==='ja'?'音源のエディションを選択':'Select audio edition'}>{(['java','bedrock'] as const).map(value=><button key={value} className={project.edition===value?'active':''} onClick={()=>applyEdition(value)}><b>{value==='java'?'J':'B'}</b><small>{value==='java'?'JAVA':'BEDROCK'}</small></button>)}</div>}
     {menuOpen && <div className="more-menu">
-      <div className="menu-section"><button className="blueprint-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null);openView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button><button className="danger" onClick={clearAll}><b className="menu-icon trash-icon" aria-hidden="true"/><span>{c[18]}</span></button></div>
+      <div className="menu-section"><button className="blueprint-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null);openView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button><button className="file-menu" onClick={()=>{midiFileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">♫</b><span>{language==='ja'?'MIDIを読み込む':'IMPORT MIDI'}</span></button><button className="danger" onClick={clearAll}><b className="menu-icon trash-icon" aria-hidden="true"/><span>{c[18]}</span></button></div>
       <div className="menu-section future"><button onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openView('home')}}><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>OPEN</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button onClick={()=>{setMenuOpen(false);window.open('https://x.com/goro56pika','_blank','noopener,noreferrer')}}><b className="menu-icon">𝕏</b><span>X</span><small>OPEN</small></button><button className="creator-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openView('creators')}}><b className="menu-icon creator-menu-icon" aria-hidden="true"/><span>{language==='ja'?'制作者':'CREATOR'}</span><small>OPEN</small></button><BuyMeCoffeeSupport className="support-menu"/></div>
     </div>}
+    {midiPending&&<div className="midi-import-backdrop" role="presentation"><section className="midi-import-dialog" role="dialog" aria-modal="true" aria-labelledby="midi-import-title"><h2 id="midi-import-title">{language==='ja'?'MIDIの音域を選択':'Choose MIDI pitch ranges'}</h2><p>{language==='ja'?'トラックごとに、MIDIの音域をどのF♯から始まる25音に割り当てるか選んでください。候補が1つのトラックは自動で決まります。':'Choose the F♯ starting octave for each track. Tracks with one candidate are assigned automatically.'}</p>{midiPending.parsed.tracks.map((track,index)=>midiPending.candidates[index].length>1&&<label key={`${track.name}-${index}`} className="midi-range-choice"><span>{track.name}</span><select value={midiChoices[index]} onChange={event=>setMidiChoices(current=>({...current,[index]:Number(event.target.value)}))}>{midiPending.candidates[index].map(base=><option key={base} value={base}>F♯{Math.floor(base / 12) - 1}</option>)}</select></label>)}<div className="midi-import-actions"><button onClick={()=>{setMidiPending(null);setMidiChoices({})}}>{language==='ja'?'キャンセル':'CANCEL'}</button><button className="primary" onClick={()=>applyMidi(midiPending.parsed,midiPending.candidates.map((values,index)=>midiChoices[index]??values[0]))}>{language==='ja'?'読み込む':'IMPORT'}</button></div></section></div>}
   </main>
 }
 export default App
