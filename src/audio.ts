@@ -124,7 +124,124 @@ const schedulePlaybackTimer = (callback: () => void, delay: number) => {
   playbackTimers.add(timer)
 }
 
-export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:{usePan?:boolean;toStep?:number;noteMix?:(track:Track,note:Note)=>{volume:number;pan:number};getProject?:()=>Project}) {
+type PlaybackOptions = {
+  usePan?: boolean
+  toStep?: number
+  noteMix?: (track: Track, note: Note) => {volume: number; pan: number}
+  getProject?: () => Project
+}
+
+const renderTone = (
+  offline: OfflineAudioContext,
+  buffer: AudioBuffer,
+  pitch: number,
+  at: number,
+  volume: number,
+  pan: number,
+) => {
+  const source = offline.createBufferSource()
+  source.buffer = buffer
+  source.playbackRate.value = 2 ** ((pitch - 12) / 12)
+  const needsGain = volume !== 1
+  const needsPanner = pan !== 0
+  if (!needsGain && !needsPanner) {
+    source.connect(offline.destination)
+  } else if (needsGain && !needsPanner) {
+    const gain = offline.createGain()
+    gain.gain.value = volume
+    source.connect(gain).connect(offline.destination)
+  } else if (!needsGain && needsPanner) {
+    const panner = offline.createStereoPanner()
+    panner.pan.value = pan
+    source.connect(panner).connect(offline.destination)
+  } else {
+    const gain = offline.createGain()
+    const panner = offline.createStereoPanner()
+    gain.gain.value = volume
+    panner.pan.value = pan
+    source.connect(gain).connect(panner).connect(offline.destination)
+  }
+  source.start(at)
+}
+
+const renderPlaybackChunk = async (
+  project: Project,
+  loaded: Map<string, AudioBuffer>,
+  fromStep: number,
+  toStep: number,
+  stepSeconds: number,
+  sampleRate: number,
+  options?: PlaybackOptions,
+) => {
+  const hasSolo = project.tracks.some(track => track.solo)
+  const tracks = project.tracks.filter(track => !track.muted && (!hasSolo || track.solo))
+  const events = tracks.flatMap(track => track.notes
+    .filter(note => note.step >= fromStep && note.step < toStep)
+    .map(note => ({track, note, buffer: loaded.get(track.instrument)})))
+    .filter((event): event is {track: Track; note: Note; buffer: AudioBuffer} => Boolean(event.buffer))
+  if (events.length === 0) return null
+  const chunkSeconds = Math.max(stepSeconds, (toStep - fromStep) * stepSeconds)
+  const tailSeconds = events.reduce((longest, event) => {
+    const rate = 2 ** ((event.note.pitch - 12) / 12)
+    return Math.max(longest, event.buffer.duration / rate)
+  }, 0)
+  const frameCount = Math.max(1, Math.ceil((chunkSeconds + tailSeconds + 0.02) * sampleRate))
+  const offline = new OfflineAudioContext(2, frameCount, sampleRate)
+  events.forEach(({track, note, buffer}) => {
+    const mix = options?.noteMix?.(track, note)
+    renderTone(
+      offline,
+      buffer,
+      note.pitch,
+      (note.step - fromStep) * stepSeconds,
+      mix?.volume ?? track.volume,
+      mix?.pan ?? (options?.usePan === false ? 0 : track.pan ?? 0),
+    )
+  })
+  return offline.startRendering()
+}
+
+const playRenderedChunk = (ctx: AudioContext, buffer: AudioBuffer, at: number) => {
+  const source = ctx.createBufferSource()
+  source.buffer = buffer
+  source.connect(ctx.destination)
+  playbackSources.add(source)
+  source.addEventListener('ended', () => playbackSources.delete(source), {once: true})
+  const now = ctx.currentTime + 0.01
+  const offset = Math.max(0, now - at)
+  if (offset < buffer.duration) source.start(Math.max(at, now), offset)
+  else playbackSources.delete(source)
+}
+
+const scheduleStepIndicator = (
+  ctx: AudioContext,
+  token: number,
+  start: number,
+  firstStep: number,
+  lastStep: number,
+  stepSeconds: number,
+  onStep?: (step: number) => void,
+) => {
+  let reportedStep = firstStep - 1
+  const update = () => {
+    if (stopAt !== token) return
+    const elapsed = ctx.currentTime - start
+    const step = firstStep + Math.max(0, Math.floor(elapsed / stepSeconds))
+    if (elapsed >= 0 && step <= lastStep && step !== reportedStep) {
+      reportedStep = step
+      onStep?.(step)
+    }
+    if (step > lastStep) {
+      onStep?.(-1)
+      return
+    }
+    const nextBoundary = start + (reportedStep - firstStep + 1) * stepSeconds
+    schedulePlaybackTimer(update, Math.max(8, (nextBoundary - ctx.currentTime) * 1000))
+  }
+  schedulePlaybackTimer(update, Math.max(0, (start - ctx.currentTime) * 1000))
+}
+
+export async function playProject(project: Project, fromStep = 0, onStep?: (step: number) => void, options?:PlaybackOptions) {
   const token = ++stopAt
   const ctx = await getContext()
   if (stopAt !== token) return
@@ -139,38 +256,47 @@ export async function playProject(project: Project, fromStep = 0, onStep?: (step
   const firstStep = Math.max(0, Math.min(project.steps - 1, Math.round(fromStep)))
   const lastStep = Math.max(firstStep, Math.min(project.steps - 1, Math.round(options?.toStep ?? project.steps - 1)))
   const stepSeconds = 2 / project.tickRate
+  const chunkSteps = dynamicMix ? 4 : 16
+  const renderChunk = (chunkStart: number) => {
+    const liveProject = dynamicMix ? options?.getProject?.() ?? project : project
+    return renderPlaybackChunk(
+      liveProject,
+      loaded,
+      chunkStart,
+      Math.min(lastStep + 1, chunkStart + chunkSteps),
+      stepSeconds,
+      ctx.sampleRate,
+      options,
+    )
+  }
+  const firstBuffer = await renderChunk(firstStep)
+  if (stopAt !== token) return
   const start = ctx.currentTime + 0.08
-  // Do not create every source node for a large song at once. Keeping a short
-  // rolling look-ahead makes dense MIDI playback much less likely to glitch,
-  // while still allowing live mute/solo changes to take effect quickly.
-  const lookAheadSeconds = 0.25
-  let scheduledThrough = firstStep
-  const scheduleAudioWindow = () => {
+  if (firstBuffer) playRenderedChunk(ctx, firstBuffer, start)
+  scheduleStepIndicator(ctx, token, start, firstStep, lastStep, stepSeconds, onStep)
+  let nextChunkStart = Math.min(lastStep + 1, firstStep + chunkSteps)
+  const renderNextChunk = async () => {
     if (stopAt !== token) return
-    const liveProject = dynamicMix ? options?.getProject?.() : project
-    const liveTracks = liveProject?.tracks ?? []
-    const hasSolo = liveTracks.some(track => track.solo)
-    const audibleTracks = liveTracks.filter(track => !track.muted && (!hasSolo || track.solo))
-    const horizon = ctx.currentTime + lookAheadSeconds
-    const maxStep = Math.min(lastStep + 1, Math.ceil((horizon - start) / stepSeconds) + firstStep)
-    for (let step = scheduledThrough; step < maxStep; step += 1) {
-      const at = start + (step - firstStep) * stepSeconds
-      audibleTracks.forEach(track => track.notes.filter(note => note.step === step).forEach(note => {
-        const mix=options?.noteMix?.(track,note)
-        playTone(ctx, loaded.get(track.instrument)!, note.pitch, Math.max(at, ctx.currentTime + 0.01), mix?.volume??track.volume, mix?.pan??(options?.usePan===false?0:track.pan??0), true)
-      }))
+    if (nextChunkStart > lastStep) return
+    const chunkStart = nextChunkStart
+    const target = start + (chunkStart - firstStep) * stepSeconds
+    const chunkSeconds = Math.min(chunkSteps, lastStep + 1 - chunkStart) * stepSeconds
+    // Editor chunks are rendered shortly before the next beat so live M/S,
+    // volume and PAN changes reach the next unrendered beat. Static blueprint
+    // chunks can be prepared earlier because their mix does not change.
+    const renderLead = dynamicMix ? Math.min(0.2, chunkSeconds * 0.5) : Math.min(1, chunkSeconds)
+    const wait = target - renderLead - ctx.currentTime
+    if (wait > 0) {
+      schedulePlaybackTimer(() => { void renderNextChunk() }, wait * 1000)
+      return
     }
-    scheduledThrough = Math.max(scheduledThrough, maxStep)
-    if (scheduledThrough <= lastStep) schedulePlaybackTimer(scheduleAudioWindow, Math.max(40, lookAheadSeconds * 500))
+    const rendered = await renderChunk(chunkStart)
+    if (stopAt !== token) return
+    if (rendered) playRenderedChunk(ctx, rendered, target)
+    nextChunkStart = Math.min(lastStep + 1, chunkStart + chunkSteps)
+    void renderNextChunk()
   }
-  scheduleAudioWindow()
-  for (let step = firstStep; step <= lastStep; step += 1) {
-    schedulePlaybackTimer(() => {
-      if (stopAt !== token) return
-      onStep?.(step)
-    }, 80 + (step - firstStep) * stepSeconds * 1000)
-  }
-  schedulePlaybackTimer(() => { if (stopAt === token) onStep?.(-1) }, 90 + (lastStep - firstStep + 1) * stepSeconds * 1000)
+  void renderNextChunk()
 }
 
 export function stopPlayback() {
