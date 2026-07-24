@@ -61,6 +61,14 @@ if (typeof window !== 'undefined') {
 
 const projectEdition = (edition:Project['edition']):AudioEdition => edition === 'bedrock' ? 'bedrock' : 'java'
 
+const playbackOutput = (ctx: AudioContext, edition: Project['edition']) => {
+  if (edition !== 'bedrock') return ctx.destination
+  const output = ctx.createGain()
+  output.gain.value = 0.5
+  output.connect(ctx.destination)
+  return output
+}
+
 const loadBuffer = async (ctx: AudioContext, instrument: string, edition:AudioEdition) => {
   const cacheKey = `${edition}:${instrument}`
   const cached = buffers.get(cacheKey)
@@ -80,28 +88,28 @@ const loadBuffer = async (ctx: AudioContext, instrument: string, edition:AudioEd
   return request
 }
 
-const playTone = (ctx: AudioContext, buffer: AudioBuffer, pitch: number, at: number, volume: number, pan = 0, playback = false) => {
+const playTone = (ctx: AudioContext, buffer: AudioBuffer, pitch: number, at: number, volume: number, pan = 0, playback = false, output: AudioNode = ctx.destination) => {
   const source = ctx.createBufferSource()
   source.buffer = buffer
   source.playbackRate.value = 2 ** ((pitch - 12) / 12)
   const needsGain = volume !== 1
   const needsPanner = pan !== 0
   if (!needsGain && !needsPanner) {
-    source.connect(ctx.destination)
+    source.connect(output)
   } else if (needsGain && !needsPanner) {
     const gain = ctx.createGain()
     gain.gain.value = volume
-    source.connect(gain).connect(ctx.destination)
+    source.connect(gain).connect(output)
   } else if (!needsGain && needsPanner) {
     const panner = ctx.createStereoPanner()
     panner.pan.value = pan
-    source.connect(panner).connect(ctx.destination)
+    source.connect(panner).connect(output)
   } else {
     const gain = ctx.createGain()
     const panner = ctx.createStereoPanner()
     gain.gain.value = volume
     panner.pan.value = pan
-    source.connect(gain).connect(panner).connect(ctx.destination)
+    source.connect(gain).connect(panner).connect(output)
   }
   if (playback) {
     playbackSources.add(source)
@@ -113,7 +121,8 @@ const playTone = (ctx: AudioContext, buffer: AudioBuffer, pitch: number, at: num
 export async function previewTone(pitch: number, volume: number, instrument: string, pan=0, edition:Project['edition']='java') {
   const ctx = await getContext()
   const buffer = await loadBuffer(ctx, instrument, projectEdition(edition))
-  playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume, pan)
+  const output = playbackOutput(ctx, edition)
+  playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume, pan, false, output)
 }
 
 const schedulePlaybackTimer = (callback: () => void, delay: number) => {
@@ -191,6 +200,9 @@ export async function playProject(project: Project, fromStep = 0, onStep?: (step
   const lastStep = Math.max(firstStep, Math.min(project.steps - 1, Math.round(options?.toStep ?? project.steps - 1)))
   const stepSeconds = 2 / project.tickRate
   const start = ctx.currentTime + 0.08
+  // Bedrock samples have less usable headroom when many notes are summed.
+  // Keep the relative instrument balance intact and attenuate the edition as a whole.
+  const output = playbackOutput(ctx, edition)
   // Schedule the original samples directly instead of rendering a new audio file
   // for every beat. A one-beat editor look-ahead leaves enough time for dense
   // passages while allowing live mute/solo changes to reach the next beat.
@@ -223,6 +235,7 @@ export async function playProject(project: Project, fromStep = 0, onStep?: (step
             mix?.volume ?? track.volume,
             mix?.pan ?? (options?.usePan === false ? 0 : track.pan ?? 0),
             true,
+            output,
           )
         })
       })
