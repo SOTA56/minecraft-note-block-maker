@@ -6,6 +6,13 @@ const buffers = new Map<string, AudioBuffer>()
 const loading = new Map<string, Promise<AudioBuffer>>()
 const playbackSources = new Set<AudioBufferSourceNode>()
 const playbackTimers = new Set<number>()
+const playbackOutputs = new Map<AudioEdition, GainNode>()
+
+// Keep the Java / Bedrock balance intact while leaving enough headroom for
+// dense chords. The compressor only catches the combined peak of many notes;
+// it does not alter individual instrument balances at ordinary volumes.
+const MASTER_PLAYBACK_GAIN = 0.55
+const BEDROCK_PLAYBACK_RATIO = 0.3
 
 const SOUND_FILES: Record<string, string> = {
   Harp: 'harp', Bass: 'bass', 'Bass Drum': 'bd', Snare: 'snare', Hat: 'hat', Guitar: 'guitar',
@@ -20,6 +27,10 @@ const createContext = () => new AudioContext({ latencyHint: 'interactive' })
 const clearAudioCache = () => {
   buffers.clear()
   loading.clear()
+  playbackOutputs.forEach(output => {
+    try { output.disconnect() } catch { /* The old context may already be closed. */ }
+  })
+  playbackOutputs.clear()
 }
 
 const resumeExistingContext = () => {
@@ -62,10 +73,19 @@ if (typeof window !== 'undefined') {
 const projectEdition = (edition:Project['edition']):AudioEdition => edition === 'bedrock' ? 'bedrock' : 'java'
 
 const playbackOutput = (ctx: AudioContext, edition: Project['edition']) => {
-  if (edition !== 'bedrock') return ctx.destination
+  const normalizedEdition = projectEdition(edition)
+  const cached = playbackOutputs.get(normalizedEdition)
+  if (cached) return cached
   const output = ctx.createGain()
-  output.gain.value = 0.3
-  output.connect(ctx.destination)
+  output.gain.value = MASTER_PLAYBACK_GAIN * (normalizedEdition === 'bedrock' ? BEDROCK_PLAYBACK_RATIO : 1)
+  const peakGuard = ctx.createDynamicsCompressor()
+  peakGuard.threshold.value = -12
+  peakGuard.knee.value = 18
+  peakGuard.ratio.value = 3
+  peakGuard.attack.value = 0.003
+  peakGuard.release.value = 0.15
+  output.connect(peakGuard).connect(ctx.destination)
+  playbackOutputs.set(normalizedEdition, output)
   return output
 }
 

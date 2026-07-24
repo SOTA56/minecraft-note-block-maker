@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { AudioEdition, Project, Track } from './types'
@@ -109,6 +109,7 @@ function App() {
   const fileRef = useRef<HTMLInputElement>(null)
   const midiFileRef = useRef<HTMLInputElement>(null)
   const rollRef = useRef<HTMLElement>(null)
+  const rollStageRef=useRef<HTMLDivElement>(null)
   const rollViewportRef=useRef<HTMLDivElement>(null)
   const playbackCursorRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ originStep: number; originPitch: number; step: number; pitch: number; moved: boolean; existed: boolean; startX: number; startY: number; selecting?: boolean; group?: boolean; baseNotes?: Track['notes']; baseAllNotes?: Track['notes']; baseSelection?: NonNullable<typeof selection>; baseProject?: Project } | null>(null)
@@ -125,6 +126,33 @@ function App() {
     document.body.classList.toggle('editor-viewport-locked',view==='editor')
     return()=>document.body.classList.remove('editor-viewport-locked')
   },[view])
+
+  // Windows browsers reserve real height for a horizontal scrollbar while
+  // macOS browsers often overlay it. Measure the usable roll viewport instead
+  // of guessing a scrollbar height in CSS, then give the keyboard the same
+  // height so every pitch row remains aligned on both platforms.
+  useLayoutEffect(() => {
+    const stage = rollStageRef.current
+    const viewport = rollViewportRef.current
+    if (!stage || !viewport || !desktopLayout || view !== 'editor') return
+    let frame = 0
+    const syncPitchHeight = () => {
+      frame = 0
+      const height = viewport.clientHeight
+      if (height > 0) stage.style.setProperty('--pc-roll-content-height', `${height}px`)
+    }
+    const scheduleSync = () => {
+      if (!frame) frame = window.requestAnimationFrame(syncPitchHeight)
+    }
+    const observer = new ResizeObserver(scheduleSync)
+    observer.observe(viewport)
+    scheduleSync()
+    return () => {
+      observer.disconnect()
+      if (frame) window.cancelAnimationFrame(frame)
+      stage.style.removeProperty('--pc-roll-content-height')
+    }
+  }, [desktopLayout, view])
 
   useEffect(()=>{
     const seo=PAGE_SEO[view]
@@ -612,7 +640,7 @@ function App() {
 
     <div className="pitch-head">{PITCHES.map(p => <b key={p} role="button" tabIndex={0} onPointerDown={event=>{if(event.isPrimary&&event.button===0)auditionPitch(p)}} onClick={event=>{if(event.detail===0)auditionPitch(p)}} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); auditionPitch(p) } }} aria-label={`${pitchNames[p]}を試聴`} className={`${isBlack(p) ? 'black' : 'white'} ${isDo(p) ? 'do' : ''} ${soundingPitches.has(p)?'sounding':''}`}>{pitchDisplay === 'name' ? pitchLabel(pitchNames[p]) : p}</b>)}<button className="pitch-toggle" onClick={() => setPitchDisplay(v => v === 'name' ? 'clicks' : 'name')} aria-label="音名とクリック数を切替"><span>↻</span>{pitchDisplay === 'name' ? '012' : language === 'ja' ? 'ドレミ' : 'ABC'}</button></div>
     </div>
-    <div className="roll-stage">
+    <div ref={rollStageRef} className="roll-stage">
       <aside className="desktop-track-sidebar" aria-label={language==='ja'?'トラック一覧':'Track list'}><div className="desktop-track-scroll">{project.tracks.map((track,i)=>{
         const trackInstrument=INSTRUMENTS.find(item=>item.id===track.instrument)??INSTRUMENTS[0]
         const patchTrack=(patch:Partial<Track>)=>commitProject(current=>({...current,tracks:current.tracks.map(item=>item.id===track.id?{...item,...patch}:item)}))
