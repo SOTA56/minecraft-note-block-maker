@@ -64,7 +64,7 @@ const projectEdition = (edition:Project['edition']):AudioEdition => edition === 
 const playbackOutput = (ctx: AudioContext, edition: Project['edition']) => {
   if (edition !== 'bedrock') return ctx.destination
   const output = ctx.createGain()
-  output.gain.value = 0.5
+  output.gain.value = 0.3
   output.connect(ctx.destination)
   return output
 }
