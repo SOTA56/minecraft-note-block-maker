@@ -12,6 +12,7 @@ import {instrumentBlockName} from './localization'
 import {BuyMeCoffeeSupport} from './BuyMeCoffee'
 import LegalPage from './LegalPages'
 import { parseMidi, type ParsedMidi } from './midi'
+import { trackPageView } from './AnalyticsConsent'
 
 type AppView='home'|'editor'|'blueprint'|'creators'|'guide'|'placement'|'resource-pack'|'terms'|'privacy'
 const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':path==='/placement'?'placement':path==='/resource-pack'?'resource-pack':path==='/terms'?'terms':path==='/privacy'?'privacy':'home'
@@ -164,6 +165,10 @@ function App() {
     document.querySelector<HTMLMetaElement>('meta[name="description"]')?.setAttribute('content',seo.description)
     document.querySelector<HTMLMetaElement>('meta[name="robots"]')?.setAttribute('content',seo.index?'index,follow,max-image-preview:large':'noindex,follow')
     document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.setAttribute('href',`https://otoblogic.com${pathFromView(view)}`)
+    // This is a client-side app, so route changes do not create browser
+    // navigations. Report each internal page transition when analytics consent
+    // has been granted; the initial config call covers the first page view.
+    trackPageView(pathFromView(view),seo.title)
   },[view])
 
   useEffect(()=>{
