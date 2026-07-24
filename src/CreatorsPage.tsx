@@ -56,14 +56,14 @@ export default function CreatorsPage({language,setLanguage,onBack,onStart}:Props
     <section className="creators-hero"><h1>{ja?'サイト制作 / 監修':locale?.heading??'CREATOR / SUPERVISOR'}</h1></section>
 
     <section className="creator-profiles">
-      {profiles.map((profile,index)=><article className={`creator-card ${profile.tone}`} key={profile.name}>
+      {profiles.map((profile,index)=>{const displayName=index===1&&!ja?'Anzu@DJ Minecraft':index===1?'アンズ@DJ Minecraft':profile.name;return <article className={`creator-card ${profile.tone}`} key={profile.name}>
         <div className="creator-portrait"><img src={profile.image} alt={profile.name}/></div>
         <div className="creator-copy">
-          <small>{ja?profile.roleJa:locale?.roles[index]??profile.roleEn}</small><h2>{profile.name}</h2>
+          <small>{ja?profile.roleJa:locale?.roles[index]??profile.roleEn}</small><h2>{displayName}</h2>
           {(ja?profile.bioJa:locale?.bios[index]??profile.bioEn).map(text=><p key={text}>{text}</p>)}
           <nav aria-label={`${profile.name} social links`}><a href={profile.youtube} target="_blank" rel="noreferrer"><YouTubeIcon/><span>{profile.youtubeLabel}</span></a><a href={profile.x} target="_blank" rel="noreferrer"><XIcon/><span>{profile.xLabel}</span></a></nav>
         </div>
-      </article>)}
+      </article>})}
       {(()=>{const copy=collaboratorLocales[language]??collaboratorLocales.en;return <article className="creator-collaborator">
         <div className="collaborator-portrait"><img src="/assets/creators/yuchin.jpg" alt="ゆうちんさん"/></div>
         <div className="collaborator-copy">
