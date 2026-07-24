@@ -14,7 +14,9 @@ const playbackOutputs = new Map<AudioEdition, GainNode>()
 // A further conservative ~3 dB reduction leaves quiet passages usable while
 // giving dense chords a little more headroom.
 const MASTER_PLAYBACK_GAIN = 0.39
-const BEDROCK_PLAYBACK_RATIO = 0.3
+// Bedrock samples are quieter after the shared headroom reduction; bring only
+// this edition up by roughly 3 dB while leaving Java unchanged.
+const BEDROCK_PLAYBACK_RATIO = 0.424
 
 const SOUND_FILES: Record<string, string> = {
   Harp: 'harp', Bass: 'bass', 'Bass Drum': 'bd', Snare: 'snare', Hat: 'hat', Guitar: 'guitar',
