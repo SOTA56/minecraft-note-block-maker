@@ -172,7 +172,7 @@
 .delay-mode-icon::before{content:'';position:absolute;inset:1px 5px;background:currentColor;mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat;-webkit-mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat}
 .delay-mode-icon b{position:absolute;z-index:1;right:1px;bottom:-1px;display:grid;place-items:center;width:16px;height:16px;border:1px solid #151915;border-radius:50%;background:#e3c346;color:#151915;font:10px 'Archivo Black';line-height:1}
 .delay-mode-button.active{background:#1a2b34;color:#8fd2f5}
-.edition-icon{display:grid!important;place-items:center;width:27px!important;height:27px!important;border:1px solid currentColor;font:16px/1 'Archivo Black';color:#82c9f0}
+.edition-icon{box-sizing:border-box;display:grid!important;place-items:center;width:22px!important;height:22px!important;padding:0!important;border:1px solid currentColor;font-family:'Archivo Black'!important;font-size:12px!important;font-weight:400!important;line-height:1!important;color:#82c9f0}
 .edition-button.active{background:#1a2b34!important;color:#8fd2f5!important}
 .track-settings-trigger.active,.dock-menu.active,.desktop-transport-menu.active{background:#1a2b34!important;color:#8fd2f5!important}
 .delay-mode-menu,.edition-menu{position:fixed;z-index:31;bottom:calc(72px + env(safe-area-inset-bottom));display:grid;transform:translateX(-50%);border:1px solid #4b6774;background:#151b18;box-shadow:0 10px 28px #000c}

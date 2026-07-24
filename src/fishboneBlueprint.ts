@@ -98,7 +98,8 @@ const directions=[['up',0,-1],['right',1,0],['down',0,1],['left',-1,0]] as const
 export function generateFishboneBlueprint(project:Project,instruments:readonly BlueprintInstrument[],mode:FishboneMode='auto',manual:Record<string,number[]>={},packColumns=false):FishboneResult{
   const allocation=allocateFishbone(project,mode,manual),allNotes=project.tracks.flatMap(track=>track.notes)
   const laneDelay=project.delayUnit
-  const firstStep=allNotes.length?Math.min(...allNotes.map(note=>note.step)):0,lastStep=allNotes.length?Math.max(...allNotes.map(note=>note.step)):0
+  const firstNoteStep=allNotes.length?Math.min(...allNotes.map(note=>note.step)):0
+  const firstStep=Math.floor(firstNoteStep/4)*4,lastStep=allNotes.length?Math.max(...allNotes.map(note=>note.step)):0
   const laneCount=allocation.lanes.length
   if(!laneCount){
     const plan:BlueprintPlan={cells:[{x:1,y:2,type:'source',label:'S',step:firstStep,groupId:'fishbone-source'}],width:3,height:3,eventsPerRun:4,runCount:0,firstStep,lastStep}

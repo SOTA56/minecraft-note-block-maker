@@ -59,6 +59,16 @@ describe('fishbone allocation',()=>{
 })
 
 describe('fishbone geometry',()=>{
+  it('starts pickup passages at the beginning of the preceding beat',()=>{
+    for(const [noteStep,beatStep] of [[1,0],[3,0],[4,4],[5,4],[7,4]] as const){
+      const {plan}=generateFishboneBlueprint(project([track(`pickup-${noteStep}`,[[noteStep,1]])]),instruments)
+      expect(plan.firstStep).toBe(beatStep)
+      expect(plan.cells.find(cell=>cell.type==='source')?.step).toBe(beatStep)
+      expect(plan.cells.some(cell=>cell.texture==='center-placeholder'&&cell.step===beatStep)).toBe(true)
+      expect(plan.cells.some(cell=>cell.type==='note'&&cell.step===noteStep)).toBe(true)
+    }
+  })
+
   it('continues beyond the 24-step PDF example in four-delay bands',()=>{
     const input=project([track('long',[[0,1],[24,2],[40,3]])],48)
     const {plan}=generateFishboneBlueprint(input,instruments)
