@@ -167,14 +167,18 @@
 .more-menu .support-menu{color:#f0d35e!important;border-color:#318cca!important}
 .buy-me-coffee-widget-fallback{position:fixed;z-index:100;right:18px;bottom:18px;display:grid;place-items:center;width:54px;height:54px;border-radius:50%;background:#ffdd00;color:#000;font-size:26px;text-decoration:none;box-shadow:0 4px 14px #0008}
 .buy-me-coffee-modal{position:fixed;z-index:110;inset:0;display:grid;place-items:center;background:#000b;padding:20px}.buy-me-coffee-modal iframe{width:min(420px,100%);height:min(680px,88dvh);border:0;border-radius:12px;background:#fff}.buy-me-coffee-modal-close{position:absolute!important;top:18px!important;right:18px!important;z-index:111!important;display:grid!important;place-items:center!important;flex:none!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;max-height:36px!important;aspect-ratio:1!important;margin:0!important;padding:0!important;border:1px solid #fff!important;background:#111!important;color:#fff!important;border-radius:50%!important;font:24px/1 Arial,sans-serif!important}
-.dock{grid-template-columns:repeat(4,1fr)}
+.dock{grid-template-columns:repeat(5,1fr)}
 .delay-mode-icon{position:relative;color:#82c9f0}
 .delay-mode-icon::before{content:'';position:absolute;inset:1px 5px;background:currentColor;mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat;-webkit-mask:url('/assets/icons/delay-mode.svg') center/contain no-repeat}
 .delay-mode-icon b{position:absolute;z-index:1;right:1px;bottom:-1px;display:grid;place-items:center;width:16px;height:16px;border:1px solid #151915;border-radius:50%;background:#e3c346;color:#151915;font:10px 'Archivo Black';line-height:1}
 .delay-mode-button.active{background:#1a2b34;color:#8fd2f5}
+.edition-icon{display:grid!important;place-items:center;width:27px!important;height:27px!important;border:1px solid currentColor;font:16px/1 'Archivo Black';color:#82c9f0}
+.edition-button.active{background:#1a2b34!important;color:#8fd2f5!important}
 .track-settings-trigger.active,.dock-menu.active,.desktop-transport-menu.active{background:#1a2b34!important;color:#8fd2f5!important}
-.delay-mode-menu{position:fixed;z-index:31;left:calc(50% + min(12.5vw,95px));bottom:calc(72px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,54px);transform:translateX(-50%);border:1px solid #4b6774;background:#151b18;box-shadow:0 10px 28px #000c}
-.delay-mode-menu button{display:grid;place-items:center;align-content:center;gap:1px;width:54px;height:52px;border:0;border-right:1px solid #35433c;background:#17201b;color:#8fcbed}.delay-mode-menu button:last-child{border-right:0}.delay-mode-menu button.active{background:#e3c346;color:#151915}.delay-mode-menu b{font:19px 'Archivo Black';line-height:1}.delay-mode-menu small{font-size:6px;letter-spacing:.05em}
+.delay-mode-menu,.edition-menu{position:fixed;z-index:31;bottom:calc(72px + env(safe-area-inset-bottom));display:grid;transform:translateX(-50%);border:1px solid #4b6774;background:#151b18;box-shadow:0 10px 28px #000c}
+.delay-mode-menu{left:50%;grid-template-columns:repeat(3,54px)}
+.edition-menu{left:70%;grid-template-columns:repeat(2,62px)}
+.delay-mode-menu button,.edition-menu button{display:grid;place-items:center;align-content:center;gap:1px;height:52px;border:0;border-right:1px solid #35433c;background:#17201b;color:#8fcbed}.delay-mode-menu button{width:54px}.edition-menu button{width:62px}.delay-mode-menu button:last-child,.edition-menu button:last-child{border-right:0}.delay-mode-menu button.active,.edition-menu button.active{background:#e3c346;color:#151915}.delay-mode-menu b,.edition-menu b{font:19px 'Archivo Black';line-height:1}.delay-mode-menu small,.edition-menu small{font-size:6px;letter-spacing:.05em}
 .pitch-head b[role=button]{transition:background-color .08s ease,box-shadow .08s ease}.pitch-head b.white.sounding{background:#82b9d2!important}.pitch-head b.black.sounding{background:#1f5b73!important;color:#fff}.pitch-head b.sounding{box-shadow:inset 0 -3px #e3c346!important}.pitch-head b.do.sounding{box-shadow:inset 2px 0 #707770,inset 0 -3px #e3c346!important}
 .brand-home{display:grid;flex:0 0 auto;padding:0;border:0;background:none;place-items:center;cursor:pointer}.brand-home:focus-visible{outline:2px solid #38aaf0;outline-offset:2px}
 
@@ -259,8 +263,10 @@ body.editor-viewport-locked{overflow:hidden;background:#0e110f}.app{width:100%;m
 
   /* Desktop popovers open directly below their toolbar buttons. */
   .delay-mode-menu{top:184px;bottom:auto;left:590px;right:auto;transform:none}
+  .edition-menu{top:184px;bottom:auto;left:668px;right:auto;transform:none}
   .more-menu{top:138px;bottom:auto;left:auto;right:10px}
   body:has(.control-panel.collapsed) .delay-mode-menu,
+  body:has(.control-panel.collapsed) .edition-menu,
   body:has(.control-panel.collapsed) .more-menu{top:76px}
 
   /* Desktop typography uses the available space instead of inheriting compact mobile labels. */
@@ -291,7 +297,7 @@ body.editor-viewport-locked{overflow:hidden;background:#0e110f}.app{width:100%;m
   .drawer.settings{top:196px;left:min(710px,calc(100% - 412px));width:min(400px,calc(100% - 24px));transform:none}
   .edit-tools .cut-tool .tool-icon{font-size:25px}
   .delay-mode-menu{grid-template-columns:repeat(3,62px)}
-  .delay-mode-menu button{width:62px;height:58px}.delay-mode-menu b{font-size:22px}.delay-mode-menu small{font-size:9px}
+  .delay-mode-menu button,.edition-menu button{width:62px;height:58px}.delay-mode-menu b,.edition-menu b{font-size:22px}.delay-mode-menu small,.edition-menu small{font-size:9px}
   .more-menu{width:340px}.more-menu button{grid-template-columns:34px 1fr auto;min-height:48px;font-size:13px}.more-menu button small{font-size:9px}
   .settings{gap:14px}.settings label{font-size:12px}.settings input,.settings select{font-size:13px}.block-guide small{font-size:10px}.block-guide b{font-size:14px}.setting-switches button{font-size:12px}
   .mixer-list .track-select strong{font-size:14px}.mixer-list .track-select small{font-size:11px}.mixer-list .track-number{font-size:14px}

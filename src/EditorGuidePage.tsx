@@ -72,6 +72,17 @@ deviceCopies['zh-tw']=traditionalizeRecord(deviceCopies.zh)
 const polyphonyMarkerBodies:Record<string,string>={en:'Shows the highest number of simultaneous notes. A lime marker means 4–6 notes; orange means 7 or more.',es:'Muestra las notas simultáneas. La marca verde indica 4–6; la naranja, 7 o más.',fr:'Affiche les notes simultanées. Le repère vert indique 4–6 notes, l’orange 7 ou plus.',de:'Zeigt gleichzeitige Noten. Grün markiert 4–6, Orange 7 oder mehr.',zh:'显示同时发音数。浅绿色标记表示4至6音，橙色表示7音以上。','zh-tw':'顯示同時發音數。淺綠色標記表示4至6音，橙色表示7音以上。',ko:'동시 발음 수를 표시합니다. 연두색은 4~6음, 주황색은 7음 이상입니다.',id:'Menampilkan not bersamaan. Penanda hijau untuk 4–6 not, oranye untuk 7 atau lebih.'}
 const shortcutLabels:Record<string,string>={ja:'ショートカット',en:'Shortcut',es:'Atajo',fr:'Raccourci',de:'Tastenkürzel',zh:'快捷键','zh-tw':'快捷鍵',ko:'단축키',id:'Pintasan'}
 const cutCopies:Record<string,{title:string;body:string}>={ja:{title:'切り取り',body:'選択範囲内の音符をコピーし、元の音符を削除します。'},en:{title:'CUT',body:'Copies the selected notes and removes the originals.'},es:{title:'CORTAR',body:'Copia las notas seleccionadas y elimina las originales.'},fr:{title:'COUPER',body:'Copie les notes sélectionnées et supprime les originales.'},de:{title:'AUSSCHNEIDEN',body:'Kopiert die ausgewählten Noten und entfernt die Originale.'},zh:{title:'剪切',body:'复制所选音符，并删除原来的音符。'},'zh-tw':{title:'剪下',body:'複製所選音符，並刪除原來的音符。'},ko:{title:'잘라내기',body:'선택한 음표를 복사하고 원래 음표를 삭제합니다.'},id:{title:'POTONG',body:'Menyalin not yang dipilih lalu menghapus not aslinya.'}}
+const editionCopies:Record<string,{title:string;body:string}>={
+  ja:{title:'EDITION',body:'再生に使う音源をJAVA版とBEDROCK版から選びます。打ち込み画面と設計図画面の両方に反映されます。'},
+  en:{title:'EDITION',body:'Choose Java Edition or Bedrock Edition sounds. The choice applies to playback in both the editor and blueprints.'},
+  es:{title:'EDICIÓN',body:'Elige los sonidos de Java Edition o Bedrock Edition. Se aplica a la reproducción del editor y de los planos.'},
+  fr:{title:'ÉDITION',body:'Choisissez les sons de Java Edition ou Bedrock Edition. Ce choix s’applique à la lecture dans l’éditeur et les plans.'},
+  de:{title:'EDITION',body:'Wähle die Klänge der Java Edition oder Bedrock Edition. Die Auswahl gilt im Editor und in den Bauplänen.'},
+  zh:{title:'版本音源',body:'选择 Java 版或基岩版音源。该选择会同时应用于编辑器和蓝图播放。'},
+  'zh-tw':{title:'版本音源',body:'選擇 Java 版或基岩版音源。此選擇會同時套用於編輯器與藍圖播放。'},
+  ko:{title:'에디션',body:'Java Edition 또는 Bedrock Edition 음원을 선택합니다. 편집 화면과 설계도 재생에 모두 적용됩니다.'},
+  id:{title:'EDITION',body:'Pilih suara Java Edition atau Bedrock Edition. Pilihan ini berlaku untuk pemutaran di editor dan blueprint.'}
+}
 const baseLocalizedSections=(language:string):GuideSection[]=>{if(language==='ja')return jaSections;if(language==='en'||!guideLocales[language])return enSections.map((section,index)=>({...section,items:section.items.map((item,itemIndex)=>index===0&&itemIndex===4?{...item,body:polyphonyMarkerBodies.en}:item)}));const copy=guideLocales[language];return enSections.map((section,index)=>({...section,title:copy.sectionTitles[index],intro:copy.sectionIntros[index],items:section.items.map((item,itemIndex)=>({...item,icon:index===3&&itemIndex===0?'ABC':item.icon,title:copy.itemTitles[index][itemIndex],body:index===0&&itemIndex===4?polyphonyMarkerBodies[language]:copy.itemBodies[index][itemIndex]}))}))}
 
 const localizedSections=(language:string):GuideSection[]=>{
@@ -92,6 +103,8 @@ const localizedSections=(language:string):GuideSection[]=>{
   sections[2].items[4].shortcut='Ctrl / ⌘ + V'
   sections[2].items[5].shortcut='Backspace / Delete'
   sections[4].items[0].shortcut='UNDO  Ctrl / ⌘ + Z\nREDO  Ctrl / ⌘ + Shift + Z'
+  const editionCopy=editionCopies[language]??editionCopies.en
+  sections[4].items.splice(2,0,{icon:'J/B',title:editionCopy.title,body:editionCopy.body})
   return sections
 }
 

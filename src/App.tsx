@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { playProject, previewTone, stopPlayback } from './audio'
-import type { Project, Track } from './types'
+import type { AudioEdition, Project, Track } from './types'
 import BlueprintView, { type BlueprintViewState } from './BlueprintView'
 import HomePage from './HomePage'
 import CreatorsPage from './CreatorsPage'
@@ -52,7 +52,7 @@ const INSTRUMENTS = [
 ] as const
 const PITCHES = Array.from({ length: 25 }, (_, i) => i)
 const makeTrack = (i: number): Track => ({ id: crypto.randomUUID(), name: `TRACK ${String(i + 1).padStart(2, '0')}`, instrument: 'Harp', volume: 1, pan: 0, color: COLORS[i % COLORS.length], muted: false, solo: false, ghostEnabled: true, notes: [] })
-const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'both', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:16,compactSize:50,fold:'right',compactFold:'right',includeSilentEdges:true,repeaterDisplay:'delay',fishboneMode:'auto',fishboneManual:{},fishbonePackColumns:false,fishboneSpatialAudio:false,fishbonePlayerHeight:5} })
+const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'java', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:16,compactSize:50,fold:'right',compactFold:'right',includeSilentEdges:true,repeaterDisplay:'delay',fishboneMode:'auto',fishboneManual:{},fishbonePackColumns:false,fishboneSpatialAudio:false,fishbonePlayerHeight:5} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
 const LANGUAGE_STORAGE='oto-blogic:language'
@@ -66,7 +66,8 @@ const normalizeProject = (source:Project):Project => {
   const knownTrackIds=new Set(tracks.map(track=>track.id))
   const fishboneManual=Object.fromEntries(Object.entries(source.blueprint?.fishboneManual??{}).flatMap(([trackId,lanes])=>knownTrackIds.has(trackId)&&Array.isArray(lanes)?[[trackId,[...new Set(lanes.filter(lane=>Number.isInteger(lane)&&lane>0))]]]:[]))
   const rawFishbonePlayerHeight=Number(source.blueprint?.fishbonePlayerHeight??5),fishbonePlayerHeight=Number.isFinite(rawFishbonePlayerHeight)?Math.max(0,Math.min(48,Math.round(rawFishbonePlayerHeight))):5
-  return {...source, format:'oto-blogic', title, delayUnit, blueprint:{runLength:source.blueprint?.runLength??16,compactSize:source.blueprint?.compactSize??50,fold:source.blueprint?.fold??'right',compactFold:source.blueprint?.compactFold==='left'?'left':'right',includeSilentEdges:source.blueprint?.includeSilentEdges??true,theme:source.blueprint?.theme,repeaterDisplay:source.blueprint?.repeaterDisplay==='clicks'?'clicks':'delay',fishboneMode:source.blueprint?.fishboneMode==='manual'?'manual':'auto',fishboneManual,fishbonePackColumns:source.blueprint?.fishbonePackColumns===true,fishboneSpatialAudio:source.blueprint?.fishboneSpatialAudio===true,fishbonePlayerHeight}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
+  const edition:AudioEdition=source.edition==='bedrock'?'bedrock':'java'
+  return {...source, format:'oto-blogic', title, edition, delayUnit, blueprint:{runLength:source.blueprint?.runLength??16,compactSize:source.blueprint?.compactSize??50,fold:source.blueprint?.fold??'right',compactFold:source.blueprint?.compactFold==='left'?'left':'right',includeSilentEdges:source.blueprint?.includeSilentEdges??true,theme:source.blueprint?.theme,repeaterDisplay:source.blueprint?.repeaterDisplay==='clicks'?'clicks':'delay',fishboneMode:source.blueprint?.fishboneMode==='manual'?'manual':'auto',fishboneManual,fishbonePackColumns:source.blueprint?.fishbonePackColumns===true,fishboneSpatialAudio:source.blueprint?.fishboneSpatialAudio===true,fishbonePlayerHeight}, tracks:[...tracks, ...Array.from({length:Math.max(0,20-tracks.length)},(_,i)=>makeTrack(tracks.length+i))].slice(0,20)}
 }
 const GhostIcon = () => <span className="ghost-icon" aria-hidden="true"><i /></span>
 
@@ -88,6 +89,7 @@ function App() {
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
   const [delayMenuOpen,setDelayMenuOpen]=useState(false)
+  const [editionMenuOpen,setEditionMenuOpen]=useState(false)
   const [view,setView] = useState<AppView>(()=>viewFromPath(window.location.pathname))
   const [blueprintViewState,setBlueprintViewState]=useState<BlueprintViewState>(DEFAULT_BLUEPRINT_VIEW)
   const [previewPitches,setPreviewPitches]=useState<number[]>([])
@@ -153,6 +155,7 @@ function App() {
     setPanel(current=>current===next?null:next)
     setMenuOpen(false)
     setDelayMenuOpen(false)
+    setEditionMenuOpen(false)
   }
   const labelGestureRef = useRef<{pointerId:number;x:number;y:number;moved:boolean} | null>(null)
   const followIdRef = useRef(0)
@@ -226,7 +229,7 @@ function App() {
     const timer=window.setTimeout(()=>{pitchFlashTimersRef.current.delete(pitch);setPreviewPitches(current=>current.filter(value=>value!==pitch))},240)
     pitchFlashTimersRef.current.set(pitch,timer)
   }
-  const auditionPitch=(pitch:number)=>{void previewTone(pitch,active.volume,active.instrument).then(()=>flashPitch(pitch)).catch(error=>console.error('Pitch preview failed.',error))}
+  const auditionPitch=(pitch:number)=>{void previewTone(pitch,active.volume,active.instrument,active.pan,project.edition).then(()=>flashPitch(pitch)).catch(error=>console.error('Pitch preview failed.',error))}
   const currentTrackPitchesAt=(step:number)=>{
     const current=projectRef.current,track=current.tracks.find(value=>value.id===activeIdRef.current)
     if(!track||track.muted||(current.tracks.some(value=>value.solo)&&!track.solo))return []
@@ -468,6 +471,12 @@ function App() {
     commitProject(current=>({...current,delayUnit:next}))
     setPlayhead(value=>Math.floor(value/next)*next);setSelection(null);setDragPreview(null);setDelayMenuOpen(false)
   }
+  const applyEdition = (next:AudioEdition) => {
+    if(next===project.edition){setEditionMenuOpen(false);return}
+    stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)
+    commitProject(current=>({...current,edition:next}))
+    setEditionMenuOpen(false)
+  }
   const commitBpm = (raw = bpmDraft) => {
     const requested = Number(raw)
     if (!Number.isFinite(requested) || requested < 8) { setBpmDraft(String(bpm)); return }
@@ -528,7 +537,7 @@ function App() {
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><input aria-label={language==='ja'?'小節数を入力':'Enter bars'} type="text" inputMode="numeric" value={barsDraft} onChange={event=>setBarsDraft(event.target.value.replace(/[^0-9]/g,''))} onBlur={event=>applyBars(event.currentTarget.value)} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur()}}/><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
-      <button className={`desktop-transport-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-label={c[17]} aria-expanded={menuOpen}><span className="hamburger-icon" aria-hidden="true"/></button>
+      <button className={`desktop-transport-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-label={c[17]} aria-expanded={menuOpen}><span className="hamburger-icon" aria-hidden="true"/></button>
     </section>
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
@@ -557,10 +566,11 @@ function App() {
       <button className="delete-tool" onClick={deleteSelection} disabled={!normalizedSelection}><span className="tool-icon">⌫</span><small>{c[14]}</small></button>
       <button className="desktop-utility" aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="tool-icon">↶</span><small>UNDO</small></button>
       <button className="desktop-utility" aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="tool-icon">↷</span><small>REDO</small></button>
-      <button className={`desktop-utility delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false);setPanel(null)}}><span className="tool-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className={`desktop-utility delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setEditionMenuOpen(false);setMenuOpen(false);setPanel(null)}}><span className="tool-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className={`desktop-utility edition-button ${editionMenuOpen?'active':''}`} onClick={()=>{setEditionMenuOpen(value=>!value);setDelayMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.edition==='bedrock'?'Bedrock':'Java'} Edition`} aria-expanded={editionMenuOpen}><span className="tool-icon edition-icon">{project.edition==='bedrock'?'B':'J'}</span><small>EDITION</small></button>
       <button className={`desktop-utility desktop-track-settings ${panel==='settings'?'active':''}`} onClick={()=>toggleTrackPanel('settings')}><img className="tool-icon" src="/assets/icons/settings.svg" alt="" aria-hidden="true"/><small>{language==='ja'?'トラック設定':'TRACK SET'}</small></button>
       <button className={`desktop-utility desktop-ghost-toggle ${ghosts?'active':''}`} onClick={()=>setGhosts(!ghosts)}><GhostIcon/><small>{t.ghost}</small></button>
-      <button className={`desktop-utility desktop-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`desktop-utility desktop-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
       <button className="zoom-out" onClick={() => zoomSteps(-4)}><span className="tool-icon">−</span><small>{c[15]}</small></button>
       <button className="zoom-in" onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
@@ -604,12 +614,14 @@ function App() {
 
     <footer className="dock">
       <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="dock-icon">↶</span><small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="dock-icon">↷</span><small>REDO</small></button>
-      <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setMenuOpen(false);setPanel(null)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
-      <button className={`dock-menu ${menuOpen?'active':''}`} onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setEditionMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
+      <button className={`edition-button ${editionMenuOpen?'active':''}`} onClick={()=>{setEditionMenuOpen(value=>!value);setDelayMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.edition==='bedrock'?'Bedrock':'Java'} Edition`} aria-expanded={editionMenuOpen}><span className="dock-icon edition-icon">{project.edition==='bedrock'?'B':'J'}</span><small>EDITION</small></button>
+      <button className={`dock-menu ${menuOpen?'active':''}`} onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
       <input ref={fileRef} hidden type="file" accept=".obg,.nbm,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
     {delayMenuOpen&&<div className="delay-mode-menu" role="group" aria-label={language==='ja'?'遅延モードを選択':'Select delay mode'}>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}><b>{value}</b><small>{language==='ja'?'遅延':'DELAY'}</small></button>)}</div>}
+    {editionMenuOpen&&<div className="edition-menu" role="group" aria-label={language==='ja'?'音源のエディションを選択':'Select audio edition'}>{(['java','bedrock'] as const).map(value=><button key={value} className={project.edition===value?'active':''} onClick={()=>applyEdition(value)}><b>{value==='java'?'J':'B'}</b><small>{value==='java'?'JAVA':'BEDROCK'}</small></button>)}</div>}
     {menuOpen && <div className="more-menu">
       <div className="menu-section"><button className="blueprint-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null);openView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button><button className="danger" onClick={clearAll}><b className="menu-icon trash-icon" aria-hidden="true"/><span>{c[18]}</span></button></div>
       <div className="menu-section future"><button onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openView('home')}}><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>OPEN</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button onClick={()=>{setMenuOpen(false);window.open('https://x.com/goro56pika','_blank','noopener,noreferrer')}}><b className="menu-icon">𝕏</b><span>X</span><small>OPEN</small></button><button className="creator-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openView('creators')}}><b className="menu-icon creator-menu-icon" aria-hidden="true"/><span>{language==='ja'?'制作者':'CREATOR'}</span><small>OPEN</small></button><BuyMeCoffeeSupport className="support-menu"/></div>

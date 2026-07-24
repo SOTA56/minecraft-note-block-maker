@@ -1,4 +1,4 @@
-import type { Note, Project, Track } from './types'
+import type { AudioEdition, Note, Project, Track } from './types'
 
 let context: AudioContext | null = null
 let stopAt = 0
@@ -59,17 +59,24 @@ if (typeof window !== 'undefined') {
   })
 }
 
-const loadBuffer = async (ctx: AudioContext, instrument: string) => {
-  const cached = buffers.get(instrument)
+const projectEdition = (edition:Project['edition']):AudioEdition => edition === 'bedrock' ? 'bedrock' : 'java'
+
+const loadBuffer = async (ctx: AudioContext, instrument: string, edition:AudioEdition) => {
+  const cacheKey = `${edition}:${instrument}`
+  const cached = buffers.get(cacheKey)
   if (cached) return cached
-  const pending = loading.get(instrument)
+  const pending = loading.get(cacheKey)
   if (pending) return pending
   const file = SOUND_FILES[instrument] ?? SOUND_FILES.Harp
-  const request = fetch(`/assets/note-block-sounds/${file}.mp3`)
+  const path = edition === 'bedrock'
+    ? `/assets/note-block-sounds-bedrock/${file}.wav`
+    : `/assets/note-block-sounds/${file}.mp3`
+  const request = fetch(path)
     .then(response => { if (!response.ok) throw new Error(`Sound load failed: ${file}`); return response.arrayBuffer() })
     .then(data => ctx.decodeAudioData(data))
-    .then(buffer => { buffers.set(instrument, buffer); loading.delete(instrument); return buffer })
-  loading.set(instrument, request)
+    .then(buffer => { buffers.set(cacheKey, buffer); loading.delete(cacheKey); return buffer })
+    .catch(error => { loading.delete(cacheKey); throw error })
+  loading.set(cacheKey, request)
   return request
 }
 
@@ -89,9 +96,9 @@ const playTone = (ctx: AudioContext, buffer: AudioBuffer, pitch: number, at: num
   source.start(at)
 }
 
-export async function previewTone(pitch: number, volume: number, instrument: string, pan=0) {
+export async function previewTone(pitch: number, volume: number, instrument: string, pan=0, edition:Project['edition']='java') {
   const ctx = await getContext()
-  const buffer = await loadBuffer(ctx, instrument)
+  const buffer = await loadBuffer(ctx, instrument, projectEdition(edition))
   playTone(ctx, buffer, pitch, ctx.currentTime + 0.008, volume, pan)
 }
 
@@ -112,7 +119,8 @@ export async function playProject(project: Project, fromStep = 0, onStep?: (step
   // Live mute/solo changes may make any track audible after playback begins, so preload every
   // instrument used by this project once. Static blueprint playback retains its smaller preload.
   const instruments = dynamicMix ? project.tracks.map(track => track.instrument) : audible.map(track => track.instrument)
-  const loaded = new Map(await Promise.all([...new Set(instruments)].map(async instrument => [instrument, await loadBuffer(ctx, instrument)] as const)))
+  const edition=projectEdition(project.edition)
+  const loaded = new Map(await Promise.all([...new Set(instruments)].map(async instrument => [instrument, await loadBuffer(ctx, instrument, edition)] as const)))
   if (stopAt !== token) return
   const firstStep = Math.max(0, Math.min(project.steps - 1, Math.round(fromStep)))
   const lastStep = Math.max(firstStep, Math.min(project.steps - 1, Math.round(options?.toStep ?? project.steps - 1)))
