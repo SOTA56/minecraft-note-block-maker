@@ -419,20 +419,42 @@ function App() {
     const fresh = createInitialProject()
     historyRef.current={past:[],future:[]};setProject(fresh); setActiveId(fresh.tracks[0].id); setSelection(null); setCopiedNotes(null); setPlayhead(0); setPlayingStep(-1); setStepHeight(30); setGhosts(true); setEditMode('input'); setPanel(null); setBarsDraft('4'); setBpmDraft('150'); setTitleDraft(fresh.title); setMenuOpen(false);setBlueprintViewState(DEFAULT_BLUEPRINT_VIEW)
   }
+  const stopBarsHold = () => {window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat);barsHoldRef.current={delay:0,repeat:0}}
   const applyBars = (raw = barsDraft) => {
+    const currentProject=projectRef.current
+    const currentBars=currentProject.steps/16
     const requested = Number(raw)
-    if (!Number.isFinite(requested) || requested < 1) { setBarsDraft(String(project.steps / 16)); return }
+    if (!Number.isFinite(requested) || requested < 1) { setBarsDraft(String(currentBars)); return false }
     const bars = Math.max(1, Math.min(999, Math.round(requested)))
     const nextSteps = bars * 16
-    const outside = project.tracks.reduce((count,track) => count + track.notes.filter(note => note.step >= nextSteps).length, 0)
-    if (outside && !window.confirm(language === 'ja' ? `${bars}小節へ短縮すると、範囲外のノート${outside}個が削除されます。続行しますか？` : `Shortening to ${bars} bars will delete ${outside} notes outside the new range. Continue?`)) { setBarsDraft(String(project.steps / 16)); return }
+    const outside = currentProject.tracks.reduce((count,track) => count + track.notes.filter(note => note.step >= nextSteps).length, 0)
+    if (outside) {
+      // Android may drop the pointer-up event while a native dialog is open. Stop the
+      // long-press repeater before showing the alert so it cannot reopen indefinitely.
+      stopBarsHold()
+      window.alert(language === 'ja'
+        ? `削除しようとした小節にノートが${outside}個あるため、小節数を変更しませんでした。先に対象のノートを削除または移動してください。`
+        : `The bar count was not changed because ${outside} note(s) remain in the bars being removed. Delete or move those notes first.`)
+      setBarsDraft(String(currentBars))
+      return false
+    }
     barsValueRef.current=bars
     commitProject(p => ({...p,steps:nextSteps,tracks:p.tracks.map(track=>({...track,notes:track.notes.filter(note=>note.step<nextSteps)}))}))
     setPlayhead(step => Math.min(step,nextSteps-1)); setBarsDraft(String(bars))
+    return true
   }
-  const stopBarsHold = () => {window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat);barsHoldRef.current={delay:0,repeat:0}}
-  const adjustBars = (delta:number) => {const next=Math.max(1,Math.min(999,barsValueRef.current+delta));if(next!==barsValueRef.current)applyBars(String(next))}
-  const startBarsHold = (delta:number,event:React.PointerEvent<HTMLButtonElement>) => {event.preventDefault();stopBarsHold();adjustBars(delta);barsHoldRef.current.delay=window.setTimeout(()=>{barsHoldRef.current.repeat=window.setInterval(()=>adjustBars(delta),125)},450)}
+  const adjustBars = (delta:number) => {
+    const next=Math.max(1,Math.min(999,barsValueRef.current+delta))
+    return next===barsValueRef.current||applyBars(String(next))
+  }
+  const startBarsHold = (delta:number,event:React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    stopBarsHold()
+    if(!adjustBars(delta))return
+    barsHoldRef.current.delay=window.setTimeout(()=>{
+      barsHoldRef.current.repeat=window.setInterval(()=>{if(!adjustBars(delta))stopBarsHold()},125)
+    },450)
+  }
   const applyDelayMode = (next:1|2|4) => {
     if(next===project.delayUnit){setDelayMenuOpen(false);return}
     const invalid=project.tracks.reduce((count,track)=>count+track.notes.filter(note=>note.step%next!==0).length,0)
