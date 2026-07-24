@@ -234,8 +234,9 @@ body.editor-viewport-locked{overflow:hidden;background:#0e110f}.app{width:100%;m
   .pc-pitch-head b .sharp{display:inline!important;flex:0 0 auto;line-height:1}
   .pc-pitch-head b.do{border-top:0;border-bottom:2px solid #858c84}
 
-  /* The usable height is measured from the scroll viewport in App.tsx. This
-     covers both Windows' space-consuming scrollbar and macOS' overlay bar. */
+  /* The usable height is measured from the scroll viewport in App.tsx. On
+     macOS an overlay scrollbar gets its own blank strip; on Windows the
+     native scrollbar already reserves that strip outside the grid. */
   .pc-pitch-head{box-sizing:border-box;height:var(--pc-roll-content-height,100%);background:#0e110f}
   .roll-viewport{box-sizing:border-box;padding-bottom:0;background:#0e110f}
   .roll{height:var(--pc-roll-content-height,100%);min-height:var(--pc-roll-content-height,100%)}

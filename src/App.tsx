@@ -138,7 +138,11 @@ function App() {
     let frame = 0
     const syncPitchHeight = () => {
       frame = 0
-      const height = viewport.clientHeight
+      const scrollbarHeight = Math.max(0, viewport.offsetHeight - viewport.clientHeight)
+      // Overlay scrollbars do not reserve layout height. Leave them an empty
+      // strip below the lowest key so they never cover an editable row.
+      const gutter = scrollbarHeight <= 2 ? 18 : 0
+      const height = viewport.clientHeight - gutter
       if (height > 0) stage.style.setProperty('--pc-roll-content-height', `${height}px`)
     }
     const scheduleSync = () => {
@@ -198,6 +202,7 @@ function App() {
   const copiedModeRef=useRef(project.delayUnit)
   const barsValueRef = useRef(project.steps / 16)
   const barsHoldRef = useRef<{delay:number;repeat:number}>({delay:0,repeat:0})
+  const rejectedBarsRequestRef = useRef<string | null>(null)
   const pitchFlashTimersRef=useRef(new Map<number,number>())
   const projectRef=useRef(project)
   const activeIdRef=useRef(activeId)
@@ -222,7 +227,7 @@ function App() {
   useEffect(()=>{const media=window.matchMedia(desktopMedia),sync=()=>setDesktopLayout(media.matches);media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
   useEffect(()=>{if(desktopLayout){setControlsOpen(true);setPanel(current=>current==='tracks'?null:current)}},[desktopLayout,view])
   useEffect(() => () => stopPlayback(), [])
-  useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16))},[project.steps])
+  useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16));rejectedBarsRequestRef.current=null},[project.steps])
   useEffect(()=>()=>{window.clearTimeout(barsHoldRef.current.delay);window.clearInterval(barsHoldRef.current.repeat)},[])
   useEffect(()=>()=>pitchFlashTimersRef.current.forEach(window.clearTimeout),[])
   useEffect(()=>{followPlaybackRef.current=followPlayback},[followPlayback])
@@ -495,15 +500,25 @@ function App() {
     const nextSteps = bars * 16
     const outside = currentProject.tracks.reduce((count,track) => count + track.notes.filter(note => note.step >= nextSteps).length, 0)
     if (outside) {
+      const requestKey = `${currentBars}:${bars}`
+      // Android may replay a queued input/click event after its native alert
+      // closes. Ignore an identical rejected request until notes are changed.
+      if (rejectedBarsRequestRef.current === requestKey) {
+        setBarsDraft(String(currentBars))
+        return false
+      }
+      rejectedBarsRequestRef.current=requestKey
       // Android may drop the pointer-up event while a native dialog is open. Stop the
       // long-press repeater before showing the alert so it cannot reopen indefinitely.
       stopBarsHold()
+      barsValueRef.current=currentBars
+      setBarsDraft(String(currentBars))
       window.alert(language === 'ja'
         ? `削除しようとした小節にノートが${outside}個あるため、小節数を変更しませんでした。先に対象のノートを削除または移動してください。`
         : `The bar count was not changed because ${outside} note(s) remain in the bars being removed. Delete or move those notes first.`)
-      setBarsDraft(String(currentBars))
       return false
     }
+    rejectedBarsRequestRef.current=null
     barsValueRef.current=bars
     commitProject(p => ({...p,steps:nextSteps,tracks:p.tracks.map(track=>({...track,notes:track.notes.filter(note=>note.step<nextSteps)}))}))
     setPlayhead(step => Math.min(step,nextSteps-1)); setBarsDraft(String(bars))
