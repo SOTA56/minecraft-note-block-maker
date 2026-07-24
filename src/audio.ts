@@ -126,22 +126,33 @@ export async function playProject(project: Project, fromStep = 0, onStep?: (step
   const lastStep = Math.max(firstStep, Math.min(project.steps - 1, Math.round(options?.toStep ?? project.steps - 1)))
   const stepSeconds = 2 / project.tickRate
   const start = ctx.currentTime + 0.08
-  if (!dynamicMix) audible.forEach(track => track.notes.filter(note => note.step >= firstStep && note.step <= lastStep).forEach(note => {
-    const mix=options?.noteMix?.(track,note)
-    playTone(ctx, loaded.get(track.instrument)!, note.pitch, start + (note.step - firstStep) * stepSeconds, mix?.volume??track.volume, mix?.pan??(options?.usePan===false?0:track.pan??0), true)
-  }))
+  // Do not create every source node for a large song at once. Keeping a short
+  // rolling look-ahead makes dense MIDI playback much less likely to glitch,
+  // while still allowing live mute/solo changes to take effect quickly.
+  const lookAheadSeconds = 0.25
+  let scheduledThrough = firstStep
+  const scheduleAudioWindow = () => {
+    if (stopAt !== token) return
+    const liveProject = dynamicMix ? options?.getProject?.() : project
+    const liveTracks = liveProject?.tracks ?? []
+    const hasSolo = liveTracks.some(track => track.solo)
+    const audibleTracks = liveTracks.filter(track => !track.muted && (!hasSolo || track.solo))
+    const horizon = ctx.currentTime + lookAheadSeconds
+    const maxStep = Math.min(lastStep + 1, Math.ceil((horizon - start) / stepSeconds) + firstStep)
+    for (let step = scheduledThrough; step < maxStep; step += 1) {
+      const at = start + (step - firstStep) * stepSeconds
+      audibleTracks.forEach(track => track.notes.filter(note => note.step === step).forEach(note => {
+        const mix=options?.noteMix?.(track,note)
+        playTone(ctx, loaded.get(track.instrument)!, note.pitch, Math.max(at, ctx.currentTime + 0.01), mix?.volume??track.volume, mix?.pan??(options?.usePan===false?0:track.pan??0), true)
+      }))
+    }
+    scheduledThrough = Math.max(scheduledThrough, maxStep)
+    if (scheduledThrough <= lastStep) schedulePlaybackTimer(scheduleAudioWindow, Math.max(40, lookAheadSeconds * 500))
+  }
+  scheduleAudioWindow()
   for (let step = firstStep; step <= lastStep; step += 1) {
     schedulePlaybackTimer(() => {
       if (stopAt !== token) return
-      if (dynamicMix) {
-        const liveProject=options?.getProject?.()
-        const liveTracks=liveProject?.tracks ?? []
-        const hasSolo=liveTracks.some(track=>track.solo)
-        liveTracks.filter(track=>!track.muted&&(!hasSolo||track.solo)).forEach(track=>track.notes.filter(note=>note.step===step).forEach(note=>{
-          const mix=options?.noteMix?.(track,note)
-          playTone(ctx,loaded.get(track.instrument)!,note.pitch,ctx.currentTime+.008,mix?.volume??track.volume,mix?.pan??(options?.usePan===false?0:track.pan??0),true)
-        }))
-      }
       onStep?.(step)
     }, 80 + (step - firstStep) * stepSeconds * 1000)
   }
