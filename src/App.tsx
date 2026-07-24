@@ -445,6 +445,10 @@ function App() {
     const after=desktopLayout?event.clientX-rect.left>rect.width/2:event.clientY-rect.top>rect.height/2
     const boundary = Math.min(project.steps - project.delayUnit, step + (after ? project.delayUnit : 0))
     setPlayhead(boundary)
+    // Do not leave focus on the step button: pressing Space after seeking
+    // should invoke the global play/stop shortcut, not the button's native
+    // activation (which can look like an adjacent cell selection).
+    ;(event.currentTarget as HTMLElement).blur()
     if (play || playingStep >= 0) void playFrom(boundary)
   }
   const handleLabelDown = (event:React.PointerEvent) => {labelGestureRef.current={pointerId:event.pointerId,x:event.clientX,y:event.clientY,moved:false}}
@@ -580,10 +584,12 @@ function App() {
   useEffect(()=>{
     if(!desktopLayout||view!=='editor')return
     const handleShortcut=(event:KeyboardEvent)=>{
+      // Space is a global transport shortcut, even when the last interaction
+      // focused a step-label button used to move the playhead.
+      if(event.code==='Space'&&!event.repeat){event.preventDefault();event.stopPropagation();void togglePlay();return}
       const target=event.target as HTMLElement|null
       if(target&&(target.matches('input,textarea,select,button,a')||target.isContentEditable))return
       const key=event.key.toLowerCase(),command=event.ctrlKey||event.metaKey
-      if(event.code==='Space'&&!event.repeat){event.preventDefault();void togglePlay();return}
       if(command&&key==='c'&&normalizedSelection){event.preventDefault();copySelection();return}
       if(command&&key==='x'&&normalizedSelection){event.preventDefault();cutSelection();return}
       if(command&&key==='v'&&copiedNotes?.notes.length){event.preventDefault();pasteSelection();return}
