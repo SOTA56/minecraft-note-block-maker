@@ -63,13 +63,3 @@
 /* Readable supporting copy without changing the compact, blueprint-like hierarchy. */
 .hero-kicker{font-size:10px}.home-hero>p{font-size:15px}.hero-visual>p{font-size:13px}.home-features>header small,.home-circuits>header small,.home-video header small,.home-final>small{font-size:10px}.home-features article>b{font-size:20px}.home-features h3{font-size:17px}.home-features p,.circuit-card p{font-size:12px}.circuit-card>span{font-size:10px}.home-unofficial{font-size:9px}.home-legal-links button,.home-legal-links a{font-size:10px}.hero-meta{font-size:9px}.hero-meta strong{font-size:10px}.hero-meta small{font-size:9px}.home-footer{display:grid;height:80px;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 18px;border-top:1px solid #263236;background:#080b0c;color:#718084;font-size:9px}.home-footer img{grid-column:1;grid-row:1;justify-self:start;width:110px;image-rendering:pixelated}.home-footer>span{grid-column:2;grid-row:1;justify-self:center;margin:0;text-align:center;white-space:nowrap}
 @media(min-width:700px){.hero-meta strong{font-size:12px}.hero-meta small{font-size:9px}.home-footer{grid-template-columns:1fr auto 1fr}.home-footer>span{grid-column:2;justify-self:center}}
-
-/* Social links: compact icon rail with bilingual hover/focus descriptions. */
-.home-related-links .home-social-link{position:relative;display:grid;width:24px;height:24px;place-items:center;padding:0!important;color:#dce7e8!important}
-.home-related-links .home-social-link img{width:24px;height:24px;object-fit:contain}
-.home-related-links .home-social-link svg{width:19px;height:19px;fill:currentColor}
-.home-related-links .home-x-link{font:18px/1 Arial,sans-serif}
-.home-related-links .home-social-link:hover,.home-related-links .home-social-link:focus-visible{color:var(--yellow)!important}
-.home-social-tooltip{position:absolute;right:0;top:calc(100% + 10px);z-index:20;width:max-content;max-width:min(310px,calc(100vw - 32px));padding:8px 10px;border:1px solid #3d5965;background:#0b171c;color:#e8f0ef;font:600 10px/1.45 'IBM Plex Mono';letter-spacing:0;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .16s ease,transform .16s ease;white-space:normal}
-.home-social-tooltip::before{content:'';position:absolute;right:7px;top:-5px;width:8px;height:8px;border-top:1px solid #3d5965;border-left:1px solid #3d5965;background:#0b171c;transform:rotate(45deg)}
-.home-social-link:hover .home-social-tooltip,.home-social-link:focus-visible .home-social-tooltip{opacity:1;transform:none}
