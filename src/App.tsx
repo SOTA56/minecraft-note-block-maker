@@ -12,7 +12,7 @@ import {instrumentBlockName} from './localization'
 import {BuyMeCoffeeSupport} from './BuyMeCoffee'
 import LegalPage from './LegalPages'
 import { parseMidi, type ParsedMidi } from './midi'
-import { trackPageView } from './AnalyticsConsent'
+import { trackEvent, trackPageView } from './AnalyticsConsent'
 
 type AppView='home'|'editor'|'blueprint'|'creators'|'guide'|'placement'|'resource-pack'|'terms'|'privacy'
 const viewFromPath=(path:string):AppView=>path==='/creators'?'creators':path==='/editor'?'editor':path==='/blueprint'?'blueprint':path==='/guide'?'guide':path==='/placement'?'placement':path==='/resource-pack'?'resource-pack':path==='/terms'?'terms':path==='/privacy'?'privacy':'home'
@@ -82,6 +82,7 @@ function App() {
   const [playhead, setPlayhead] = useState(0)
   const [panel, setPanel] = useState<'tracks' | 'settings' | null>(null)
   const [language, setLanguage] = useState(initialLanguage)
+  const changeLanguage=(next:string)=>{setLanguage(next);trackEvent('language_change',{language:next})}
   const [stepHeight, setStepHeight] = useState(30)
   const [controlsOpen, setControlsOpen] = useState(true)
   const [editMode, setEditMode] = useState<'input' | 'select'>('input')
@@ -192,6 +193,7 @@ function App() {
     const path=pathFromView(next)
     if(window.location.pathname!==path)window.history[replace?'replaceState':'pushState']({},'',path)
     setView(next)
+    if(next!=='home')trackEvent('view_open',{view:next})
   }
   const toggleTrackPanel=(next:'tracks'|'settings')=>{
     setPanel(current=>current===next?null:next)
@@ -605,12 +607,12 @@ function App() {
     return()=>window.removeEventListener('keydown',handleShortcut)
   },[desktopLayout,view,normalizedSelection,copiedNotes,project,activeId,playhead,playingStep])
 
-  if(view==='home')return <HomePage language={language} setLanguage={setLanguage} onStart={()=>openView('editor')} onCreators={()=>openView('creators')} onResourcePack={()=>openView('resource-pack')} onTerms={()=>openView('terms')} onPrivacy={()=>openView('privacy')}/>
-  if(view==='creators')return <CreatorsPage language={language} setLanguage={setLanguage} onBack={()=>openView('home')} onStart={()=>openView('editor')}/>
-  if(view==='guide')return <EditorGuidePage language={language} setLanguage={setLanguage} onBack={()=>openView('editor')} onHome={()=>openView('home')}/>
-  if(view==='placement')return <PlacementGuidePage language={language} setLanguage={setLanguage} onBack={()=>openView('blueprint')} onHome={()=>openView('home')} onResourcePack={()=>openView('resource-pack')}/>
-  if(view==='resource-pack')return <ResourcePackPage language={language} setLanguage={setLanguage} onHome={()=>openView('home')}/>
-  if(view==='terms'||view==='privacy')return <LegalPage kind={view} language={language} setLanguage={setLanguage} onHome={()=>openView('home')} onTerms={()=>openView('terms')} onPrivacy={()=>openView('privacy')}/>
+  if(view==='home')return <HomePage language={language} setLanguage={changeLanguage} onStart={()=>{trackEvent('composer_start');openView('editor')}} onCreators={()=>openView('creators')} onResourcePack={()=>openView('resource-pack')} onTerms={()=>openView('terms')} onPrivacy={()=>openView('privacy')}/>
+  if(view==='creators')return <CreatorsPage language={language} setLanguage={changeLanguage} onBack={()=>openView('home')} onStart={()=>{trackEvent('composer_start');openView('editor')}}/>
+  if(view==='guide')return <EditorGuidePage language={language} setLanguage={changeLanguage} onBack={()=>openView('editor')} onHome={()=>openView('home')}/>
+  if(view==='placement')return <PlacementGuidePage language={language} setLanguage={changeLanguage} onBack={()=>openView('blueprint')} onHome={()=>openView('home')} onResourcePack={()=>openView('resource-pack')}/>
+  if(view==='resource-pack')return <ResourcePackPage language={language} setLanguage={changeLanguage} onHome={()=>openView('home')}/>
+  if(view==='terms'||view==='privacy')return <LegalPage kind={view} language={language} setLanguage={changeLanguage} onHome={()=>openView('home')} onTerms={()=>openView('terms')} onPrivacy={()=>openView('privacy')}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);openView('editor',true)}} onHome={()=>openView('home')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
   return <main className="app">
