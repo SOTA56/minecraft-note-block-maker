@@ -715,7 +715,9 @@ function App() {
       {/* iOS Files does not expose unknown .obg UTIs when an extension-filtered
           accept value is used. Allow choosing any file and validate its JSON
           payload in load(), so .obg remains selectable on iPhone. */}
-      <input ref={fileRef} hidden type="file" accept="*/*" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
+      {/* Keep the picker focused on project files.  A wildcard accept makes iOS
+          offer the photo library and camera, which is confusing for OBG files. */}
+      <input ref={fileRef} hidden type="file" accept=".obg,.json,application/octet-stream,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <input ref={midiFileRef} hidden type="file" accept=".mid,.midi,audio/midi" onChange={e => { const file=e.target.files?.[0]; e.currentTarget.value=''; importMidi(file).catch(err => alert(err instanceof Error ? err.message : String(err))) }} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
