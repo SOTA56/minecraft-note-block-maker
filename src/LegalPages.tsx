@@ -19,8 +19,7 @@ const termsJa:Copy={terms:'利用規約',privacy:'プライバシーポリシー
 
 const privacyJa:Copy={terms:'利用規約',privacy:'プライバシーポリシー',updated:'最終更新：2026年7月22日',home:'ホームへ',intro:'OTO BLOGICで扱う情報と、利用者が選べるプライバシー設定を説明します。',sections:[
  {title:'ブラウザ内に保存する情報',body:['曲名、音符、トラック設定、設計図設定、言語設定などは、利用中の端末のブラウザ内（Local Storage）に保存されます。これらの曲データは、通常の利用ではOTO BLOGICのサーバーへ送信されません。']},
- {title:'Google Analytics',body:['サイトの改善のため、同意した利用者に限りGoogle Analytics 4を使用します。ページの閲覧、利用端末・ブラウザ、セッション、国や地域のおおよその情報などがGoogleへ送信されます。氏名、メールアドレス、作曲内容などを意図的に送信することはありません。','同意するまではGoogle Analyticsのタグを読み込まず、Googleへ解析データを送信しません。拒否してもOTO BLOGICの作曲・設計図機能は利用できます。',external('https://policies.google.com/technologies/partner-sites?hl=ja','Googleによる情報の使用について')]},
- {title:'同意の変更',body:['選択内容はブラウザ内に保存されます。トップページ下部の「Cookie設定」から、いつでも解析への同意を変更できます。ブラウザの保存データを削除した場合は、選択をもう一度確認します。']},
+ {title:'Google Analytics',body:['サイトの改善のため、Google Analytics 4を使用しています。ページの閲覧、利用端末・ブラウザ、セッション、国や地域のおおよその情報などがGoogleへ送信されることがあります。氏名、メールアドレス、作曲内容などを意図的に送信することはありません。','Google Analyticsによるアクセス解析を希望しない場合は、ブラウザのトラッキング防止機能やコンテンツブロッカーをご利用ください。',external('https://policies.google.com/technologies/partner-sites?hl=ja','Googleによる情報の使用について')]},
  {title:'外部サービス',body:['YouTube動画、Buy Me a Coffee、X、GitHubなどの外部サービスを表示または開く場合、各サービスがアクセス情報などを扱うことがあります。各サービスのプライバシーポリシーもご確認ください。']},
  {title:'お問い合わせ',body:[<>プライバシーに関する連絡は {external('https://x.com/OTOBLOGIC','OTO BLOGIC公式X')} へお願いします。</>]},
 ]}
@@ -37,8 +36,7 @@ const termsEn:Copy={terms:'TERMS OF USE',privacy:'PRIVACY POLICY',updated:'Last 
 
 const privacyEn:Copy={terms:'TERMS OF USE',privacy:'PRIVACY POLICY',updated:'Last updated: July 22, 2026',home:'HOME',intro:'What OTO BLOGIC stores and the privacy choices available to you.',sections:[
  {title:'Data stored in your browser',body:['Song titles, notes, track settings, blueprint settings, and language preferences are stored in your browser using Local Storage. Song data is not normally sent to OTO BLOGIC servers.']},
- {title:'Google Analytics',body:['With your consent, we use Google Analytics 4 to improve the site. It may collect page views, device and browser details, sessions, and approximate location. We do not intentionally send your name, email address, or song content.','The Analytics tag is not loaded and no analytics data is sent to Google until you consent. Refusing does not limit the composer or blueprint features.',external('https://policies.google.com/technologies/partner-sites','How Google uses information from sites or apps that use its services')]},
- {title:'Changing your choice',body:['Your choice is stored in your browser. Use “Cookie settings” in the home-page footer to change it at any time.']},
+ {title:'Google Analytics',body:['We use Google Analytics 4 to improve the site. It may collect page views, device and browser details, sessions, and approximate location. We do not intentionally send your name, email address, or song content.','If you do not want analytics, use your browser’s tracking prevention or content-blocking features.',external('https://policies.google.com/technologies/partner-sites','How Google uses information from sites or apps that use its services')]},
  {title:'External services',body:['Embedded or linked services such as YouTube, Buy Me a Coffee, X, and GitHub may process access information under their own privacy policies.']},
  {title:'Contact',body:[<>Contact us through {external('https://x.com/OTOBLOGIC','OTO BLOGIC on X')}.</>]},
 ]}

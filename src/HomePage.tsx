@@ -96,7 +96,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
     </section>
 
     <aside className="home-unofficial">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</aside>
-    <nav className="home-legal-links"><a href="/terms" onClick={event=>{event.preventDefault();onTerms()}}>{ja?'利用規約':'TERMS'}</a><i/><a href="/privacy" onClick={event=>{event.preventDefault();onPrivacy()}}>{ja?'プライバシーポリシー':'PRIVACY'}</a><i/><button onClick={()=>window.openCookieSettings?.()}>{ja?'Cookie設定':'COOKIE SETTINGS'}</button></nav>
+    <nav className="home-legal-links"><a href="/terms" onClick={event=>{event.preventDefault();onTerms()}}>{ja?'利用規約':'TERMS'}</a><i/><a href="/privacy" onClick={event=>{event.preventDefault();onPrivacy()}}>{ja?'プライバシーポリシー':'PRIVACY'}</a></nav>
     <footer className="home-footer"><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><span>© 2026 · POWERED BY SOTA56</span></footer>
   </main>
 }
