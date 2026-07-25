@@ -58,6 +58,10 @@ type MidiPending = { parsed: ParsedMidi; candidates: number[][] }
 const createInitialProject = ():Project => ({ format: 'oto-blogic', version: 1, title: 'SONG TITLE', edition: 'java', tickRate: 20, delayUnit:1, steps: 64, tracks: Array.from({ length: 20 }, (_, i) => makeTrack(i)), blueprint:{runLength:16,compactSize:50,fold:'right',compactFold:'right',includeSilentEdges:true,repeaterDisplay:'delay',fishboneMode:'auto',fishboneManual:{},fishbonePackColumns:false,fishboneSpatialAudio:false,fishbonePlayerHeight:5} })
 const INITIAL = createInitialProject()
 const STORAGE = 'note-block-maker:autosave:v1'
+// Keep the exported file as an opaque octet stream so iOS Safari does not
+// infer application/json from the first byte and append ".json" to .obg.
+// The loader still accepts older plain-JSON .obg files.
+const OBG_MAGIC = 'OTO_BLOGIC_OBG\n'
 const LANGUAGE_STORAGE='oto-blogic:language'
 const SUPPORTED_LANGUAGES=['ja','en','es','fr','de','zh','zh-tw','ko','id'] as const
 const initialLanguage=()=>{const saved=localStorage.getItem(LANGUAGE_STORAGE);if(saved&&SUPPORTED_LANGUAGES.includes(saved as typeof SUPPORTED_LANGUAGES[number]))return saved;const browser=navigator.language.toLowerCase();if(browser.startsWith('zh-tw')||browser.startsWith('zh-hk')||browser.startsWith('zh-hant'))return'zh-tw';const base=browser.split('-')[0];return SUPPORTED_LANGUAGES.includes(base as typeof SUPPORTED_LANGUAGES[number])?base:'en'}
@@ -461,8 +465,8 @@ function App() {
   const handleLabelDown = (event:React.PointerEvent) => {labelGestureRef.current={pointerId:event.pointerId,x:event.clientX,y:event.clientY,moved:false}}
   const handleLabelMove = (event:React.PointerEvent) => {const gesture=labelGestureRef.current;if(gesture?.pointerId===event.pointerId&&Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)>8)gesture.moved=true}
   const handleLabelUp = (event:React.PointerEvent,step:number) => {const gesture=labelGestureRef.current;labelGestureRef.current=null;if(gesture?.pointerId===event.pointerId&&!gesture.moved)seekFromLabel(event,step)}
-  const save = () => { const exportProject={...project,format:'oto-blogic'};const blob = new Blob([JSON.stringify(exportProject, null, 2)], { type: 'application/octet-stream' }); const a = document.createElement('a'); const url = URL.createObjectURL(blob); a.href = url; a.download = `${project.title || 'untitled'}.obg`; a.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000) }
-  const load = async (file?: File) => { if (!file) return; const data = JSON.parse(await file.text()); if (!['oto-blogic','note-block-maker'].includes(data.format) || data.version !== 1) throw new Error('対応していない.obg/.nbmファイルです'); const migrated = normalizeProject(data);commitProject(()=>migrated);setActiveId(migrated.tracks[0].id);setBarsDraft(String(migrated.steps/16));setBpmDraft(String(Math.round(migrated.tickRate*7.5))) }
+  const save = () => { const exportProject={...project,format:'oto-blogic'};const blob = new Blob([OBG_MAGIC,JSON.stringify(exportProject, null, 2)], { type: 'application/octet-stream' }); const a = document.createElement('a'); const url = URL.createObjectURL(blob); a.href = url; a.download = `${project.title || 'untitled'}.obg`; a.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000) }
+  const load = async (file?: File) => { if (!file) return; const raw=await file.text(); const json=raw.startsWith(OBG_MAGIC)?raw.slice(OBG_MAGIC.length):raw; const data = JSON.parse(json); if (!['oto-blogic','note-block-maker'].includes(data.format) || data.version !== 1) throw new Error('対応していない.obg/.nbmファイルです'); const migrated = normalizeProject(data);commitProject(()=>migrated);setActiveId(migrated.tracks[0].id);setBarsDraft(String(migrated.steps/16));setBpmDraft(String(Math.round(migrated.tickRate*7.5))) }
   const importMidi = async (file?: File) => {
     if (!file) return
     const parsed = parseMidi(await file.arrayBuffer())
