@@ -22,6 +22,9 @@ const heroFacts:Record<string,[string,string][]>= {
 }
 
 function MiniRoll(){return <div className="home-roll" aria-hidden="true"><div className="home-keys">{Array.from({length:13},(_,index)=><i key={index} className={[1,3,6,8,10].includes(index)?'black':''}/>)}</div><div className="home-grid">{notes.map((note,index)=><i key={index} style={{'--x':note.x,'--y':note.y,'--c':note.c} as React.CSSProperties}/>)}</div><span className="home-playhead"/></div>}
+function OtoBlogicIcon(){return <img src="/assets/branding/oto-blogic-icon-04.png" alt=""/>}
+function XIcon(){return <span aria-hidden="true">𝕏</span>}
+function YouTubeIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>}
 
 const homeLocales:Record<string,string[]>={
   en:['CREATORS','MUSIC MAT MAKER','PLACE THE NOTES.','THE CIRCUIT IS DONE.','Arrange notes with simple controls, then automatically generate a blueprint ready to build in Minecraft. For beginners and experts, children and adults.','START COMPOSING','PIANO ROLL','Intuitive yet fully featured. The mobile layout scrolls vertically to use the screen efficiently.','SEE THE SOUND.\nNEVER GET LOST.','SEE EVERY PITCH AND POSITION','Switch between note names and click counts, and audition every pitch before placing it.','20 TRACKS. 20 TIMBRES.','Layer chords, instruments, volume, PAN, and ghost notes.','FROM NOTES TO BLOCKS','Generate Easy, Compact, or Fishbone construction plans.','CHOOSE A CIRCUIT\nFOR YOUR GOAL.','EASY CIRCUIT','Readable and beginner-friendly.','COMPACT CIRCUIT','Long arrangements in less space.','FISHBONE','Built for a moving performance.','PLACE YOUR\nFIRST NOTE.','OPEN OTO BLOGIC','WATCH & LEARN'],
@@ -44,7 +47,9 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
       <div className="home-header-actions">
         <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
-          <a className="home-x-link" href="https://x.com/OTOBLOGIC" target="_blank" rel="noreferrer" aria-label="OTO BLOGIC on X"><span aria-hidden="true">𝕏</span></a>
+          <a className="home-social-link home-oto-link" href="https://otoblogic.com" target="_blank" rel="noreferrer" aria-label={ja?'OTO BLOGICトップページ':'OTO BLOGIC home'}><OtoBlogicIcon/><span className="home-social-tooltip">{ja?'OTO BLOGIC｜Minecraftの音符ブロック回路自動生成サイト':'OTO BLOGIC · Minecraft note-block circuit generator'}</span></a>
+          <a className="home-social-link home-x-link" href="https://x.com/goro56pika" target="_blank" rel="noreferrer" aria-label={ja?'SOTA56のXアカウント':'SOTA56 on X'}><XIcon/><span className="home-social-tooltip">{ja?'SOTA56 Xアカウントへ':'Visit SOTA56 on X'}</span></a>
+          <a className="home-social-link home-youtube-link" href="https://www.youtube.com/@SOTA56" target="_blank" rel="noreferrer" aria-label={ja?'SOTA56のYouTubeアカウント':'SOTA56 on YouTube'}><YouTubeIcon/><span className="home-social-tooltip">{ja?'SOTA56 YouTubeアカウントへ':'Visit SOTA56 on YouTube'}</span></a>
           <i aria-hidden="true"/>
           <a href="/resource-pack" onClick={event=>{event.preventDefault();onResourcePack()}}>{ja?'リソースパック':'RESOURCE PACK'}</a>
           <i aria-hidden="true"/>
