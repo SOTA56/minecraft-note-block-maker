@@ -712,7 +712,10 @@ function App() {
       <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setEditionMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
       <button className={`edition-button ${editionMenuOpen?'active':''}`} onClick={()=>{setEditionMenuOpen(value=>!value);setDelayMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.edition==='bedrock'?'Bedrock':'Java'} Edition`} aria-expanded={editionMenuOpen}><span className="dock-icon edition-icon">{project.edition==='bedrock'?'B':'J'}</span><small>EDITION</small></button>
       <button className={`dock-menu ${menuOpen?'active':''}`} onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
-      <input ref={fileRef} hidden type="file" accept=".obg,.obg.json,.nbm,.json,application/json" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
+      {/* iOS Files does not expose unknown .obg UTIs when an extension-filtered
+          accept value is used. Allow choosing any file and validate its JSON
+          payload in load(), so .obg remains selectable on iPhone. */}
+      <input ref={fileRef} hidden type="file" accept="*/*" onChange={e => load(e.target.files?.[0]).catch(err => alert(err.message))} />
       <input ref={midiFileRef} hidden type="file" accept=".mid,.midi,audio/midi" onChange={e => { const file=e.target.files?.[0]; e.currentTarget.value=''; importMidi(file).catch(err => alert(err instanceof Error ? err.message : String(err))) }} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
