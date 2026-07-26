@@ -350,7 +350,8 @@ function App() {
     if (playbackSwipeRef.current?.pointerId === event.pointerId) playbackSwipeRef.current = null
   }
   const handlePointerDown = (event: React.PointerEvent, step: number, pitch: number) => {
-    if (editMode === 'select') {
+    const temporarySelection = desktopLayout && editMode === 'input' && (event.ctrlKey || event.metaKey)
+    if (editMode === 'select' || temporarySelection) {
       event.currentTarget.setPointerCapture(event.pointerId)
       if (selection && isSelected(step, pitch) && active.notes.some(n => n.step === step && n.pitch === pitch)) {
         dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseAllNotes:active.notes, baseSelection: selection, baseProject:project }
@@ -360,6 +361,10 @@ function App() {
       dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: false, startX:event.clientX, startY:event.clientY, selecting: true }
       return
     }
+    // A Command/Ctrl selection deliberately survives key-up. The next normal
+    // click outside its selected notes dismisses it, while preserving the
+    // usual input-mode action on the clicked cell.
+    if (selection && !(isSelected(step,pitch) && active.notes.some(n=>n.step===step&&n.pitch===pitch))) setSelection(null)
     const existed = active.notes.some(n => n.step === step && n.pitch === pitch)
     if (existed) event.currentTarget.setPointerCapture(event.pointerId)
     if(existed)setDragPreview({originStep:step,originPitch:pitch,step,pitch})
@@ -451,6 +456,7 @@ function App() {
     await playProject(project,step,value=>{setPlayingStep(value);if(value<0){setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)}else setPlaybackPitches(currentTrackPitchesAt(value))},{getProject:()=>projectRef.current})
   }
   const togglePlay = async () => { if (playingStep >= 0) { stopPlayback(); setPlayingStep(-1); setPlaybackPitches([]); setFollowPlayback(false); setFollowRun(null) } else await playFrom(playhead) }
+  const cueToStart = () => { stopPlayback(); setPlayingStep(-1); setPlaybackPitches([]); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }
   const seekFromLabel = (event: React.PointerEvent | React.MouseEvent, step:number, play=false) => {
     const rect = event.currentTarget.getBoundingClientRect()
     const after=desktopLayout?event.clientX-rect.left>rect.width/2:event.clientY-rect.top>rect.height/2
@@ -595,11 +601,13 @@ function App() {
   useEffect(()=>{
     if(!desktopLayout||view!=='editor')return
     const handleShortcut=(event:KeyboardEvent)=>{
+      const target=event.target as HTMLElement|null
+      if(target&&(target.matches('input,textarea,select')||target.isContentEditable))return
+      if(event.key==='Enter'&&!event.repeat){event.preventDefault();event.stopPropagation();cueToStart();return}
       // Space is a global transport shortcut, even when the last interaction
       // focused a step-label button used to move the playhead.
       if(event.code==='Space'&&!event.repeat){event.preventDefault();event.stopPropagation();void togglePlay();return}
-      const target=event.target as HTMLElement|null
-      if(target&&(target.matches('input,textarea,select,button,a')||target.isContentEditable))return
+      if(target&&target.matches('button,a'))return
       const key=event.key.toLowerCase(),command=event.ctrlKey||event.metaKey
       if(command&&key==='c'&&normalizedSelection){event.preventDefault();copySelection();return}
       if(command&&key==='x'&&normalizedSelection){event.preventDefault();cutSelection();return}
@@ -628,7 +636,7 @@ function App() {
 
     <section className="transport">
       <button className="play" onClick={togglePlay} aria-label={playingStep >= 0 ? '停止' : '再生'}><img className="transport-icon" src={playingStep >= 0 ? '/assets/icons/stop.svg' : '/assets/icons/play.svg'} alt="" aria-hidden="true" /></button>
-      <button className="cue" onClick={() => { stopPlayback(); setPlayingStep(-1); setPlaybackPitches([]); setFollowPlayback(false); setFollowRun(null); setPlayhead(0) }} aria-label="先頭へ"><img className="transport-icon" src="/assets/icons/cue.svg" alt="" aria-hidden="true" /></button>
+      <button className="cue" onClick={cueToStart} aria-label="先頭へ"><img className="transport-icon" src="/assets/icons/cue.svg" alt="" aria-hidden="true" /></button>
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><input aria-label={language==='ja'?'小節数を入力':'Enter bars'} type="text" inputMode="numeric" value={barsDraft} onChange={event=>setBarsDraft(event.target.value.replace(/[^0-9]/g,''))} onBlur={event=>applyBars(event.currentTarget.value)} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur()}}/><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>

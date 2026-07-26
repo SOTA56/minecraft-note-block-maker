@@ -72,6 +72,17 @@ deviceCopies['zh-tw']=traditionalizeRecord(deviceCopies.zh)
 const polyphonyMarkerBodies:Record<string,string>={en:'Shows the highest number of simultaneous notes. A lime marker means 4–6 notes; orange means 7 or more.',es:'Muestra las notas simultáneas. La marca verde indica 4–6; la naranja, 7 o más.',fr:'Affiche les notes simultanées. Le repère vert indique 4–6 notes, l’orange 7 ou plus.',de:'Zeigt gleichzeitige Noten. Grün markiert 4–6, Orange 7 oder mehr.',zh:'显示同时发音数。浅绿色标记表示4至6音，橙色表示7音以上。','zh-tw':'顯示同時發音數。淺綠色標記表示4至6音，橙色表示7音以上。',ko:'동시 발음 수를 표시합니다. 연두색은 4~6음, 주황색은 7음 이상입니다.',id:'Menampilkan not bersamaan. Penanda hijau untuk 4–6 not, oranye untuk 7 atau lebih.'}
 const shortcutLabels:Record<string,string>={ja:'ショートカット',en:'Shortcut',es:'Atajo',fr:'Raccourci',de:'Tastenkürzel',zh:'快捷键','zh-tw':'快捷鍵',ko:'단축키',id:'Pintasan'}
 const cutCopies:Record<string,{title:string;body:string}>={ja:{title:'切り取り',body:'選択範囲内の音符をコピーし、元の音符を削除します。'},en:{title:'CUT',body:'Copies the selected notes and removes the originals.'},es:{title:'CORTAR',body:'Copia las notas seleccionadas y elimina las originales.'},fr:{title:'COUPER',body:'Copie les notes sélectionnées et supprime les originales.'},de:{title:'AUSSCHNEIDEN',body:'Kopiert die ausgewählten Noten und entfernt die Originale.'},zh:{title:'剪切',body:'复制所选音符，并删除原来的音符。'},'zh-tw':{title:'剪下',body:'複製所選音符，並刪除原來的音符。'},ko:{title:'잘라내기',body:'선택한 음표를 복사하고 원래 음표를 삭제합니다.'},id:{title:'POTONG',body:'Menyalin not yang dipilih lalu menghapus not aslinya.'}}
+const modifierSelectionCopies:Record<string,string>={
+  ja:'ドラッグした長方形の範囲を選択します。PC版では入力モード中でも、WindowsはCtrl、MacはCommandを押しながらドラッグすると範囲選択できます。キーを離しても選択は残り、選択外をクリックすると解除されます。',
+  en:'Drag a rectangle to select notes. On desktop, you can also select while in Draw mode by dragging with Ctrl on Windows or Command on Mac. The selection remains after releasing the key and clears when you click outside it.',
+  es:'Arrastra un rectángulo para seleccionar notas. En PC también puedes hacerlo en modo Dibujar: arrastra con Ctrl en Windows o Command en Mac. La selección se conserva al soltar la tecla y se borra al hacer clic fuera.',
+  fr:'Tracez un rectangle pour sélectionner des notes. Sur ordinateur, cela fonctionne aussi en mode Saisie en maintenant Ctrl sous Windows ou Command sur Mac. La sélection reste après avoir relâché la touche et disparaît en cliquant ailleurs.',
+  de:'Ziehe ein Rechteck auf, um Noten auszuwählen. Am Desktop geht das auch im Eingabemodus: unter Windows mit Strg, am Mac mit Command ziehen. Die Auswahl bleibt nach dem Loslassen bestehen und wird durch einen Klick außerhalb aufgehoben.',
+  zh:'拖出矩形范围来选择音符。桌面版在输入模式中也可按住 Windows 的 Ctrl 或 Mac 的 Command 进行拖动选择。松开按键后仍会保留选择，点击选择范围外即可取消。',
+  'zh-tw':'拖出矩形範圍來選取音符。桌面版在輸入模式中也可按住 Windows 的 Ctrl 或 Mac 的 Command 進行拖曳選取。放開按鍵後仍會保留選取，點擊選取範圍外即可取消。',
+  ko:'사각형으로 드래그해 음표를 선택합니다. PC에서는 입력 모드에서도 Windows의 Ctrl 또는 Mac의 Command를 누른 채 드래그하면 범위를 선택할 수 있습니다. 키를 놓아도 선택은 유지되며 바깥을 클릭하면 해제됩니다.',
+  id:'Seret membentuk persegi untuk memilih not. Di desktop, pilihan juga dapat dibuat dalam mode Input dengan menahan Ctrl di Windows atau Command di Mac. Pilihan tetap ada setelah tombol dilepas dan hilang saat area luar diklik.'
+}
 const editionCopies:Record<string,{title:string;body:string}>={
   ja:{title:'EDITION',body:'再生に使う音源をJAVA版とBEDROCK版から選びます。打ち込み画面と設計図画面の両方に反映されます。'},
   en:{title:'EDITION',body:'Choose Java Edition or Bedrock Edition sounds. The choice applies to playback in both the editor and blueprints.'},
@@ -91,6 +102,8 @@ const localizedSections=(language:string):GuideSection[]=>{
   sections[0].items.splice(2,0,{icon:'│',title:copy.playBarTitle,body:copy.playBarBody})
   sections[2].intro=copy.entryIntro
   sections[2].items[0].body=copy.inputBody
+  sections[2].items[1].body={mobile:sections[2].items[1].body as string,desktop:modifierSelectionCopies[language]??modifierSelectionCopies.en}
+  sections[2].items[1].shortcut='Ctrl / ⌘ + Drag'
   sections[2].items[5].body=copy.zoomBody
   sections[3].intro=copy.rollIntro
   sections[3].items[0].body=copy.keysBody
@@ -99,6 +112,7 @@ const localizedSections=(language:string):GuideSection[]=>{
   const cutCopy=cutCopies[language]??cutCopies.en
   sections[2].items.splice(3,0,{icon:'✂',title:cutCopy.title,body:cutCopy.body,shortcut:'Ctrl / ⌘ + X'})
   sections[0].items[0].shortcut=language==='ja'?'スペースキー':'Space'
+  sections[0].items[1].shortcut='Enter'
   sections[2].items[2].shortcut='Ctrl / ⌘ + C'
   sections[2].items[4].shortcut='Ctrl / ⌘ + V'
   sections[2].items[5].shortcut='Backspace / Delete'

@@ -117,7 +117,17 @@ export default function BlueprintView({project,instruments,language,initialViewS
     playerHeight:{title:t('playerHeight','プレイヤーの高さ','Player height'),body:t('playerHeightHelp','フィッシュボーン回路の音符ブロック面からプレイヤーまでの高さをマス数で設定します。距離による音量・PANの再生に使われます。','Sets the player height in blocks above the Fishbone circuit for distance-based playback.')},
   }
   const helpButton=(key:string)=><button type="button" className={`setting-help-button ${settingHelp===key?'help-active':''}`} aria-label={`${settingHelpCopy[key].title} ${ja?'の説明':'help'}`} onClick={event=>{event.preventDefault();event.stopPropagation();setSettingHelp(key)}}>i</button>
-  const shareText:Record<string,string>={ja:'Minecraftの音符ブロック回路を作ってみたよ！ #OTOBLOGIC',en:'I made a Minecraft note block circuit! #OTOBLOGIC',es:'¡He creado un circuito de bloques de notas de Minecraft! #OTOBLOGIC',fr:'J’ai créé un circuit de blocs musicaux Minecraft ! #OTOBLOGIC',de:'Ich habe eine Minecraft-Notenblockschaltung gebaut! #OTOBLOGIC',zh:'我制作了一个Minecraft音符盒电路！ #OTOBLOGIC','zh-tw':'我做了一個 Minecraft 音符盒電路！ #OTOBLOGIC',ko:'Minecraft 소리 블록 회로를 만들었어요! #OTOBLOGIC',id:'Aku membuat rangkaian blok not Minecraft! #OTOBLOGIC'}
+  const shareText:Record<string,string>={
+    ja:'OTO BLOGICで設計図を作ってみたよ！\n#OTOBLOGIC\n#OTOBLO設計図',
+    en:'I made a blueprint with OTO BLOGIC!\n#OTOBLOGIC\n#OTOBLO設計図',
+    es:'¡He creado un plano con OTO BLOGIC!\n#OTOBLOGIC\n#OTOBLO設計図',
+    fr:'J’ai créé un plan avec OTO BLOGIC !\n#OTOBLOGIC\n#OTOBLO設計図',
+    de:'Ich habe mit OTO BLOGIC einen Bauplan erstellt!\n#OTOBLOGIC\n#OTOBLO設計図',
+    zh:'我用 OTO BLOGIC 制作了电路蓝图！\n#OTOBLOGIC\n#OTOBLO設計図',
+    'zh-tw':'我用 OTO BLOGIC 製作了電路藍圖！\n#OTOBLOGIC\n#OTOBLO設計図',
+    ko:'OTO BLOGIC으로 회로 설계도를 만들었어요!\n#OTOBLOGIC\n#OTOBLO設計図',
+    id:'Aku membuat blueprint dengan OTO BLOGIC!\n#OTOBLOGIC\n#OTOBLO設計図'
+  }
 
   return <main className={`blueprint-page theme-${theme}`}><header className="blueprint-header"><div className="blueprint-brand"><button className="brand-home" onClick={()=>{stopBlueprintPlayback();onHome()}} aria-label={ja?'トップページへ':'Go to home'}><img className="brand-icon" src="/assets/branding/oto-blogic-icon-04.png" alt=""/></button><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/><h1>{project.title}</h1></div></div><strong>{t('blueprint','回路設計図','BLUEPRINT')}</strong><button className="editor-back" onClick={leaveBlueprint} aria-label={ja?'打ち込み画面へ戻る':'Back to editor'}><img src="/assets/icons/keyboard.svg" alt=""/></button></header>
     <nav className="blueprint-tabs">{(['easy','packed','fishbone'] as const).map((value,index)=><button key={value} className={kind===value?'active':''} onClick={()=>{stopBlueprintPlayback();restoreViewRef.current=null;setKind(value);setLayerIndex(0);setSelected(null);setStartStep(null)}}>0{index+1}<small>{value==='easy'?t('easy','かんたん','EASY'):value==='packed'?t('packed','詰め詰め','COMPACT'):'FISHBONE'}</small></button>)}</nav>
