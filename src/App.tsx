@@ -63,6 +63,19 @@ const STORAGE = 'note-block-maker:autosave:v1'
 // The loader still accepts older plain-JSON .obg files.
 const OBG_MAGIC = 'OTO_BLOGIC_OBG\n'
 const LANGUAGE_STORAGE='oto-blogic:language'
+const DISPLAY_MODE_STORAGE='oto-blogic:display-mode'
+const DESKTOP_CAPABILITY_MEDIA='(min-width: 700px) and (hover: hover) and (pointer: fine)'
+type DisplayMode='touch'|'pc'
+const desktopDisplayCapable=()=>window.matchMedia(DESKTOP_CAPABILITY_MEDIA).matches
+const initialDisplayMode=():DisplayMode=>{
+  const capable=desktopDisplayCapable()
+  try{
+    const saved=localStorage.getItem(DISPLAY_MODE_STORAGE)
+    if(saved==='touch')return'touch'
+    if(saved==='pc')return capable?'pc':'touch'
+  }catch{/* Use the one-time capability result when storage is unavailable. */}
+  return capable?'pc':'touch'
+}
 const SUPPORTED_LANGUAGES=['ja','en','es','fr','de','zh','zh-tw','ko','id'] as const
 const initialLanguage=()=>{const saved=localStorage.getItem(LANGUAGE_STORAGE);if(saved&&SUPPORTED_LANGUAGES.includes(saved as typeof SUPPORTED_LANGUAGES[number]))return saved;const browser=navigator.language.toLowerCase();if(browser.startsWith('zh-tw')||browser.startsWith('zh-hk')||browser.startsWith('zh-hant'))return'zh-tw';const base=browser.split('-')[0];return SUPPORTED_LANGUAGES.includes(base as typeof SUPPORTED_LANGUAGES[number])?base:'en'}
 const DEFAULT_BLUEPRINT_VIEW:BlueprintViewState={kind:'easy',layerIndex:0,zoom:1,scrollLeft:0,scrollTop:0}
@@ -96,8 +109,8 @@ function App() {
   const [copyFeedback, setCopyFeedback] = useState(false)
   const [pitchDisplay, setPitchDisplay] = useState<'name' | 'clicks'>('name')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [delayMenuOpen,setDelayMenuOpen]=useState(false)
-  const [editionMenuOpen,setEditionMenuOpen]=useState(false)
+  const [modeMenuOpen,setModeMenuOpen]=useState(false)
+  const [modeNotice,setModeNotice]=useState('')
   const [midiPending,setMidiPending]=useState<MidiPending|null>(null)
   const [midiChoices,setMidiChoices]=useState<Record<number,number>>({})
   const [view,setView] = useState<AppView>(()=>viewFromPath(window.location.pathname))
@@ -109,8 +122,9 @@ function App() {
   const [titleDraft,setTitleDraft] = useState(project.title)
   const [followPlayback, setFollowPlayback] = useState(false)
   const [followRun, setFollowRun] = useState<{id:number;step:number} | null>(null)
-  const desktopMedia='(min-width: 900px), (min-width: 700px) and (hover: hover) and (pointer: fine)'
-  const [desktopLayout,setDesktopLayout]=useState(()=>window.matchMedia(desktopMedia).matches)
+  const [desktopCapable,setDesktopCapable]=useState(desktopDisplayCapable)
+  const [displayMode,setDisplayMode]=useState<DisplayMode>(initialDisplayMode)
+  const desktopLayout=displayMode==='pc'&&desktopCapable
   const [activeVolumeTrackId,setActiveVolumeTrackId]=useState<string|null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const midiFileRef = useRef<HTMLInputElement>(null)
@@ -202,8 +216,7 @@ function App() {
   const toggleTrackPanel=(next:'tracks'|'settings')=>{
     setPanel(current=>current===next?null:next)
     setMenuOpen(false)
-    setDelayMenuOpen(false)
-    setEditionMenuOpen(false)
+    setModeMenuOpen(false)
   }
   const labelGestureRef = useRef<{pointerId:number;x:number;y:number;moved:boolean} | null>(null)
   const followIdRef = useRef(0)
@@ -232,10 +245,23 @@ function App() {
   }[language] ?? null
   const c = copy ?? ['AUTOSAVED','BPM','MAX POLY','NOTES','ACTIVE TRACK','GHOST','TRACK NAME','INSTRUMENT','VOLUME','BLOCK BELOW','DRAW','SELECT','COPY','PASTE','DELETE','ZOOM OUT','ZOOM IN','MENU','CLEAR ALL','MUTE']
   const t = { autosaved:c[0], bpm:c[1], maxPoly:c[2], notes:c[3], activeTrack:c[4], ghost:c[5], trackName:c[6], instrument:c[7], volume:c[8], block:c[9] }
+  const modeText=({
+    ja:{mode:'モード',delay:'遅延単位',source:'音源',display:'表示',touch:'タッチ',pc:'PC',disabled:'この端末ではPC表示を安全に操作できないため選択できません。'},
+    en:{mode:'MODE',delay:'DELAY UNIT',source:'SOUND',display:'DISPLAY',touch:'TOUCH',pc:'PC',disabled:'PC display is unavailable because this device does not provide a precise pointer and hover.'},
+    es:{mode:'MODO',delay:'UNIDAD DELAY',source:'SONIDO',display:'VISTA',touch:'TÁCTIL',pc:'PC',disabled:'La vista PC no está disponible sin puntero preciso y función hover.'},
+    fr:{mode:'MODE',delay:'UNITÉ DELAY',source:'SON',display:'AFFICHAGE',touch:'TACTILE',pc:'PC',disabled:'L’affichage PC nécessite un pointeur précis et le survol.'},
+    de:{mode:'MODUS',delay:'DELAY-EINHEIT',source:'KLANG',display:'ANSICHT',touch:'TOUCH',pc:'PC',disabled:'Die PC-Ansicht benötigt einen präzisen Zeiger und Hover.'},
+    zh:{mode:'模式',delay:'延迟单位',source:'音源',display:'显示',touch:'触控',pc:'PC',disabled:'此设备没有精确指针和悬停操作，无法使用 PC 显示。'},
+    'zh-tw':{mode:'模式',delay:'延遲單位',source:'音源',display:'顯示',touch:'觸控',pc:'PC',disabled:'此裝置沒有精確指標與懸停操作，無法使用 PC 顯示。'},
+    ko:{mode:'모드',delay:'지연 단위',source:'음원',display:'표시',touch:'터치',pc:'PC',disabled:'정밀 포인터와 호버 기능이 없어 PC 표시를 선택할 수 없습니다.'},
+    id:{mode:'MODE',delay:'UNIT DELAY',source:'SUARA',display:'TAMPILAN',touch:'SENTUH',pc:'PC',disabled:'Tampilan PC memerlukan pointer presisi dan fitur hover.'}
+  } as Record<string,{mode:string;delay:string;source:string;display:string;touch:string;pc:string;disabled:string}>)[language]??({mode:'MODE',delay:'DELAY UNIT',source:'SOUND',display:'DISPLAY',touch:'TOUCH',pc:'PC',disabled:'PC display is unavailable on this device.'})
 
   useEffect(() => { const id = window.setTimeout(() => localStorage.setItem(STORAGE, JSON.stringify(project)), 250); return () => clearTimeout(id) }, [project])
   useEffect(()=>{localStorage.setItem(LANGUAGE_STORAGE,language);document.documentElement.lang=language},[language])
-  useEffect(()=>{const media=window.matchMedia(desktopMedia),sync=()=>setDesktopLayout(media.matches);media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
+  useEffect(()=>{document.body.classList.toggle('desktop-ui',desktopLayout);return()=>document.body.classList.remove('desktop-ui')},[desktopLayout])
+  useEffect(()=>{try{localStorage.setItem(DISPLAY_MODE_STORAGE,displayMode)}catch{/* The editor still works when storage is unavailable. */}},[displayMode])
+  useEffect(()=>{const media=window.matchMedia(DESKTOP_CAPABILITY_MEDIA),sync=()=>{setDesktopCapable(media.matches);if(!media.matches)setDisplayMode('touch')};media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
   useEffect(()=>{if(desktopLayout){setControlsOpen(true);setPanel(current=>current==='tracks'?null:current)}},[desktopLayout,view])
   useEffect(() => () => stopPlayback(), [])
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16));rejectedBarsRequestRef.current=null},[project.steps])
@@ -286,14 +312,19 @@ function App() {
   }
   const soundingPitches=useMemo(()=>new Set([...previewPitches,...playbackPitches]),[previewPitches,playbackPitches])
 
-  const commitProject = (change:(current:Project)=>Project) => setProject(current=>{
+  const commitProject = (change:(current:Project)=>Project) => {
+    // Keep history mutations outside React's state updater. In StrictMode an
+    // updater may be evaluated twice, which used to store every edit twice and
+    // made UNDO/REDO appear to require two presses per operation.
+    const current = projectRef.current
     const next = change(current)
-    if (next === current) return current
+    if (next === current) return
     historyRef.current.past.push(current)
     if (historyRef.current.past.length > 100) historyRef.current.past.shift()
     historyRef.current.future = []
-    return next
-  })
+    projectRef.current = next
+    setProject(next)
+  }
   const syncProjectControls = (next:Project) => {
     if (!next.tracks.some(track=>track.id===activeId)) setActiveId(next.tracks[0].id)
     setBarsDraft(String(next.steps/16));setBpmDraft(String(Math.round(next.tickRate*7.5)));setTitleDraft(next.title)
@@ -301,12 +332,12 @@ function App() {
   const undo = () => {
     const previous = historyRef.current.past.pop()
     if (!previous) return
-    historyRef.current.future.push(project);setProject(previous);syncProjectControls(previous)
+    historyRef.current.future.push(projectRef.current);projectRef.current=previous;setProject(previous);syncProjectControls(previous)
   }
   const redo = () => {
     const next = historyRef.current.future.pop()
     if (!next) return
-    historyRef.current.past.push(project);setProject(next);syncProjectControls(next)
+    historyRef.current.past.push(projectRef.current);projectRef.current=next;setProject(next);syncProjectControls(next)
   }
   const updateTrack = (patch: Partial<Track>) => commitProject(p => ({ ...p, tracks: p.tracks.map(t => t.id === activeId ? { ...t, ...patch } : t) }))
   const changeActiveNotes = (change: (notes: Track['notes']) => Track['notes']) => commitProject(p => ({ ...p, tracks: p.tracks.map(track => track.id === activeId ? { ...track, notes: change(track.notes) } : track) }))
@@ -350,20 +381,26 @@ function App() {
     if (playbackSwipeRef.current?.pointerId === event.pointerId) playbackSwipeRef.current = null
   }
   const handlePointerDown = (event: React.PointerEvent, step: number, pitch: number) => {
-    const temporarySelection = desktopLayout && editMode === 'input' && (event.ctrlKey || event.metaKey)
-    if (editMode === 'select' || temporarySelection) {
+    const selectedNote = Boolean(selection && isSelected(step, pitch) && active.notes.some(n => n.step === step && n.pitch === pitch))
+    // Desktop combines drawing and selection: a click edits one note, dragging
+    // empty grid space starts a rectangular selection, and dragging a selected
+    // note moves the whole selection. Touch layouts keep the explicit modes so
+    // a scroll gesture is never mistaken for a selection.
+    if (desktopLayout && selectedNote) {
       event.currentTarget.setPointerCapture(event.pointerId)
-      if (selection && isSelected(step, pitch) && active.notes.some(n => n.step === step && n.pitch === pitch)) {
-        dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseAllNotes:active.notes, baseSelection: selection, baseProject:project }
+      dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseAllNotes:active.notes, baseSelection: selection!, baseProject:project }
+      return
+    }
+    if (!desktopLayout && editMode === 'select') {
+      event.currentTarget.setPointerCapture(event.pointerId)
+      if (selectedNote) {
+        dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseAllNotes:active.notes, baseSelection: selection!, baseProject:project }
         return
       }
       setSelection({ startStep: step, endStep: step, startPitch: pitch, endPitch: pitch })
       dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: false, startX:event.clientX, startY:event.clientY, selecting: true }
       return
     }
-    // A Command/Ctrl selection deliberately survives key-up. The next normal
-    // click outside its selected notes dismisses it, while preserving the
-    // usual input-mode action on the clicked cell.
     if (selection && !(isSelected(step,pitch) && active.notes.some(n=>n.step===step&&n.pitch===pitch))) setSelection(null)
     const existed = active.notes.some(n => n.step === step && n.pitch === pitch)
     if (existed) event.currentTarget.setPointerCapture(event.pointerId)
@@ -377,7 +414,16 @@ function App() {
       edgeScrollRef.current.x = event.clientX; edgeScrollRef.current.y = event.clientY
       if (!edgeScrollRef.current.frame) edgeScrollRef.current.frame = window.requestAnimationFrame(runEdgeScroll)
     }
-    if (!drag.existed && !drag.selecting && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 7) { drag.moved = true; return }
+    if (!drag.existed && !drag.selecting && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) > 7) {
+      drag.moved = true
+      if (desktopLayout) {
+        drag.selecting = true
+        event.currentTarget.setPointerCapture(event.pointerId)
+        setSelection({startStep:drag.originStep,endStep:drag.step,startPitch:drag.originPitch,endPitch:drag.pitch})
+        edgeScrollRef.current.x = event.clientX; edgeScrollRef.current.y = event.clientY
+        if (!edgeScrollRef.current.frame) edgeScrollRef.current.frame = window.requestAnimationFrame(runEdgeScroll)
+      }
+    }
     const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-step][data-pitch]')
     if (!target) return
     const step = Number(target.dataset.step)
@@ -558,23 +604,28 @@ function App() {
     },450)
   }
   const applyDelayMode = (next:1|2|4) => {
-    if(next===project.delayUnit){setDelayMenuOpen(false);return}
+    if(next===project.delayUnit){setModeNotice('');return}
     const invalid=project.tracks.reduce((count,track)=>count+track.notes.filter(note=>note.step%next!==0).length,0)
     if(invalid){
-      window.alert(language==='ja'
-        ? `${next}遅延モードでは、${next}目盛ごとの位置にだけノートを置けます。\n現在のノート${invalid}個がその位置に合わないため、切り替えませんでした。`
-        : `${next}-delay mode only accepts notes on every ${next}th base step.\n${invalid} existing note(s) do not align, so the mode was not changed.`)
+      setModeNotice(language==='ja'
+        ? `${next}遅延では${next}目盛ごとの位置だけを使います。合わない音符が${invalid}個あるため変更しませんでした。`
+        : `${invalid} note(s) do not align with the ${next}-delay grid, so the setting was not changed.`)
       return
     }
     stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)
     commitProject(current=>({...current,delayUnit:next}))
-    setPlayhead(value=>Math.floor(value/next)*next);setSelection(null);setDragPreview(null);setDelayMenuOpen(false)
+    setPlayhead(value=>Math.floor(value/next)*next);setSelection(null);setDragPreview(null);setModeNotice('')
   }
   const applyEdition = (next:AudioEdition) => {
-    if(next===project.edition){setEditionMenuOpen(false);return}
+    if(next===project.edition)return
     stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null)
     commitProject(current=>({...current,edition:next}))
-    setEditionMenuOpen(false)
+  }
+  const applyDisplayMode=(next:DisplayMode)=>{
+    if(next==='pc'&&!desktopCapable)return
+    setDisplayMode(next)
+    setModeNotice('')
+    setModeMenuOpen(false)
   }
   const commitBpm = (raw = bpmDraft) => {
     const requested = Number(raw)
@@ -627,7 +678,7 @@ function App() {
   if(view==='terms'||view==='privacy')return <LegalPage kind={view} language={language} setLanguage={changeLanguage} onHome={()=>openView('home')} onTerms={()=>openView('terms')} onPrivacy={()=>openView('privacy')}/>
   if(view==='blueprint')return <BlueprintView project={project} instruments={INSTRUMENTS} language={language} initialViewState={blueprintViewState} onBack={state=>{setBlueprintViewState(state);openView('editor',true)}} onHome={()=>openView('home')} onSettingsChange={blueprint=>commitProject(current=>({...current,blueprint}))}/>
 
-  return <main className="app">
+  return <main className={`app ${desktopLayout?'desktop-layout':'touch-layout'}`}>
     <div className={`control-panel ${controlsOpen ? '' : 'collapsed'}`}>
     <header className="topbar">
       <div className="brand"><button className="brand-home" onClick={()=>openView('home')} aria-label={language==='ja'?'トップページへ':'Go to home'}><img className="brand-icon" src="/assets/branding/oto-blogic-icon-04.png" alt="" /></button><div><img className="brand-logo" src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC" /><input value={titleDraft} onChange={e=>setTitleDraft(e.target.value)} onBlur={e=>{const title=e.currentTarget.value.trim()||project.title;setTitleDraft(title);if(title!==project.title)commitProject(p=>({...p,title}))}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur()}} aria-label="曲名" /></div></div>
@@ -640,7 +691,7 @@ function App() {
       <label className={`tick bpm ${bpm < 150 ? 'slow' : bpm > 150 ? 'fast' : 'standard'}`}><small>{t.bpm}</small><input type="text" inputMode="numeric" value={bpmDraft} onChange={e => setBpmDraft(e.target.value.replace(/[^0-9]/g,''))} onBlur={e => commitBpm(e.currentTarget.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur() }} /><span>≒ {(Math.round(project.tickRate * 10) / 10).toFixed(1)} TPS</span></label>
       <div className={`poly ${polyphony > 9 ? 'warn' : ''}`}><small>{t.maxPoly}</small><strong>{polyphony}<em>{t.notes}</em></strong></div>
       <div className="tick bars"><small>{language === 'ja' ? '小節数' : 'BARS'}</small><div className="number-stepper"><input aria-label={language==='ja'?'小節数を入力':'Enter bars'} type="text" inputMode="numeric" value={barsDraft} onChange={event=>setBarsDraft(event.target.value.replace(/[^0-9]/g,''))} onBlur={event=>applyBars(event.currentTarget.value)} onKeyDown={event=>{if(event.key==='Enter')event.currentTarget.blur()}}/><span>{language === 'ja' ? '小節' : 'BARS'}</span><div><button aria-label={language==='ja'?'小節数を増やす':'Increase bars'} onPointerDown={event=>startBarsHold(1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(1)}}>▲</button><button aria-label={language==='ja'?'小節数を減らす':'Decrease bars'} onPointerDown={event=>startBarsHold(-1,event)} onPointerUp={stopBarsHold} onPointerLeave={stopBarsHold} onPointerCancel={stopBarsHold} onClick={event=>{if(event.detail===0)adjustBars(-1)}}>▼</button></div></div></div>
-      <button className={`desktop-transport-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-label={c[17]} aria-expanded={menuOpen}><span className="hamburger-icon" aria-hidden="true"/></button>
+      <button className={`desktop-transport-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setModeMenuOpen(false);setPanel(null)}} aria-label={c[17]} aria-expanded={menuOpen}><span className="hamburger-icon" aria-hidden="true"/></button>
     </section>
 
     <section className="track-strip" style={{ '--track': active.color } as React.CSSProperties}>
@@ -661,19 +712,18 @@ function App() {
     {panel === 'settings' && <div className="drawer settings"><label>{t.trackName}<input value={active.name} onChange={e => updateTrack({ name: e.target.value.toUpperCase() })} /></label><label>{t.instrument}<select value={active.instrument} onChange={e => updateTrack({ instrument: e.target.value })}>{INSTRUMENTS.map(x => <option key={x.id} value={x.id}>{language === 'ja' ? x.ja : x.en} — {instrumentBlockName(x,language)}</option>)}</select></label><div className="block-guide"><i className={`block-preview ${instrument.texture}`} /><span><small>{t.block}</small><b>{instrumentBlockName(instrument,language)}</b></span></div><label>{t.volume} <b>{Math.round(active.volume * 100)}</b><input type="range" min="0" max="1" step=".01" value={active.volume} onChange={e => updateTrack({ volume: +e.target.value })} /></label><label>PAN <b>{Math.round(active.pan * 100)}</b><input type="range" min="-1" max="1" step=".01" value={active.pan} onChange={e => updateTrack({ pan: +e.target.value })} /></label><div className="setting-switches"><button className={active.muted ? 'danger' : ''} onClick={() => updateTrack({muted:!active.muted})}>M {c[19]}</button><button className={active.solo ? 'solo' : ''} onClick={() => updateTrack({solo:!active.solo})}>S SOLO</button></div></div>}
     <button className="panel-toggle" onClick={() => setControlsOpen(!controlsOpen)} aria-label={controlsOpen ? '操作パネルを収納' : '操作パネルを表示'}>{controlsOpen ? '⌃' : '⌄'}</button>
     <nav className="edit-tools">
-      <button className={editMode === 'input' ? 'active' : ''} onClick={() => { setEditMode('input'); setSelection(null) }}><span className="tool-icon">✎</span><small>{c[10]}</small></button>
-      <button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}><span className="tool-icon tool-select">▧</span><small>{c[11]}</small></button>
+      {!desktopLayout&&<button className={editMode === 'input' ? 'active' : ''} onClick={() => { setEditMode('input'); setSelection(null) }}><span className="tool-icon">✎</span><small>{c[10]}</small></button>}
+      {!desktopLayout&&<button className={editMode === 'select' ? 'active' : ''} onClick={() => setEditMode('select')}><span className="tool-icon tool-select">▧</span><small>{c[11]}</small></button>}
       <button className={copyFeedback?'copied':''} onClick={copySelection} disabled={!normalizedSelection}><span className="tool-icon">{copyFeedback?'✓':'⧉'}</span><small>{c[12]}</small></button>
       <button className="cut-tool" onClick={cutSelection} disabled={!normalizedSelection}><span className="tool-icon">✂</span><small>{language==='ja'?'カット':'CUT'}</small></button>
       <button onClick={pasteSelection} disabled={!copiedNotes?.notes.length}><span className="tool-icon tool-paste">⎘</span><small>{c[13]}</small></button>
       <button className="delete-tool" onClick={deleteSelection} disabled={!normalizedSelection}><span className="tool-icon">⌫</span><small>{c[14]}</small></button>
       <button className="desktop-utility" aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="tool-icon">↶</span><small>UNDO</small></button>
       <button className="desktop-utility" aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="tool-icon">↷</span><small>REDO</small></button>
-      <button className={`desktop-utility delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setEditionMenuOpen(false);setMenuOpen(false);setPanel(null)}}><span className="tool-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
-      <button className={`desktop-utility edition-button ${editionMenuOpen?'active':''}`} onClick={()=>{setEditionMenuOpen(value=>!value);setDelayMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.edition==='bedrock'?'Bedrock':'Java'} Edition`} aria-expanded={editionMenuOpen}><span className="tool-icon edition-icon">{project.edition==='bedrock'?'B':'J'}</span><small>EDITION</small></button>
+      <button className={`desktop-utility unified-mode-button ${modeMenuOpen?'active':''}`} onClick={()=>{setModeMenuOpen(value=>!value);setModeNotice('');setMenuOpen(false);setPanel(null)}} aria-expanded={modeMenuOpen}><span className="tool-icon unified-mode-icon"><b>{project.delayUnit}</b><i>{project.edition==='bedrock'?'B':'J'}</i></span><small>{modeText.mode}</small></button>
       <button className={`desktop-utility desktop-track-settings ${panel==='settings'?'active':''}`} onClick={()=>toggleTrackPanel('settings')}><img className="tool-icon" src="/assets/icons/settings.svg" alt="" aria-hidden="true"/><small>{language==='ja'?'トラック設定':'TRACK SET'}</small></button>
       <button className={`desktop-utility desktop-ghost-toggle ${ghosts?'active':''}`} onClick={()=>setGhosts(!ghosts)}><GhostIcon/><small>{t.ghost}</small></button>
-      <button className={`desktop-utility desktop-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`desktop-utility desktop-menu ${menuOpen?'active':''}`} onClick={()=>{setMenuOpen(!menuOpen);setModeMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="tool-icon">•••</span><small>{c[17]}</small></button>
       <button className="zoom-out" onClick={() => zoomSteps(-4)}><span className="tool-icon">−</span><small>{c[15]}</small></button>
       <button className="zoom-in" onClick={() => zoomSteps(4)}><span className="tool-icon">+</span><small>{c[16]}</small></button>
     </nav>
@@ -717,9 +767,8 @@ function App() {
 
     <footer className="dock">
       <button aria-label="元に戻す" onClick={undo} disabled={!historyRef.current.past.length}><span className="dock-icon">↶</span><small>UNDO</small></button><button aria-label="やり直す" onClick={redo} disabled={!historyRef.current.future.length}><span className="dock-icon">↷</span><small>REDO</small></button>
-      <button className={`delay-mode-button ${delayMenuOpen?'active':''}`} onClick={()=>{setDelayMenuOpen(value=>!value);setEditionMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.delayUnit}遅延モード。選択肢を開く`} aria-expanded={delayMenuOpen}><span className="dock-icon delay-mode-icon"><b>{project.delayUnit}</b></span><small>{language==='ja'?'モード':'MODE'}</small></button>
-      <button className={`edition-button ${editionMenuOpen?'active':''}`} onClick={()=>{setEditionMenuOpen(value=>!value);setDelayMenuOpen(false);setMenuOpen(false);setPanel(null)}} aria-label={`${project.edition==='bedrock'?'Bedrock':'Java'} Edition`} aria-expanded={editionMenuOpen}><span className="dock-icon edition-icon">{project.edition==='bedrock'?'B':'J'}</span><small>EDITION</small></button>
-      <button className={`dock-menu ${menuOpen?'active':''}`} onClick={() => {setMenuOpen(!menuOpen);setDelayMenuOpen(false);setEditionMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
+      <button className={`unified-mode-button ${modeMenuOpen?'active':''}`} onClick={()=>{setModeMenuOpen(value=>!value);setModeNotice('');setMenuOpen(false);setPanel(null)}} aria-expanded={modeMenuOpen}><span className="dock-icon unified-mode-icon"><b>{project.delayUnit}</b><i>{project.edition==='bedrock'?'B':'J'}</i></span><small>{modeText.mode}</small></button>
+      <button className={`dock-menu ${menuOpen?'active':''}`} onClick={() => {setMenuOpen(!menuOpen);setModeMenuOpen(false);setPanel(null)}} aria-expanded={menuOpen}><span className="dock-icon">•••</span><small>{c[17]}</small></button>
       {/* iOS Files does not expose unknown .obg UTIs when an extension-filtered
           accept value is used. Allow choosing any file and validate its JSON
           payload in load(), so .obg remains selectable on iPhone. */}
@@ -729,8 +778,13 @@ function App() {
       <input ref={midiFileRef} hidden type="file" accept=".mid,.midi,audio/midi" onChange={e => { const file=e.target.files?.[0]; e.currentTarget.value=''; importMidi(file).catch(err => alert(err instanceof Error ? err.message : String(err))) }} />
       <div className="copyright">© 2026 OTO BLOGIC · Powered by SOTA56</div>
     </footer>
-    {delayMenuOpen&&<div className="delay-mode-menu" role="group" aria-label={language==='ja'?'遅延モードを選択':'Select delay mode'}>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}><b>{value}</b><small>{language==='ja'?'遅延':'DELAY'}</small></button>)}</div>}
-    {editionMenuOpen&&<div className="edition-menu" role="group" aria-label={language==='ja'?'音源のエディションを選択':'Select audio edition'}>{(['java','bedrock'] as const).map(value=><button key={value} className={project.edition===value?'active':''} onClick={()=>applyEdition(value)}><b>{value==='java'?'J':'B'}</b><small>{value==='java'?'JAVA':'BEDROCK'}</small></button>)}</div>}
+    {modeMenuOpen&&<section className="unified-mode-menu" aria-label={modeText.mode}>
+      <div className="unified-mode-row"><strong>{modeText.delay}</strong><div>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}>{value}</button>)}</div></div>
+      <div className="unified-mode-row"><strong>{modeText.source}</strong><div>{(['java','bedrock'] as const).map(value=><button key={value} className={project.edition===value?'active':''} onClick={()=>applyEdition(value)}>{value==='java'?'JAVA':'BEDROCK'}</button>)}</div></div>
+      <div className="unified-mode-row"><strong>{modeText.display}</strong><div><button className={displayMode==='touch'?'active':''} onClick={()=>applyDisplayMode('touch')}>{modeText.touch}</button><button className={displayMode==='pc'?'active':''} disabled={!desktopCapable} onClick={()=>applyDisplayMode('pc')}>{modeText.pc}</button></div></div>
+      {!desktopCapable&&<p className="unified-mode-help">{modeText.disabled}</p>}
+      {modeNotice&&<p className="unified-mode-notice" role="status">{modeNotice}</p>}
+    </section>}
     {menuOpen && <div className="more-menu">
       <div className="menu-section"><button className="blueprint-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setPlaybackPitches([]);setFollowPlayback(false);setFollowRun(null);openView('blueprint');setMenuOpen(false)}}><b className="menu-icon">▦</b><span>{language==='ja'?'設計図生成':'GENERATE BLUEPRINT'}</span><small>OPEN</small></button><button className="file-menu" onClick={()=>{save();setMenuOpen(false)}}><b className="menu-icon">⇩</b><span>SAVE .OBG</span></button><button className="file-menu" onClick={()=>{fileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">⇧</b><span>OPEN</span></button><button className="file-menu" onClick={()=>{midiFileRef.current?.click();setMenuOpen(false)}}><b className="menu-icon">♫</b><span>{language==='ja'?'MIDIを読み込む':'IMPORT MIDI'}</span></button><button className="danger" onClick={clearAll}><b className="menu-icon trash-icon" aria-hidden="true"/><span>{c[18]}</span></button></div>
       <div className="menu-section future"><button onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openView('home')}}><b className="menu-icon">⌂</b><span>{language==='ja'?'ホーム':'HOME'}</span><small>OPEN</small></button><button disabled><b className="menu-icon">♫</b><span>{language==='ja'?'プリセット':'PRESETS'}</span><small>{language==='ja'?'準備中':'COMING SOON'}</small></button><button onClick={()=>{setMenuOpen(false);window.open('https://x.com/goro56pika','_blank','noopener,noreferrer')}}><b className="menu-icon">𝕏</b><span>X</span><small>OPEN</small></button><button className="creator-menu" onClick={()=>{stopPlayback();setPlayingStep(-1);setMenuOpen(false);openView('creators')}}><b className="menu-icon creator-menu-icon" aria-hidden="true"/><span>{language==='ja'?'制作者':'CREATOR'}</span><small>OPEN</small></button><BuyMeCoffeeSupport className="support-menu"/></div>

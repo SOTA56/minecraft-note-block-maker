@@ -72,27 +72,27 @@ deviceCopies['zh-tw']=traditionalizeRecord(deviceCopies.zh)
 const polyphonyMarkerBodies:Record<string,string>={en:'Shows the highest number of simultaneous notes. A lime marker means 4–6 notes; orange means 7 or more.',es:'Muestra las notas simultáneas. La marca verde indica 4–6; la naranja, 7 o más.',fr:'Affiche les notes simultanées. Le repère vert indique 4–6 notes, l’orange 7 ou plus.',de:'Zeigt gleichzeitige Noten. Grün markiert 4–6, Orange 7 oder mehr.',zh:'显示同时发音数。浅绿色标记表示4至6音，橙色表示7音以上。','zh-tw':'顯示同時發音數。淺綠色標記表示4至6音，橙色表示7音以上。',ko:'동시 발음 수를 표시합니다. 연두색은 4~6음, 주황색은 7음 이상입니다.',id:'Menampilkan not bersamaan. Penanda hijau untuk 4–6 not, oranye untuk 7 atau lebih.'}
 const shortcutLabels:Record<string,string>={ja:'ショートカット',en:'Shortcut',es:'Atajo',fr:'Raccourci',de:'Tastenkürzel',zh:'快捷键','zh-tw':'快捷鍵',ko:'단축키',id:'Pintasan'}
 const cutCopies:Record<string,{title:string;body:string}>={ja:{title:'切り取り',body:'選択範囲内の音符をコピーし、元の音符を削除します。'},en:{title:'CUT',body:'Copies the selected notes and removes the originals.'},es:{title:'CORTAR',body:'Copia las notas seleccionadas y elimina las originales.'},fr:{title:'COUPER',body:'Copie les notes sélectionnées et supprime les originales.'},de:{title:'AUSSCHNEIDEN',body:'Kopiert die ausgewählten Noten und entfernt die Originale.'},zh:{title:'剪切',body:'复制所选音符，并删除原来的音符。'},'zh-tw':{title:'剪下',body:'複製所選音符，並刪除原來的音符。'},ko:{title:'잘라내기',body:'선택한 음표를 복사하고 원래 음표를 삭제합니다.'},id:{title:'POTONG',body:'Menyalin not yang dipilih lalu menghapus not aslinya.'}}
-const modifierSelectionCopies:Record<string,string>={
-  ja:'ドラッグした長方形の範囲を選択します。PC版では入力モード中でも、WindowsはCtrl、MacはCommandを押しながらドラッグすると範囲選択できます。キーを離しても選択は残り、選択外をクリックすると解除されます。',
-  en:'Drag a rectangle to select notes. On desktop, you can also select while in Draw mode by dragging with Ctrl on Windows or Command on Mac. The selection remains after releasing the key and clears when you click outside it.',
-  es:'Arrastra un rectángulo para seleccionar notas. En PC también puedes hacerlo en modo Dibujar: arrastra con Ctrl en Windows o Command en Mac. La selección se conserva al soltar la tecla y se borra al hacer clic fuera.',
-  fr:'Tracez un rectangle pour sélectionner des notes. Sur ordinateur, cela fonctionne aussi en mode Saisie en maintenant Ctrl sous Windows ou Command sur Mac. La sélection reste après avoir relâché la touche et disparaît en cliquant ailleurs.',
-  de:'Ziehe ein Rechteck auf, um Noten auszuwählen. Am Desktop geht das auch im Eingabemodus: unter Windows mit Strg, am Mac mit Command ziehen. Die Auswahl bleibt nach dem Loslassen bestehen und wird durch einen Klick außerhalb aufgehoben.',
-  zh:'拖出矩形范围来选择音符。桌面版在输入模式中也可按住 Windows 的 Ctrl 或 Mac 的 Command 进行拖动选择。松开按键后仍会保留选择，点击选择范围外即可取消。',
-  'zh-tw':'拖出矩形範圍來選取音符。桌面版在輸入模式中也可按住 Windows 的 Ctrl 或 Mac 的 Command 進行拖曳選取。放開按鍵後仍會保留選取，點擊選取範圍外即可取消。',
-  ko:'사각형으로 드래그해 음표를 선택합니다. PC에서는 입력 모드에서도 Windows의 Ctrl 또는 Mac의 Command를 누른 채 드래그하면 범위를 선택할 수 있습니다. 키를 놓아도 선택은 유지되며 바깥을 클릭하면 해제됩니다.',
-  id:'Seret membentuk persegi untuk memilih not. Di desktop, pilihan juga dapat dibuat dalam mode Input dengan menahan Ctrl di Windows atau Command di Mac. Pilihan tetap ada setelah tombol dilepas dan hilang saat area luar diklik.'
+const desktopSelectionCopies:Record<string,string>={
+  ja:'音符のないマスからドラッグすると、長方形の範囲を選択できます。範囲内の音符をひとつ掴むとまとめて移動でき、選択範囲の外をクリックすると解除されます。PC版では入力と範囲選択のモード切替はありません。',
+  en:'Drag from an empty cell to select a rectangle. Drag one selected note to move the group, or click outside the selection to clear it. Desktop needs no Draw/Select mode switch.',
+  es:'Arrastra desde una celda vacía para seleccionar un rectángulo. Arrastra una nota seleccionada para mover el grupo o haz clic fuera para cancelar. En PC no hay que cambiar entre Dibujar y Seleccionar.',
+  fr:'Faites glisser depuis une case vide pour sélectionner un rectangle. Faites glisser une note sélectionnée pour déplacer le groupe, ou cliquez hors de la sélection pour l’annuler. Aucun changement de mode n’est nécessaire sur ordinateur.',
+  de:'Ziehe von einem leeren Feld aus, um einen rechteckigen Bereich auszuwählen. Ziehe eine ausgewählte Note, um die Gruppe zu verschieben, oder klicke außerhalb zum Aufheben. Am Desktop ist kein Moduswechsel nötig.',
+  zh:'从空白格开始拖动即可选择矩形范围。拖动其中一个已选音符可整体移动，点击范围外可取消选择。桌面版无需切换输入与范围选择模式。',
+  'zh-tw':'從空白格開始拖曳即可選取矩形範圍。拖曳其中一個已選音符可整體移動，點擊範圍外可取消選取。桌面版不需切換輸入與範圍選取模式。',
+  ko:'빈 칸에서 드래그하면 사각형 범위를 선택할 수 있습니다. 선택한 음표 하나를 드래그하면 함께 이동하며, 범위 밖을 클릭하면 해제됩니다. PC에서는 입력과 범위 선택 모드를 바꿀 필요가 없습니다.',
+  id:'Seret dari kotak kosong untuk memilih area persegi. Seret salah satu not terpilih untuk memindahkan semuanya, atau klik di luar untuk membatalkan pilihan. Desktop tidak memerlukan pergantian mode Input/Pilih.'
 }
-const editionCopies:Record<string,{title:string;body:string}>={
-  ja:{title:'EDITION',body:'再生に使う音源をJAVA版とBEDROCK版から選びます。打ち込み画面と設計図画面の両方に反映されます。'},
-  en:{title:'EDITION',body:'Choose Java Edition or Bedrock Edition sounds. The choice applies to playback in both the editor and blueprints.'},
-  es:{title:'EDICIÓN',body:'Elige los sonidos de Java Edition o Bedrock Edition. Se aplica a la reproducción del editor y de los planos.'},
-  fr:{title:'ÉDITION',body:'Choisissez les sons de Java Edition ou Bedrock Edition. Ce choix s’applique à la lecture dans l’éditeur et les plans.'},
-  de:{title:'EDITION',body:'Wähle die Klänge der Java Edition oder Bedrock Edition. Die Auswahl gilt im Editor und in den Bauplänen.'},
-  zh:{title:'版本音源',body:'选择 Java 版或基岩版音源。该选择会同时应用于编辑器和蓝图播放。'},
-  'zh-tw':{title:'版本音源',body:'選擇 Java 版或基岩版音源。此選擇會同時套用於編輯器與藍圖播放。'},
-  ko:{title:'에디션',body:'Java Edition 또는 Bedrock Edition 음원을 선택합니다. 편집 화면과 설계도 재생에 모두 적용됩니다.'},
-  id:{title:'EDITION',body:'Pilih suara Java Edition atau Bedrock Edition. Pilihan ini berlaku untuk pemutaran di editor dan blueprint.'}
+const modeCopies:Record<string,{title:string;body:string}>={
+  ja:{title:'モード',body:'遅延単位、JAVA版／BEDROCK版の音源、タッチ／PC表示をまとめて設定します。表示は初回だけ端末に合わせて決まり、その後は選んだ表示を記憶します。PC操作に適さない端末ではPC表示を選べません。'},
+  en:{title:'MODE',body:'Set the delay unit, Java/Bedrock sounds, and Touch/PC display together. Display is detected once on first use, then your choice is remembered. PC display is disabled on devices without precise pointer controls.'},
+  es:{title:'MODO',body:'Configura la unidad de delay, el sonido Java/Bedrock y la vista táctil/PC. La vista se detecta una vez y luego se recuerda. PC se desactiva sin un puntero preciso.'},
+  fr:{title:'MODE',body:'Réglez l’unité de delay, les sons Java/Bedrock et l’affichage tactile/PC. L’affichage est détecté une fois puis mémorisé. Le mode PC est désactivé sans pointeur précis.'},
+  de:{title:'MODUS',body:'Stelle Delay-Einheit, Java-/Bedrock-Klang und Touch-/PC-Ansicht gemeinsam ein. Die Ansicht wird einmal erkannt und danach gespeichert. Ohne präzisen Zeiger ist PC deaktiviert.'},
+  zh:{title:'模式',body:'统一设置延迟单位、Java／基岩版音源和触控／PC 显示。首次使用时只自动判断一次，之后会记住你的选择。没有精确指针的设备不能选择 PC 显示。'},
+  'zh-tw':{title:'模式',body:'統一設定延遲單位、Java／基岩版音源與觸控／PC 顯示。首次使用時只自動判斷一次，之後會記住你的選擇。沒有精確指標的裝置不能選擇 PC 顯示。'},
+  ko:{title:'모드',body:'지연 단위, Java/Bedrock 음원, 터치/PC 표시를 함께 설정합니다. 첫 실행 때 한 번만 자동 판별하며 이후 선택을 기억합니다. 정밀 포인터가 없는 기기에서는 PC 표시를 선택할 수 없습니다.'},
+  id:{title:'MODE',body:'Atur unit delay, suara Java/Bedrock, dan tampilan Sentuh/PC. Tampilan dideteksi sekali saat pertama dipakai lalu pilihan disimpan. PC dinonaktifkan tanpa pointer presisi.'}
 }
 const baseLocalizedSections=(language:string):GuideSection[]=>{if(language==='ja')return jaSections;if(language==='en'||!guideLocales[language])return enSections.map((section,index)=>({...section,items:section.items.map((item,itemIndex)=>index===0&&itemIndex===4?{...item,body:polyphonyMarkerBodies.en}:item)}));const copy=guideLocales[language];return enSections.map((section,index)=>({...section,title:copy.sectionTitles[index],intro:copy.sectionIntros[index],items:section.items.map((item,itemIndex)=>({...item,icon:index===3&&itemIndex===0?'ABC':item.icon,title:copy.itemTitles[index][itemIndex],body:index===0&&itemIndex===4?polyphonyMarkerBodies[language]:copy.itemBodies[index][itemIndex]}))}))}
 
@@ -102,8 +102,7 @@ const localizedSections=(language:string):GuideSection[]=>{
   sections[0].items.splice(2,0,{icon:'│',title:copy.playBarTitle,body:copy.playBarBody})
   sections[2].intro=copy.entryIntro
   sections[2].items[0].body=copy.inputBody
-  sections[2].items[1].body={mobile:sections[2].items[1].body as string,desktop:modifierSelectionCopies[language]??modifierSelectionCopies.en}
-  sections[2].items[1].shortcut='Ctrl / ⌘ + Drag'
+  sections[2].items[1].body={mobile:sections[2].items[1].body as string,desktop:desktopSelectionCopies[language]??desktopSelectionCopies.en}
   sections[2].items[5].body=copy.zoomBody
   sections[3].intro=copy.rollIntro
   sections[3].items[0].body=copy.keysBody
@@ -117,8 +116,8 @@ const localizedSections=(language:string):GuideSection[]=>{
   sections[2].items[4].shortcut='Ctrl / ⌘ + V'
   sections[2].items[5].shortcut='Backspace / Delete'
   sections[4].items[0].shortcut='UNDO  Ctrl / ⌘ + Z\nREDO  Ctrl / ⌘ + Shift + Z'
-  const editionCopy=editionCopies[language]??editionCopies.en
-  sections[4].items.splice(2,0,{icon:'J/B',title:editionCopy.title,body:editionCopy.body})
+  const modeCopy=modeCopies[language]??modeCopies.en
+  sections[4].items[1]={...sections[4].items[1],icon:'1/J',image:undefined,invert:false,title:modeCopy.title,body:modeCopy.body}
   return sections
 }
 

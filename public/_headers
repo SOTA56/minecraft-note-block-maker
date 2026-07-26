@@ -1,0 +1,32 @@
+/
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/editor
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/blueprint
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/creators
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/guide
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/placement
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/resource-pack
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/terms
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/privacy
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate, max-age=0
+
+/site.webmanifest
+  Cache-Control: no-cache, must-revalidate, max-age=0
