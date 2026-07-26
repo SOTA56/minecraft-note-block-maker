@@ -1,6 +1,8 @@
 import type { AudioEdition, Note, Project, Track } from './types'
 
 let context: AudioContext | null = null
+let contextGeneration = 0
+let contextRefreshRequired = false
 let stopAt = 0
 const buffers = new Map<string, AudioBuffer>()
 const loading = new Map<string, Promise<AudioBuffer>>()
@@ -28,7 +30,10 @@ const SOUND_FILES: Record<string, string> = {
   'Trumpet Oxidized': 'trumpet_oxidized',
 }
 
-const createContext = () => new AudioContext({ latencyHint: 'interactive' })
+const createContext = () => {
+  contextGeneration += 1
+  return new AudioContext({ latencyHint: 'interactive' })
+}
 
 const clearAudioCache = () => {
   buffers.clear()
@@ -41,14 +46,30 @@ const clearAudioCache = () => {
 
 const resumeExistingContext = () => {
   const active = context
-  if (!active || active.state === 'running' || active.state === 'closed') return
+  if (contextRefreshRequired || !active || active.state === 'running' || active.state === 'closed') return
   // Safari can interrupt Web Audio after the tab, browser, or audio device loses focus.
   // A later user gesture still performs the guaranteed recovery path in getContext().
   void active.resume().catch(() => undefined)
 }
 
+const requireFreshContext = () => {
+  if (!context) return
+  contextRefreshRequired = true
+  stopPlayback()
+  // Safari can report an interrupted context as `running` after returning from
+  // another tab or app even though it no longer reaches the audio device. Do
+  // not trust that instance again; the next direct playback gesture creates a
+  // completely new graph. Closing is best-effort because iOS may have already
+  // detached the old context.
+  const stale = context
+  context = null
+  clearAudioCache()
+  void stale.close().catch(() => undefined)
+}
+
 const getContext = async () => {
-  if (!context || context.state === 'closed') {
+  if (contextRefreshRequired || !context || context.state === 'closed') {
+    contextRefreshRequired = false
     context = createContext()
     clearAudioCache()
   }
@@ -69,10 +90,15 @@ const getContext = async () => {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('pageshow', resumeExistingContext)
+  window.addEventListener('pagehide', requireFreshContext)
+  window.addEventListener('pageshow', event => {
+    if (event.persisted) requireFreshContext()
+    else resumeExistingContext()
+  })
   window.addEventListener('focus', resumeExistingContext)
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') resumeExistingContext()
+    if (document.visibilityState === 'hidden') requireFreshContext()
+    else resumeExistingContext()
   })
 }
 
@@ -96,7 +122,9 @@ const playbackOutput = (ctx: AudioContext, edition: Project['edition']) => {
 }
 
 const loadBuffer = async (ctx: AudioContext, instrument: string, edition:AudioEdition) => {
-  const cacheKey = `${edition}:${instrument}`
+  // Include the context generation so an in-flight decode from a discarded
+  // Safari context can never be reused by the replacement graph.
+  const cacheKey = `${contextGeneration}:${edition}:${instrument}`
   const cached = buffers.get(cacheKey)
   if (cached) return cached
   const pending = loading.get(cacheKey)
