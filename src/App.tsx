@@ -658,7 +658,6 @@ function App() {
       // Space is a global transport shortcut, even when the last interaction
       // focused a step-label button used to move the playhead.
       if(event.code==='Space'&&!event.repeat){event.preventDefault();event.stopPropagation();void togglePlay();return}
-      if(target&&target.matches('button,a'))return
       const key=event.key.toLowerCase(),command=event.ctrlKey||event.metaKey
       if(command&&key==='c'&&normalizedSelection){event.preventDefault();copySelection();return}
       if(command&&key==='x'&&normalizedSelection){event.preventDefault();cutSelection();return}
