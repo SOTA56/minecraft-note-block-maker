@@ -1,5 +1,6 @@
 import './home.css'
 import {BuyMeCoffeeButton} from './BuyMeCoffee'
+import type {ReactNode} from 'react'
 
 type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void;onResourcePack:()=>void;onTerms:()=>void;onPrivacy:()=>void}
 
@@ -21,6 +22,90 @@ const heroFacts:Record<string,[string,string][]>= {
   id:[['TANPA INSTALASI','Langsung di browser'],['SIMPAN OTOMATIS','Tersimpan di perangkat'],['DUA EDISI','Java / Bedrock']],
 }
 
+type HomeTipKey='compose'|'open'|'x'|'resourcePack'|'creators'|'matMaker'
+
+const homeTips:Record<string,Record<HomeTipKey,string>>={
+  ja:{
+    compose:'ピアノロールを開いて、曲づくりを始めます。',
+    open:'打ち込み画面を開いて、音符ブロックの曲を作ります。',
+    x:'OTO BLOGIC公式Xで、更新情報やお知らせを確認します。',
+    resourcePack:'音程やリピーターを読みやすくするJava版リソースパックをダウンロードします。',
+    creators:'OTO BLOGICの制作者・監修者・改善協力者を紹介します。',
+    matMaker:'ぽこあポケモン向け「おんぷマットメーカー」を開きます。',
+  },
+  en:{
+    compose:'Open the piano roll and start composing.',
+    open:'Open the editor and create a Minecraft note-block song.',
+    x:'See OTO BLOGIC news and updates on X.',
+    resourcePack:'Download the Java resource pack that makes pitches and repeaters easier to read.',
+    creators:'Meet the creators, supervisor, and contributors behind OTO BLOGIC.',
+    matMaker:'Open Music Mat Maker for Pokémon Pokopia.',
+  },
+  es:{
+    compose:'Abre el piano roll y empieza a componer.',
+    open:'Abre el editor y crea una canción con bloques musicales.',
+    x:'Consulta las noticias y novedades de OTO BLOGIC en X.',
+    resourcePack:'Descarga el pack de Java que facilita leer notas y repetidores.',
+    creators:'Conoce a los creadores, la supervisora y colaboradores de OTO BLOGIC.',
+    matMaker:'Abre Music Mat Maker para Pokémon Pokopia.',
+  },
+  fr:{
+    compose:'Ouvrez le piano roll et commencez à composer.',
+    open:'Ouvrez l’éditeur et créez un morceau avec des blocs musicaux.',
+    x:'Consultez les actualités d’OTO BLOGIC sur X.',
+    resourcePack:'Téléchargez le pack Java qui facilite la lecture des notes et répéteurs.',
+    creators:'Découvrez les créateurs, la superviseuse et les contributeurs d’OTO BLOGIC.',
+    matMaker:'Ouvrez Music Mat Maker pour Pokémon Pokopia.',
+  },
+  de:{
+    compose:'Öffne die Piano-Roll und beginne zu komponieren.',
+    open:'Öffne den Editor und erstelle einen Song mit Notenblöcken.',
+    x:'Neuigkeiten und Updates zu OTO BLOGIC auf X ansehen.',
+    resourcePack:'Lade das Java-Ressourcenpaket für besser lesbare Töne und Repeater herunter.',
+    creators:'Lerne die Entwickler, Aufsicht und Mitwirkenden von OTO BLOGIC kennen.',
+    matMaker:'Öffne Music Mat Maker für Pokémon Pokopia.',
+  },
+  zh:{
+    compose:'打开钢琴卷帘，开始编曲。',
+    open:'打开编辑器，制作 Minecraft 音符盒音乐。',
+    x:'在 X 查看 OTO BLOGIC 的更新与公告。',
+    resourcePack:'下载让音高和中继器更易读的 Java 版资源包。',
+    creators:'了解 OTO BLOGIC 的制作者、监修者与改进协作者。',
+    matMaker:'打开面向《宝可梦 Pokopia》的音符地垫制作器。',
+  },
+  'zh-tw':{
+    compose:'開啟鋼琴捲軸，開始編曲。',
+    open:'開啟編輯器，製作 Minecraft 音階盒音樂。',
+    x:'在 X 查看 OTO BLOGIC 的更新與公告。',
+    resourcePack:'下載讓音高和中繼器更容易閱讀的 Java 版資源包。',
+    creators:'認識 OTO BLOGIC 的製作者、監修者與改善協作者。',
+    matMaker:'開啟《寶可夢 Pokopia》用的音符墊製作器。',
+  },
+  ko:{
+    compose:'피아노 롤을 열고 작곡을 시작합니다.',
+    open:'편집 화면을 열어 Minecraft 노트 블록 곡을 만듭니다.',
+    x:'X에서 OTO BLOGIC 업데이트와 공지를 확인합니다.',
+    resourcePack:'음높이와 리피터를 읽기 쉽게 하는 Java 리소스 팩을 다운로드합니다.',
+    creators:'OTO BLOGIC의 제작자, 감수자와 개선 협력자를 소개합니다.',
+    matMaker:'Pokémon Pokopia용 Music Mat Maker를 엽니다.',
+  },
+  id:{
+    compose:'Buka piano roll dan mulai membuat musik.',
+    open:'Buka editor dan buat lagu note block Minecraft.',
+    x:'Lihat berita dan pembaruan OTO BLOGIC di X.',
+    resourcePack:'Unduh resource pack Java agar nada dan repeater lebih mudah dibaca.',
+    creators:'Kenali pembuat, pengawas, dan kontributor OTO BLOGIC.',
+    matMaker:'Buka Music Mat Maker untuk Pokémon Pokopia.',
+  },
+}
+
+function HomeTip({id,text,className='',children}:{id:string;text:string;className?:string;children:ReactNode}){
+  return <span className={`home-tip ${className}`}>
+    {children}
+    <span className="home-tip-copy" id={id} role="tooltip">{text}</span>
+  </span>
+}
+
 function MiniRoll(){return <div className="home-roll" aria-hidden="true"><div className="home-keys">{Array.from({length:13},(_,index)=><i key={index} className={[1,3,6,8,10].includes(index)?'black':''}/>)}</div><div className="home-grid">{notes.map((note,index)=><i key={index} style={{'--x':note.x,'--y':note.y,'--c':note.c} as React.CSSProperties}/>)}</div><span className="home-playhead"/></div>}
 
 const homeLocales:Record<string,string[]>={
@@ -38,19 +123,20 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
   const ja=language==='ja'
   const x=homeLocales[language]??homeLocales.en
   const facts=heroFacts[language]??heroFacts.en
+  const tips=homeTips[language]??homeTips.en
   return <main className="home-page">
     <header className="home-header">
       <a className="home-brand" href="#top" aria-label="OTO BLOGIC"><img src="/assets/branding/oto-blogic-icon-04.png" alt=""/><img src="/assets/branding/oto-blogic-logo.png" alt="OTO BLOGIC"/></a>
       <div className="home-header-actions">
         <BuyMeCoffeeButton className="header-buy-me-coffee"/>
         <nav className="home-related-links" aria-label={ja?'関連ページ':'Related pages'}>
-          <a className="home-x-link" href="https://x.com/OTOBLOGIC" target="_blank" rel="noreferrer" aria-label="OTO BLOGIC on X"><span aria-hidden="true">𝕏</span></a>
+          <HomeTip id="home-tip-x" text={tips.x} className="home-tip--header"><a className="home-x-link" href="https://x.com/OTOBLOGIC" target="_blank" rel="noreferrer" aria-label="OTO BLOGIC on X" aria-describedby="home-tip-x"><span aria-hidden="true">𝕏</span></a></HomeTip>
           <i aria-hidden="true"/>
-          <a href="/resource-pack" onClick={event=>{event.preventDefault();onResourcePack()}}>{ja?'リソースパック':'RESOURCE PACK'}</a>
+          <HomeTip id="home-tip-resource" text={tips.resourcePack} className="home-tip--header"><a href="/resource-pack" aria-describedby="home-tip-resource" onClick={event=>{event.preventDefault();onResourcePack()}}>{ja?'リソースパック':'RESOURCE PACK'}</a></HomeTip>
           <i aria-hidden="true"/>
-          <a href="/creators" onClick={event=>{event.preventDefault();onCreators()}}>{ja?'制作者':x[0]}</a>
+          <HomeTip id="home-tip-creators" text={tips.creators} className="home-tip--header"><a href="/creators" aria-describedby="home-tip-creators" onClick={event=>{event.preventDefault();onCreators()}}>{ja?'制作者':x[0]}</a></HomeTip>
           <i aria-hidden="true"/>
-          <a href="https://matmaker.sota56.com" target="_blank" rel="noreferrer">{ja?'おんぷマットメーカー':x[1]}</a>
+          <HomeTip id="home-tip-mat-maker" text={tips.matMaker} className="home-tip--header home-tip--align-right"><a href="https://matmaker.sota56.com" target="_blank" rel="noreferrer" aria-describedby="home-tip-mat-maker">{ja?'おんぷマットメーカー':x[1]}</a></HomeTip>
         </nav>
         <select className="home-language" value={language} onChange={event=>setLanguage(event.target.value)} aria-label="Language"><option value="ja">日本語</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="zh">简体中文</option><option value="zh-tw">繁體中文</option><option value="ko">한국어</option><option value="id">Bahasa Indonesia</option></select>
       </div>
@@ -60,7 +146,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
       <div className="hero-kicker"><i/>NOTE BLOCK SEQUENCER <b>＋</b> CIRCUIT BLUEPRINT</div>
       <h1>{ja?<><span className="hero-blue">音を置く</span>だけで、<br/><span className="hero-yellow">回路が完成</span>する。</>:<><span className="hero-blue">{x[2]}</span><br/><span className="hero-yellow">{x[3]}</span></>}</h1>
       <p>{ja?'簡単操作で音を並べて曲作り。Minecraftで組める設計図を自動生成します。初心者から上級者まで、子どもから大人まで。':x[4]}</p>
-      <button className="hero-cta" onClick={onStart}><span>{ja?'曲をつくる':x[5]}</span><b>→</b></button>
+      <HomeTip id="home-tip-compose" text={tips.compose} className="home-tip--cta"><button className="hero-cta" onClick={onStart} aria-describedby="home-tip-compose"><span>{ja?'曲をつくる':x[5]}</span><b>→</b></button></HomeTip>
       <div className="hero-meta">{facts.map(([title,detail])=><article key={title}><span><strong>{title}</strong><small>{detail}</small></span></article>)}</div>
       <div className="hero-visual">
         <div className="visual-label"><span>{ja?'ピアノロール形式':x[6]}</span></div>
@@ -87,7 +173,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
       <img src="/assets/branding/oto-blogic-icon-04.png" alt=""/>
       <small>YOUR SOUND. YOUR LOGIC.</small>
       <h2>{ja?'最初の1音を、\n置いてみよう。':x[22]}</h2>
-      <button onClick={onStart}>{ja?'OTO BLOGICを開く':x[23]}<b>→</b></button>
+      <HomeTip id="home-tip-open" text={tips.open} className="home-tip--cta home-tip--above"><button onClick={onStart} aria-describedby="home-tip-open">{ja?'OTO BLOGICを開く':x[23]}<b>→</b></button></HomeTip>
     </section>
 
     <section className="home-video">
