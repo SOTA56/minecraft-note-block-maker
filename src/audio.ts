@@ -9,6 +9,7 @@ const loading = new Map<string, Promise<AudioBuffer>>()
 const playbackSources = new Set<AudioBufferSourceNode>()
 const playbackTimers = new Set<number>()
 const playbackOutputs = new Map<AudioEdition, GainNode>()
+let contextOutput: {ctx: AudioContext; node: GainNode; media?: HTMLAudioElement; stream?: MediaStreamAudioDestinationNode} | null = null
 
 // Keep the Java / Bedrock balance intact while leaving enough headroom for
 // dense chords. The compressor only catches the combined peak of many notes;
@@ -35,6 +36,64 @@ const createContext = () => {
   return new AudioContext({ latencyHint: 'interactive' })
 }
 
+const isAppleWebKit = () => {
+  if (typeof navigator === 'undefined') return false
+  return /AppleWebKit/i.test(navigator.userAgent) && !/(Chrome|Chromium|Edg|OPR)\//i.test(navigator.userAgent)
+}
+
+const clearContextOutput = () => {
+  if (!contextOutput) return
+  try { contextOutput.node.disconnect() } catch { /* The old context may already be closed. */ }
+  if (contextOutput.media) {
+    contextOutput.media.pause()
+    contextOutput.media.srcObject = null
+    contextOutput.media.remove()
+  }
+  contextOutput.stream?.stream.getTracks().forEach(track => track.stop())
+  contextOutput = null
+}
+
+const audioDestination = (ctx: AudioContext) => {
+  if (contextOutput?.ctx === ctx) {
+    if (contextOutput.media?.paused) void contextOutput.media.play().catch(() => undefined)
+    return contextOutput.node
+  }
+  clearContextOutput()
+  const node = ctx.createGain()
+  // WebKit has an unresolved failure mode where AudioContext.currentTime and
+  // AudioBufferSourceNode continue normally, while ctx.destination is silent.
+  // Safari's regular HTML media path remains audible in the same state, so on
+  // Apple WebKit route the completed Web Audio mix through a MediaStream-backed
+  // <audio> element. Creating and playing it synchronously from the user's
+  // click also re-establishes Safari's media session after tab/app changes.
+  if (isAppleWebKit() && typeof ctx.createMediaStreamDestination === 'function') {
+    const stream = ctx.createMediaStreamDestination()
+    const media = document.createElement('audio')
+    media.autoplay = true
+    media.preload = 'auto'
+    media.setAttribute('playsinline', '')
+    media.setAttribute('aria-hidden', 'true')
+    media.style.display = 'none'
+    media.srcObject = stream.stream
+    document.body.appendChild(media)
+    node.connect(stream)
+    contextOutput = {ctx, node, media, stream}
+    void media.play().catch(() => {
+      // Very old Safari versions may reject a MediaStream-backed media element.
+      // Fall back to the standard destination instead of leaving the app mute.
+      if (contextOutput?.ctx !== ctx) return
+      try { node.disconnect(stream) } catch { /* Already disconnected. */ }
+      node.connect(ctx.destination)
+      media.remove()
+      contextOutput = {ctx, node}
+    })
+    return node
+  }
+  node.connect(ctx.destination)
+  contextOutput = {ctx, node}
+  return node
+}
+
 const clearAudioCache = () => {
   buffers.clear()
   loading.clear()
@@ -42,6 +101,7 @@ const clearAudioCache = () => {
     try { output.disconnect() } catch { /* The old context may already be closed. */ }
   })
   playbackOutputs.clear()
+  clearContextOutput()
 }
 
 const resumeExistingContext = () => {
@@ -74,6 +134,9 @@ const getContext = async () => {
     clearAudioCache()
   }
   let active = context
+  // Do this before the first await so Safari sees media.play() inside the
+  // original pointer/click/keyboard activation that requested the sound.
+  audioDestination(active)
   if (active.state !== 'running') {
     try { await active.resume() } catch { /* Recover with a fresh context below. */ }
   }
@@ -84,6 +147,7 @@ const getContext = async () => {
       clearAudioCache()
     }
     active = context
+    audioDestination(active)
     try { await active.resume() } catch { /* The next direct user gesture can try again. */ }
   }
   return active
@@ -116,7 +180,7 @@ const playbackOutput = (ctx: AudioContext, edition: Project['edition']) => {
   peakGuard.ratio.value = 3
   peakGuard.attack.value = 0.003
   peakGuard.release.value = 0.15
-  output.connect(peakGuard).connect(ctx.destination)
+  output.connect(peakGuard).connect(audioDestination(ctx))
   playbackOutputs.set(normalizedEdition, output)
   return output
 }
