@@ -27,7 +27,7 @@
   </head>
   <body><div id="root"></div><script>
     (()=>{
-      const retryKey='otoblogic:last-startup-recovery'
+      const retryKey='otoblogic:startup-recovery-attempted-v2'
       const activeModule=()=>document.querySelector('script[type="module"][src]')?.getAttribute('src')||''
       const showRecovery=()=>{
         if(document.getElementById('otoblogic-recovery'))return
@@ -40,10 +40,17 @@
       }
       const reloadFresh=force=>{
         if(document.documentElement.dataset.appReady==='true')return
-        const now=Date.now(),last=Number(sessionStorage.getItem(retryKey)||0)
-        if(!force&&now-last<30000){showRecovery();return}
-        sessionStorage.setItem(retryKey,String(now))
         const url=new URL(location.href)
+        // An automatic recovery must happen at most once.  A time based
+        // cooldown used to start another reload every 30 seconds when a
+        // browser retained stale deployment assets, creating an endless
+        // __refresh loop instead of leaving the user a usable retry button.
+        if(!force&&(url.searchParams.has('__refresh')||sessionStorage.getItem(retryKey)==='1')){
+          showRecovery()
+          return
+        }
+        const now=Date.now()
+        sessionStorage.setItem(retryKey,'1')
         url.searchParams.set('__refresh',String(now))
         location.replace(url.href)
       }
@@ -73,7 +80,10 @@
       window.addEventListener('unhandledrejection',failedModule)
       window.addEventListener('pageshow',event=>{if(event.persisted)void checkCurrentBuild()})
       document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void checkCurrentBuild()})
-      window.setTimeout(()=>{if(document.documentElement.dataset.appReady!=='true')reloadFresh(false)},8000)
+      // Slow devices and slow networks are not necessarily stale builds.
+      // Only a confirmed script/style failure may trigger an automatic
+      // cache-busting reload; a startup timeout merely offers a manual retry.
+      window.setTimeout(()=>{if(document.documentElement.dataset.appReady!=='true')showRecovery()},12000)
     })()
   </script><script type="module" src="/src/main.tsx"></script></body>
 </html>
