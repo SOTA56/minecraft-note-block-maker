@@ -9,7 +9,13 @@ const loading = new Map<string, Promise<AudioBuffer>>()
 const playbackSources = new Set<AudioBufferSourceNode>()
 const playbackTimers = new Set<number>()
 const playbackOutputs = new Map<AudioEdition, GainNode>()
-let contextOutput: {ctx: AudioContext; node: GainNode; media?: HTMLAudioElement; stream?: MediaStreamAudioDestinationNode} | null = null
+let contextOutput: {
+  ctx: AudioContext
+  node: GainNode
+  media?: HTMLAudioElement
+  stream?: MediaStreamAudioDestinationNode
+} | null = null
+let appleWebKitPrimed = false
 
 // Keep the Java / Bedrock balance intact while leaving enough headroom for
 // dense chords. The compressor only catches the combined peak of many notes;
@@ -32,6 +38,14 @@ const SOUND_FILES: Record<string, string> = {
 }
 
 const createContext = () => {
+  // WebKit can keep a stale hardware sample rate after an interruption or
+  // output-route change. Throwing away one context before the real graph is
+  // created prevents the whole project from playing at a lower pitch.
+  if (isAppleWebKit() && !appleWebKitPrimed) {
+    appleWebKitPrimed = true
+    const warmup = new AudioContext({ latencyHint: 'interactive' })
+    void warmup.close().catch(() => undefined)
+  }
   contextGeneration += 1
   return new AudioContext({ latencyHint: 'interactive' })
 }
@@ -41,12 +55,22 @@ const isAppleWebKit = () => {
   return /AppleWebKit/i.test(navigator.userAgent) && !/(Chrome|Chromium|Edg|OPR)\//i.test(navigator.userAgent)
 }
 
+const shouldUseDesktopSafariMediaOutput = () => {
+  if (!isAppleWebKit() || typeof navigator === 'undefined') return false
+  // Preserve the Mac Safari media-element output workaround that prevents the
+  // silent-output state. Touch Safari uses direct Web Audio because WebKit's
+  // MediaStream route can repeat a short buffer after playback is stopped.
+  return /Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints === 0
+}
+
 const clearContextOutput = () => {
   if (!contextOutput) return
   try { contextOutput.node.disconnect() } catch { /* The old context may already be closed. */ }
   if (contextOutput.media) {
     contextOutput.media.pause()
     contextOutput.media.srcObject = null
+    contextOutput.media.removeAttribute('src')
+    contextOutput.media.load()
     contextOutput.media.remove()
   }
   contextOutput.stream?.stream.getTracks().forEach(track => track.stop())
@@ -60,37 +84,24 @@ const audioDestination = (ctx: AudioContext) => {
   }
   clearContextOutput()
   const node = ctx.createGain()
-  // WebKit has an unresolved failure mode where AudioContext.currentTime and
-  // AudioBufferSourceNode continue normally, while ctx.destination is silent.
-  // Safari's regular HTML media path remains audible in the same state, so on
-  // Apple WebKit route the completed Web Audio mix through a MediaStream-backed
-  // <audio> element. Creating and playing it synchronously from the user's
-  // click also re-establishes Safari's media session after tab/app changes.
-  if (isAppleWebKit() && typeof ctx.createMediaStreamDestination === 'function') {
+  if (shouldUseDesktopSafariMediaOutput()) {
     const stream = ctx.createMediaStreamDestination()
     const media = document.createElement('audio')
     media.autoplay = true
-    media.preload = 'auto'
     media.setAttribute('playsinline', '')
-    media.setAttribute('aria-hidden', 'true')
     media.style.display = 'none'
     media.srcObject = stream.stream
     document.body.appendChild(media)
     node.connect(stream)
     contextOutput = {ctx, node, media, stream}
     void media.play().catch(() => {
-      // Very old Safari versions may reject a MediaStream-backed media element.
-      // Fall back to the standard destination instead of leaving the app mute.
-      if (contextOutput?.ctx !== ctx) return
-      try { node.disconnect(stream) } catch { /* Already disconnected. */ }
+      try { node.disconnect(stream) } catch { /* already disconnected */ }
       node.connect(ctx.destination)
-      media.remove()
-      contextOutput = {ctx, node}
     })
-    return node
+  } else {
+    node.connect(ctx.destination)
+    contextOutput = {ctx, node}
   }
-  node.connect(ctx.destination)
-  contextOutput = {ctx, node}
   return node
 }
 
@@ -114,6 +125,7 @@ const resumeExistingContext = () => {
 
 const requireFreshContext = () => {
   if (!context) return
+  appleWebKitPrimed = false
   contextRefreshRequired = true
   stopPlayback()
   // Safari can report an interrupted context as `running` after returning from
