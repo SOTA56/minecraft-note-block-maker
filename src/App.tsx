@@ -654,6 +654,14 @@ function App() {
     const handleShortcut=(event:KeyboardEvent)=>{
       const target=event.target as HTMLElement|null
       if(target&&(target.matches('input,textarea,select')||target.isContentEditable))return
+      // Browsers may treat Backspace (including the Mac Delete key) as Back.
+      // The editor owns these keys even without a selection so an accidental
+      // press never navigates away from the current project.
+      if(event.key==='Backspace'||event.key==='Delete'){
+        event.preventDefault();event.stopPropagation()
+        if(normalizedSelection&&!event.repeat)deleteSelection()
+        return
+      }
       if(event.key==='Enter'&&!event.repeat){event.preventDefault();event.stopPropagation();cueToStart();return}
       // Space is a global transport shortcut, even when the last interaction
       // focused a step-label button used to move the playhead.
@@ -663,7 +671,6 @@ function App() {
       if(command&&key==='x'&&normalizedSelection){event.preventDefault();cutSelection();return}
       if(command&&key==='v'&&copiedNotes?.notes.length){event.preventDefault();pasteSelection();return}
       if(command&&key==='z'){event.preventDefault();event.shiftKey?redo():undo();return}
-      if((event.key==='Backspace'||event.key==='Delete')&&normalizedSelection){event.preventDefault();deleteSelection()}
     }
     window.addEventListener('keydown',handleShortcut)
     return()=>window.removeEventListener('keydown',handleShortcut)
