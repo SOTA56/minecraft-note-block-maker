@@ -657,7 +657,8 @@ function App() {
       // Browsers may treat Backspace (including the Mac Delete key) as Back.
       // The editor owns these keys even without a selection so an accidental
       // press never navigates away from the current project.
-      if(event.key==='Backspace'||event.key==='Delete'){
+      const deleteKey=event.key==='Backspace'||event.key==='Delete'||event.code==='Backspace'||event.code==='Delete'||event.keyCode===8||event.keyCode===46
+      if(deleteKey){
         event.preventDefault();event.stopPropagation()
         if(normalizedSelection&&!event.repeat)deleteSelection()
         return
@@ -672,8 +673,8 @@ function App() {
       if(command&&key==='v'&&copiedNotes?.notes.length){event.preventDefault();pasteSelection();return}
       if(command&&key==='z'){event.preventDefault();event.shiftKey?redo():undo();return}
     }
-    window.addEventListener('keydown',handleShortcut)
-    return()=>window.removeEventListener('keydown',handleShortcut)
+    window.addEventListener('keydown',handleShortcut,{capture:true})
+    return()=>window.removeEventListener('keydown',handleShortcut,{capture:true})
   },[desktopLayout,view,normalizedSelection,copiedNotes,project,activeId,playhead,playingStep])
 
   if(view==='home')return <HomePage language={language} setLanguage={changeLanguage} onStart={()=>{trackEvent('composer_start');openView('editor')}} onCreators={()=>openView('creators')} onResourcePack={()=>openView('resource-pack')} onTerms={()=>openView('terms')} onPrivacy={()=>openView('privacy')}/>
