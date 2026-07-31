@@ -27,8 +27,7 @@
   </head>
   <body><div id="root"></div><script>
     (()=>{
-      const retryKey='otoblogic:startup-recovery-attempted-v2'
-      const activeModule=()=>document.querySelector('script[type="module"][src]')?.getAttribute('src')||''
+      const retryKey='otoblogic:startup-recovery-attempted-v3'
       const showRecovery=()=>{
         if(document.getElementById('otoblogic-recovery'))return
         const panel=document.createElement('div')
@@ -62,28 +61,13 @@
         const message=String(event.reason?.message||event.reason||'')
         if(/module|chunk|import|fetch/i.test(message))reloadFresh(false)
       }
-      const checkCurrentBuild=async()=>{
-        if(document.visibilityState==='hidden')return
-        try{
-          const response=await fetch(location.pathname,{cache:'no-store',headers:{'Cache-Control':'no-cache'}})
-          if(!response.ok)return
-          const html=await response.text()
-          const next=html.match(/<script[^>]+type=["']module["'][^>]+src=["']([^"']+)/)?.[1]||html.match(/<script[^>]+src=["']([^"']+)["'][^>]+type=["']module/)?.[1]||''
-          const current=activeModule()
-          if(next&&current&&next!==current){
-            document.documentElement.dataset.appReady='false'
-            reloadFresh(false)
-          }
-        }catch{ /* A temporary network failure should not interrupt the open app. */ }
-      }
       window.addEventListener('error',failedAsset,true)
       window.addEventListener('unhandledrejection',failedModule)
-      window.addEventListener('pageshow',event=>{if(event.persisted)void checkCurrentBuild()})
-      document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void checkCurrentBuild()})
-      // Slow devices and slow networks are not necessarily stale builds.
-      // Only a confirmed script/style failure may trigger an automatic
-      // cache-busting reload; a startup timeout merely offers a manual retry.
-      window.setTimeout(()=>{if(document.documentElement.dataset.appReady!=='true')showRecovery()},12000)
+      // Do not interrupt an already-open session merely because a newer build
+      // exists. Cloudflare can expose the new HTML and its hashed assets at
+      // slightly different moments. Recovery is therefore driven only by an
+      // actual script/style/module load failure above, never by polling or a
+      // startup timer.
     })()
   </script><script type="module" src="/src/main.tsx"></script></body>
 </html>
