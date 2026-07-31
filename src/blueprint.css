@@ -163,3 +163,22 @@ select:has(option[value="id"]:checked){font-size:7px!important;letter-spacing:-.
 .row-labels b{border-bottom-width:var(--blueprint-line)}
 
 @media(min-width:900px){.column-labels,.row-labels{font-size:14px}}
+
+/* Long exports run page by page. Keep the blueprint immutable and block
+   accidental repeat actions while the browser is encoding a page. */
+.blueprint-export-backdrop{position:fixed;z-index:1200;inset:0;display:grid;place-items:center;padding:20px;background:#020506d9;backdrop-filter:blur(5px);cursor:wait}
+.blueprint-export-progress{display:grid;width:min(460px,100%);grid-template-columns:42px 1fr auto;align-items:center;padding:26px 24px 22px;border:1px solid #319edc;background:#0e181c;color:#eef4f1;box-shadow:9px 9px 0 #073c5a}
+.blueprint-export-progress>span{grid-row:1/3;display:grid;width:34px;height:34px;place-items:center;border:1px solid #e5c64e;color:#e5c64e;font:22px 'Archivo Black'}
+.blueprint-export-progress small{color:#7fcdf7;font:8px 'IBM Plex Mono';letter-spacing:.13em}
+.blueprint-export-progress h2{grid-column:2/4;margin:5px 0 18px;font:16px 'Archivo Black'}
+.blueprint-export-progressbar{grid-column:1/3;overflow:hidden;height:9px;border:1px solid #426272;background:#081014}
+.blueprint-export-progressbar i{display:block;height:100%;background:#29a8ed;box-shadow:0 0 12px #29a8ed;transition:width .18s ease}
+.blueprint-export-progress output{padding-left:12px;color:#e5c64e;font:10px 'Archivo Black'}
+.blueprint-export-progress p{grid-column:1/4;margin:14px 0 0;color:#94a49e;font-size:9px;line-height:1.7}
+.blueprint-export-error>i{border-color:#ff695d!important;color:#ff695d!important}
+.theme-light .blueprint-export-progress{background:#f5f5ef;color:#111b17;box-shadow:9px 9px 0 #9bc8de}
+.theme-light .blueprint-export-progress p{color:#59675f}
+@media(max-width:520px){
+  .blueprint-export-progress{grid-template-columns:38px 1fr auto;padding:22px 18px 19px;box-shadow:6px 6px 0 #073c5a}
+  .blueprint-export-progress h2{font-size:14px}
+}
