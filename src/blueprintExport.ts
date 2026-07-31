@@ -15,7 +15,7 @@ const safeName=(title:string)=>title.trim().replace(/[\\/:*?"<>|]/g,'_')||'OTO-B
 const CELL=40,AXIS=42,FOOTER=34,SIDE_WIDTH=280
 // Keep each temporary canvas comfortably below Chromium's practical memory
 // ceiling. A page is discarded before the next page is rendered.
-const MAX_PAGE_PIXELS=18_000_000,MAX_PAGE_EDGE=6_400,MAX_PAGE_SPAN=72
+const MAX_PAGE_PIXELS=10_000_000,MAX_PAGE_EDGE=4_096,MAX_PAGE_SPAN=64
 const yieldToBrowser=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()))
 
 function slicesFor(plan:Plan,kind:BlueprintExportKind):Slice[]{
@@ -48,10 +48,14 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
   const legendItems=legendBlocks.length+3+(hasCenterPlaceholder?1:0)+(hasSource?1:0)+(hasLayerLink?1:0),sideWidth=280,sideLegendHeight=28+legendItems*52
   const width=gridWidth+sideWidth,height=Math.max(gridHeight,axis+sideLegendHeight)+footer
   const legendColumns=1,legendTop=axis,legendLeft=gridWidth+18
-  if(width>MAX_PAGE_EDGE||height>MAX_PAGE_EDGE||width*height>MAX_PAGE_PIXELS)throw new Error('このページは端末で安全に出力できる大きさを超えています。回路の作成範囲を小さくしてください。')
-  const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height
+  // Packed circuits must remain one layer per page. If that page is too large
+  // for a low-memory browser, reduce its raster scale instead of allocating an
+  // oversized canvas or rejecting the export.
+  const rasterScale=Math.min(1,MAX_PAGE_EDGE/width,MAX_PAGE_EDGE/height,Math.sqrt(MAX_PAGE_PIXELS/(width*height)))
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.floor(width*rasterScale));canvas.height=Math.max(1,Math.floor(height*rasterScale))
   const context=canvas.getContext('2d');if(!context)throw new Error('画像を作成できませんでした。')
-  await document.fonts.load('22px "Archivo Black"');await document.fonts.ready
+  context.scale(rasterScale,rasterScale)
+  await document.fonts.load('400 22px "Archivo Black"');await document.fonts.ready
   const dark=theme==='dark',background=dark?'#111713':'#fff',foreground=dark?'#eef2ed':'#111',grid=dark?'rgba(255,255,255,.78)':'#b8b8b8'
   context.fillStyle=background;context.fillRect(0,0,width,height)
   context.fillStyle=foreground;context.font='15px "Archivo Black"';context.textAlign='center';context.textBaseline='middle'
@@ -61,7 +65,7 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
   await Promise.all([...new Set(plan.cells.map(item=>item.texture).filter(Boolean) as string[])].map(async key=>{const file=textureFiles[key];if(file)textures.set(key,await loadImage(`/assets/block-textures/${file}`))}))
   const visibleCells=plan.cells.filter(item=>item.x>=slice.x&&item.x<slice.x+slice.width&&item.y>=slice.y&&item.y<slice.y+slice.height)
   for(let cellIndex=0;cellIndex<visibleCells.length;cellIndex++){const item=visibleCells[cellIndex],x=axis+(item.x-slice.x)*cell,y=axis+(item.y-slice.y)*cell,cx=x+cell/2,cy=y+cell/2
-    if(item.type==='note'||item.type==='rest'){const image=textures.get(item.texture??'placeholder');if(item.texture==='glass'){context.fillStyle=dark?'#79989b':'#cae6e8';context.fillRect(x+1,y+1,cell-2,cell-2)}if(image)context.drawImage(image,x+1,y+1,cell-2,cell-2);const copper=item.type==='note'?copperColors[item.texture??'']:undefined;context.strokeStyle=copper??'#000';context.lineWidth=copper?3:2;context.strokeRect(x+2,y+2,cell-4,cell-4);if(item.type==='note'){context.fillStyle='#fff';context.font='22px "Archivo Black"';context.lineWidth=4;context.strokeStyle=copper??'#000';context.strokeText(item.label??'',cx,cy);context.fillText(item.label??'',cx,cy)}}
+    if(item.type==='note'||item.type==='rest'){const image=textures.get(item.texture??'placeholder');if(item.texture==='glass'){context.fillStyle=dark?'#79989b':'#cae6e8';context.fillRect(x+1,y+1,cell-2,cell-2)}if(image)context.drawImage(image,x+1,y+1,cell-2,cell-2);const copper=item.type==='note'?copperColors[item.texture??'']:undefined;context.strokeStyle=copper??'#000';context.lineWidth=copper?3:2;context.strokeRect(x+2,y+2,cell-4,cell-4);if(item.type==='note'){context.fillStyle='#fff';context.font='400 22px "Archivo Black"';context.lineJoin='round';context.lineWidth=3;context.strokeStyle=copper??'#000';context.strokeText(item.label??'',cx,cy);context.fillText(item.label??'',cx,cy)}}
     else if(item.type==='source'){context.fillStyle='#fff';context.fillRect(x+1,y+1,cell-2,cell-2);context.fillStyle='#e51d24';context.font='26px "Archivo Black"';context.fillText('S',cx,cy)}
     else if(item.type==='repeater'){const clicks=repeaterDisplay==='clicks';context.save();context.translate(cx,cy);const angle=item.direction==='up'?Math.PI:item.direction==='left'?Math.PI/2:item.direction==='right'?-Math.PI/2:0;context.rotate(angle);context.fillStyle=clicks?'#fff':'#ed171c';context.strokeStyle='#080b09';context.lineWidth=2;context.beginPath();context.moveTo(-15,-16);context.lineTo(15,-16);context.lineTo(15,7);context.lineTo(0,16);context.lineTo(-15,7);context.closePath();context.fill();if(clicks)context.stroke();context.rotate(-angle);context.fillStyle=clicks?'#ed171c':'#fff';context.font='21px "Archivo Black"';const textX=item.direction==='left'?3:item.direction==='right'?-3:0,textY=item.direction==='up'?3:item.direction==='down'?-3:0;context.fillText(String(clicks?Math.max(0,(item.delay??1)-1):(item.delay??1)),textX,textY);context.restore()}
     else if(item.type==='dust'){context.strokeStyle='#e51d24';context.fillStyle='#e51d24';context.lineWidth=5;for(const direction of item.connections??[]){context.beginPath();context.moveTo(cx,cy);context.lineTo(cx+(direction==='right'?cell/2:direction==='left'?-cell/2:0),cy+(direction==='down'?cell/2:direction==='up'?-cell/2:0));context.stroke()}context.beginPath();context.arc(cx,cy,6,0,Math.PI*2);context.fill()}
@@ -77,7 +81,7 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
   const allLegend:Array<({kind:'block'}&ExportLegendBlock)|{kind:'repeater'|'placeholder'|'center-placeholder'|'dust'|'source'|'layer-link';name:string}>=[...legendBlocks.map(block=>({kind:'block' as const,...block})),{kind:'repeater',name:repeaterDisplay==='clicks'?(ja?'リピーターの向きとクリック数':'Repeater direction and clicks'):(ja?'リピーターの向きと遅延数':'Repeater direction and delay')},{kind:'placeholder',name:ja?'任意の不透過ブロック':'Any solid opaque block'},...(hasCenterPlaceholder?[{kind:'center-placeholder' as const,name:ja?'任意の不透過ブロック':'Any solid opaque block'}]:[]),{kind:'dust',name:ja?'レッドストーンダスト':'Redstone dust'},...(hasSource?[{kind:'source' as const,name:ja?'スタート':'Start'}]:[]),...(hasLayerLink?[{kind:'layer-link' as const,name:ja?'レイヤー移動':'Layer link'}]:[])]
   const itemWidth=sideWidth-36
   allLegend.forEach((item,index)=>{const column=index%legendColumns,row=Math.floor(index/legendColumns),x=legendLeft+column*itemWidth,y=legendTop+28+row*52,iconX=x+16,iconY=y+16
-    if(item.kind==='block'){const image=textures.get(item.texture);if(item.texture==='glass'){context.fillStyle=dark?'#79989b':'#cae6e8';context.fillRect(x,y,32,32)}if(image)context.drawImage(image,x,y,32,32);const copper=copperColors[item.texture];context.strokeStyle=copper??'#000';context.lineWidth=copper?3:2;context.strokeRect(x+1,y+1,30,30);context.textAlign='center';context.font='18px "Archivo Black"';context.fillStyle='#fff';context.strokeStyle=copper??'#000';context.lineWidth=4;context.strokeText(item.label,iconX,iconY);context.fillText(item.label,iconX,iconY)}
+    if(item.kind==='block'){const image=textures.get(item.texture);if(item.texture==='glass'){context.fillStyle=dark?'#79989b':'#cae6e8';context.fillRect(x,y,32,32)}if(image)context.drawImage(image,x,y,32,32);const copper=copperColors[item.texture];context.strokeStyle=copper??'#000';context.lineWidth=copper?3:2;context.strokeRect(x+1,y+1,30,30);context.textAlign='center';context.font='400 18px "Archivo Black"';context.fillStyle='#fff';context.strokeStyle=copper??'#000';context.lineJoin='round';context.lineWidth=3;context.strokeText(item.label,iconX,iconY);context.fillText(item.label,iconX,iconY)}
     else if(item.kind==='placeholder'||item.kind==='center-placeholder'){context.fillStyle=item.kind==='placeholder'?'#48b9dc':'#d91c83';context.fillRect(x,y,32,32);const image=textures.get(item.kind);if(image)context.drawImage(image,x,y,32,32);context.strokeStyle='#000';context.lineWidth=2;context.strokeRect(x+1,y+1,30,30)}
     else if(item.kind==='dust'){context.fillStyle='#e51d24';context.beginPath();context.arc(iconX,iconY,6,0,Math.PI*2);context.fill()}
     else if(item.kind==='source'){context.fillStyle='#fff';context.fillRect(x,y,32,32);context.fillStyle='#e51d24';context.textAlign='center';context.font='22px "Archivo Black"';context.fillText('S',iconX,iconY)}
@@ -91,7 +95,7 @@ async function render(plan:Plan,theme:'dark'|'light',legendBlocks:ExportLegendBl
 
 const canvasBlob=(canvas:HTMLCanvasElement)=>new Promise<Blob>((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('PNGを作成できませんでした。')),'image/png'))
 const releaseCanvas=(canvas:HTMLCanvasElement)=>{canvas.width=1;canvas.height=1}
-const downloadBlob=(blob:Blob,filename:string)=>{const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}
+const downloadBlob=(blob:Blob,filename:string)=>{const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.hidden=true;document.body.appendChild(link);link.click();link.remove();window.setTimeout(()=>URL.revokeObjectURL(url),60_000)}
 const report=(options:BlueprintExportOptions|undefined,phase:BlueprintExportProgress['phase'],completed:number,total:number)=>options?.onProgress?.({phase,completed,total})
 
 async function renderSlices(plan:Plan,kind:BlueprintExportKind,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean,repeaterDisplay:RepeaterDisplay,options:BlueprintExportOptions,consume:(canvas:HTMLCanvasElement,slice:Slice)=>Promise<void>){
@@ -127,7 +131,7 @@ export async function exportBlueprint(plan:Plan,format:'png'|'pdf',title:string,
 
 export async function saveBlueprintForX(plan:Plan,title:string,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean,repeaterDisplay:RepeaterDisplay='delay'){
   const canvas=await render(plan,theme,legendBlocks,ja,repeaterDisplay),blob=await canvasBlob(canvas),name=`${safeName(title)}-blueprint.png`
-  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=name;link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)
+  downloadBlob(blob,name)
 }
 
 export async function exportBlueprintLayers(plans:BlueprintPlan[],format:'png'|'pdf',title:string,theme:'dark'|'light',legendBlocks:ExportLegendBlock[],ja:boolean,repeaterDisplay:RepeaterDisplay='delay',options:BlueprintExportOptions={}){
