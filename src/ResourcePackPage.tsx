@@ -10,7 +10,7 @@ const languageOptions=[
 ]
 
 const packs:{version:string;file:string;size:string;latest?:boolean}[]=[
-  {version:'26.1–26.2',file:'OTO_BLOGIC_VISUALS_26.1-26.2.zip',size:'420 KB',latest:true},
+  {version:'26.3–26.4',file:'OTO_BLOGIC_VISUALS_26.1-26.2.zip',size:'420 KB'},
   {version:'1.21.9–26.0',file:'OTO_BLOGIC_VISUALS_1.21.9-26.0.zip',size:'356 KB'},
   {version:'1.20.2–1.21.8',file:'OTO_BLOGIC_VISUALS_1.20.2-1.21.8.zip',size:'356 KB'},
   {version:'1.20–1.20.1',file:'OTO_BLOGIC_VISUALS_1.20-1.20.1.zip',size:'356 KB'},
@@ -27,8 +27,8 @@ const packs:{version:string;file:string;size:string;latest?:boolean}[]=[
 ]
 
 const bedrockPacks:{version:string;file:string;size:string;latest?:boolean}[]=[
-  {version:'26.30+',file:'OTO_BLOGIC_VISUALS_BEDROCK_26.30-plus_v0.2.0.mcpack',size:'12 KB',latest:true},
-  {version:'26.0–26.20',file:'OTO_BLOGIC_VISUALS_BEDROCK_26.0-26.20_v0.2.0.mcpack',size:'12 KB'},
+  {version:'26.3–26.4',file:'OTO_BLOGIC_VISUALS_BEDROCK_26.30-26.40_v0.2.1.mcpack',size:'12 KB'},
+  {version:'26.0–26.20',file:'OTO_BLOGIC_VISUALS_BEDROCK_26.0-26.20_v0.2.1.mcpack',size:'12 KB'},
 ]
 
 const copy:Record<string,{title:string;lead:string;edition:string;choose:string;latest:string;download:string;direct:string;what:string;whatText:string;features:string[];install:string;steps:string[];notes:string;noteItems:string[];home:string;version:string}>= {
@@ -93,7 +93,7 @@ export default function ResourcePackPage({language,setLanguage,onHome}:Props){
     </section>
     <div className="resource-pack-content">
       <section className="resource-pack-download">
-        <div className="resource-pack-number">01</div><div><h2>{isBedrock?bt.choose:t.choose}</h2>{isBedrock?<label><span>{bt.version}</span><select value={selectedBedrockFile} onChange={event=>setSelectedBedrockFile(event.target.value)}>{bedrockPacks.map(pack=><option value={pack.file} key={pack.file}>{pack.version}{pack.latest?` — ${bt.latest}`:''}</option>)}</select></label>:<label><span>{t.version}</span><select value={selectedFile} onChange={event=>setSelectedFile(event.target.value)}>{packs.map(pack=><option value={pack.file} key={pack.file}>{pack.version}{pack.latest?` — ${t.latest}`:''}</option>)}</select></label>}<a href={isBedrock?`/downloads/${selectedBedrock.file}`:`${downloadBase}${selected.file}`} download={isBedrock?selectedBedrock.file:selected.file} className={`resource-pack-download-button ${isBedrock?'bedrock':''}`} aria-label={`${isBedrock?bt.download:t.download} — ${isBedrock?`Minecraft Bedrock ${selectedBedrock.version}`:`Minecraft Java ${selected.version}`}`}><span>{isBedrock?bt.download:t.download}</span><b>⇩</b></a><p className="resource-pack-download-note">{isBedrock?bt.direct:t.direct}</p></div>
+        <div className="resource-pack-number">01</div><div><h2>{isBedrock?bt.choose:t.choose}</h2>{isBedrock?<label><span>{bt.version}</span><select value={selectedBedrockFile} onChange={event=>setSelectedBedrockFile(event.target.value)}>{bedrockPacks.map(pack=><option value={pack.file} key={pack.file}>{pack.version}</option>)}</select></label>:<label><span>{t.version}</span><select value={selectedFile} onChange={event=>setSelectedFile(event.target.value)}>{packs.map(pack=><option value={pack.file} key={pack.file}>{pack.version}</option>)}</select></label>}<a href={isBedrock?`/downloads/${selectedBedrock.file}`:`${downloadBase}${selected.file}`} download={isBedrock?selectedBedrock.file:selected.file} className={`resource-pack-download-button ${isBedrock?'bedrock':''}`} aria-label={`${isBedrock?bt.download:t.download} — ${isBedrock?`Minecraft Bedrock ${selectedBedrock.version}`:`Minecraft Java ${selected.version}`}`}><span>{isBedrock?bt.download:t.download}</span><b>⇩</b></a><p className="resource-pack-download-note">{isBedrock?bt.direct:t.direct}</p></div>
       </section>
       <section className="resource-pack-explainer"><div><small>{isBedrock?'READ THE PARTICLE':'READ THE CIRCUIT'}</small><h2>{isBedrock?bt.what:t.what}</h2><p>{isBedrock?bt.whatText:t.whatText}</p></div><ol>{(isBedrock?bt.features:t.features).map((feature,index)=><li key={feature}><b>{String(index+1).padStart(2,'0')}</b><span>{feature}</span></li>)}</ol>{isBedrock?<div className="resource-pack-preview-grid"><figure className="resource-pack-preview"><img src="/assets/resource-pack/bedrock-note-digits.jpg" alt="OTO BLOGIC VISUALS showing click-count particles in Minecraft Bedrock Edition"/><figcaption>{bt.captions[1]}</figcaption></figure><figure className="resource-pack-preview"><img src="/assets/resource-pack/bedrock-default-note.jpg" alt="Minecraft Bedrock Edition showing the default note particle for click counts 0 and 24"/><figcaption>{bt.captions[0]}</figcaption></figure></div>:<figure className="resource-pack-preview"><img src="/assets/resource-pack/visuals-in-game.jpg" alt="OTO BLOGIC VISUALS in Minecraft Java Edition"/><figcaption>{previewCopy[language]??previewCopy.en}</figcaption></figure>}</section>
       <section className={`resource-pack-install ${isBedrock?'bedrock':''}`}><header><small>THREE STEPS</small><h2>{isBedrock?bt.install:t.install}</h2></header><ol>{(isBedrock?bt.steps:t.steps).map((step,index)=><li key={step}><b>{index+1}</b><p>{step}</p></li>)}</ol></section>
