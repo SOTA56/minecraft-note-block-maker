@@ -83,3 +83,21 @@
 /* Readable supporting copy without changing the compact, blueprint-like hierarchy. */
 .hero-kicker{font-size:10px}.home-hero>p{font-size:15px}.hero-visual>p{font-size:13px}.home-features>header small,.home-circuits>header small,.home-video header small,.home-final>small{font-size:10px}.home-features article>b{font-size:20px}.home-features h3{font-size:17px}.home-features p,.circuit-card p{font-size:12px}.circuit-card>span{font-size:10px}.home-unofficial{font-size:9px}.home-legal-links button,.home-legal-links a{font-size:10px}.hero-meta{font-size:9px}.hero-meta strong{font-size:10px}.hero-meta small{font-size:9px}.home-footer{display:grid;height:80px;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 18px;border-top:1px solid #263236;background:#080b0c;color:#718084;font-size:9px}.home-footer img{grid-column:1;grid-row:1;justify-self:start;width:110px;image-rendering:pixelated}.home-footer>span{grid-column:2;grid-row:1;justify-self:center;margin:0;text-align:center;white-space:nowrap}
 @media(min-width:700px){.hero-meta strong{font-size:12px}.hero-meta small{font-size:9px}.home-footer{grid-template-columns:1fr auto 1fr}.home-footer>span{grid-column:2;justify-self:center}}
+
+/* Official X updates: X owns the post UI; the surrounding frame follows OTO BLOGIC. */
+.home-x-feed{position:relative;padding:58px 18px 64px;border-top:1px solid #263236;background:linear-gradient(180deg,#0b1113,#080c0e);overflow:hidden}
+.home-x-feed::before{content:'';position:absolute;top:-92px;right:-70px;width:210px;height:210px;border:1px solid #129af326;transform:rotate(45deg);box-shadow:0 0 0 24px #129af307}
+.home-x-feed-inner{position:relative;z-index:1;display:grid;width:100%;max-width:1040px;margin:0 auto;gap:28px}
+.home-x-feed header small{color:var(--yellow);font-size:10px;font-weight:700;letter-spacing:.16em}
+.home-x-feed h2{margin:9px 0 15px;font:30px/1.05 'Archivo Black';letter-spacing:-.035em}
+.home-x-feed header p{max-width:35em;margin:0;color:#9eadaf;font-size:12px;line-height:1.75}
+.home-x-feed header>a{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;margin-top:22px;padding:10px 16px;border:1px solid #69c7ff;background:#129af3;color:#071013;box-shadow:5px 5px 0 #073957;font:700 12px/1.35 'IBM Plex Mono';text-decoration:none;transition:background-color .16s,color .16s,box-shadow .16s,transform .16s}
+.home-x-feed header>a:hover{background:var(--yellow);color:#080b0c;box-shadow:5px 5px 0 #6f5700;transform:translate(-1px,-1px)}
+.home-x-feed header>a:focus-visible{outline:2px solid #fff;outline-offset:4px}
+.home-x-feed header>a b{font:700 19px/1 Arial,sans-serif}
+.home-x-feed header>a span{font-size:16px}
+@media(min-width:700px){
+  .home-x-feed{padding-block:72px}
+  .home-x-feed-inner{max-width:1040px}
+  .home-x-feed h2{font-size:36px}
+}

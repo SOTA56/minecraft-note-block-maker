@@ -4,6 +4,35 @@ import type {ReactNode} from 'react'
 
 type Props={language:string;setLanguage:(language:string)=>void;onStart:()=>void;onCreators:()=>void;onResourcePack:()=>void;onTerms:()=>void;onPrivacy:()=>void}
 
+type XTimelineCopy={eyebrow:string;title:string;description:string;link:string}
+
+const xTimelineCopy:Record<string,XTimelineCopy>={
+  ja:{eyebrow:'LATEST ON X',title:'最新情報',description:'不具合や修正、アップデートのお知らせを公式Xからお届けします。',link:'@OTOBLOGICをXで見る'},
+  en:{eyebrow:'LATEST ON X',title:'Latest updates',description:'Bug reports, fixes, and product updates from the official OTO BLOGIC account.',link:'View @OTOBLOGIC on X'},
+  es:{eyebrow:'LO ÚLTIMO EN X',title:'Últimas novedades',description:'Avisos de errores, correcciones y actualizaciones desde la cuenta oficial.',link:'Ver @OTOBLOGIC en X'},
+  fr:{eyebrow:'DERNIÈRES INFOS SUR X',title:'Dernières actualités',description:'Signalements, correctifs et nouveautés publiés par le compte officiel.',link:'Voir @OTOBLOGIC sur X'},
+  de:{eyebrow:'NEUES AUF X',title:'Aktuelle Meldungen',description:'Hinweise zu Fehlern, Korrekturen und Updates vom offiziellen Account.',link:'@OTOBLOGIC auf X ansehen'},
+  zh:{eyebrow:'X 最新动态',title:'最新消息',description:'通过官方账号查看故障、修复和更新公告。',link:'在 X 查看 @OTOBLOGIC'},
+  'zh-tw':{eyebrow:'X 最新動態',title:'最新消息',description:'透過官方帳號查看問題、修正與更新公告。',link:'在 X 查看 @OTOBLOGIC'},
+  ko:{eyebrow:'X 최신 소식',title:'최신 업데이트',description:'공식 계정에서 오류, 수정 및 업데이트 소식을 확인하세요.',link:'X에서 @OTOBLOGIC 보기'},
+  id:{eyebrow:'TERBARU DI X',title:'Info terbaru',description:'Laporan bug, perbaikan, dan pembaruan dari akun resmi OTO BLOGIC.',link:'Lihat @OTOBLOGIC di X'},
+}
+
+function XTimeline({language}:{language:string}){
+  const copy=xTimelineCopy[language]??xTimelineCopy.en
+
+  return <section className="home-x-feed">
+    <div className="home-x-feed-inner">
+      <header>
+        <small>{copy.eyebrow}</small>
+        <h2>{copy.title}</h2>
+        <p>{copy.description}</p>
+        <a href="https://x.com/OTOBLOGIC" target="_blank" rel="noreferrer"><b aria-hidden="true">𝕏</b>{copy.link}<span aria-hidden="true">↗</span></a>
+      </header>
+    </div>
+  </section>
+}
+
 const notes=[
   {x:2,y:2,c:'#35a9ec'},{x:5,y:3,c:'#35a9ec'},{x:8,y:4,c:'#f4ca3e'},
   {x:11,y:5,c:'#f4ca3e'},{x:7,y:7,c:'#65c98f'},{x:10,y:8,c:'#65c98f'},
@@ -175,6 +204,8 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
       <h2>{ja?'最初の1音を、\n置いてみよう。':x[22]}</h2>
       <HomeTip id="home-tip-open" text={tips.open} className="home-tip--cta home-tip--above"><button onClick={onStart} aria-describedby="home-tip-open">{ja?'OTO BLOGICを開く':x[23]}<b>→</b></button></HomeTip>
     </section>
+
+    <XTimeline key={language} language={language}/>
 
     <section className="home-video">
       <header><small>RELATED VIDEO</small><h2>{ja?'関連動画':x[24]}</h2></header>
