@@ -3,5 +3,5 @@ export type Track = { id: string; name: string; instrument: string; volume: numb
 export type FishboneMode='auto'|'manual'
 export type RepeaterDisplay = 'delay'|'clicks'
 export type AudioEdition = 'java'|'bedrock'
-export type BlueprintSettings = { runLength:number; compactSize?:number; fold:'right'|'left'; compactFold?:'right'|'left'; includeSilentEdges:boolean; theme?:'dark'|'light'; repeaterDisplay?:RepeaterDisplay; fishboneMode?:FishboneMode; fishboneManual?:Record<string,number[]>; fishbonePackColumns?:boolean; fishboneSpatialAudio?:boolean; fishbonePlayerHeight?:number }
+export type BlueprintSettings = { runLength:number; compactSize?:number; compactSplitLayers?:boolean; fold:'right'|'left'; compactFold?:'right'|'left'; includeSilentEdges:boolean; theme?:'dark'|'light'; repeaterDisplay?:RepeaterDisplay; fishboneMode?:FishboneMode; fishboneManual?:Record<string,number[]>; fishbonePackColumns?:boolean; fishboneSpatialAudio?:boolean; fishbonePlayerHeight?:number }
 export type Project = { format: 'oto-blogic' | 'note-block-maker'; version: 1; title: string; edition: AudioEdition|'both'; tickRate: number; delayUnit:1|2|4; steps: number; tracks: Track[]; blueprint?:BlueprintSettings }

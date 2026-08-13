@@ -91,7 +91,10 @@ export function generateEasyBlueprint(project:Project,instruments:readonly Bluep
   })
   const firstX=originX
   cells.push({x:firstX,y:height+1,type:'source',label:'S',step:firstStep})
-  cells.push({x:firstX,y:height,type:'dust',step:firstStep})
+  // A button feeding dust directly into the first note block adds a 0.5-tick
+  // discrepancy in Minecraft.  Start every easy circuit through the same
+  // one-delay upward repeater used by the compact circuit.
+  cells.push({x:firstX,y:height,type:'repeater',label:'1',delay:1,direction:'up',step:firstStep})
   const unique=new Map<string,BlueprintCell>()
   cells.forEach(cell=>{const key=`${cell.x},${cell.y}`;const current=unique.get(key);if(!current||current.type==='dust')unique.set(key,cell)})
   const compact=[...unique.values()]

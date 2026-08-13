@@ -1,6 +1,7 @@
 import {describe,expect,it} from 'vitest'
 import type {Project,Track} from './types'
 import {generateCompactBlueprint,generateCompactBlueprintRect,splitCompactDelay} from './compactBlueprint'
+import {generateEasyBlueprint} from './blueprint'
 import type {BlueprintCell,BlueprintInstrument} from './blueprint'
 
 const instruments:BlueprintInstrument[]=[{id:'Harp',ja:'ハープ',en:'Harp',blockJa:'土など',blockEn:'Dirt, etc.',texture:'earth'}]
@@ -72,7 +73,7 @@ describe('three-note PDF geometry',()=>{
   const plan=generateCompactBlueprintRect(project(()=>3,32),instruments,10,18,false).layers[0]
   it('uses the single-line source and alternating block/repeater rows',()=>{
     expect(at(plan.cells,2,17)?.type).toBe('source')
-    expect(at(plan.cells,2,16)?.type).toBe('dust')
+    expect(at(plan.cells,2,16)).toMatchObject({type:'repeater',direction:'up',delay:1})
     expect([1,2,3].map(x=>at(plan.cells,x,15)?.type)).toEqual(['note','note','note'])
     expect(at(plan.cells,2,14)).toMatchObject({type:'repeater',direction:'up',delay:1})
     expect([3,4,5].map(x=>at(plan.cells,x,2)?.type)).toEqual(['note','note','note'])
@@ -81,6 +82,41 @@ describe('three-note PDF geometry',()=>{
   it('matches the three-cell top and bottom folds',()=>{
     expect([2,3,4].map(x=>at(plan.cells,x,0)?.type)).toEqual(['dust','dust','dust'])
     expect([4,5,6].map(x=>at(plan.cells,x,17)?.type)).toEqual(['dust','dust','dust'])
+  })
+})
+
+describe('easy circuit source timing',()=>{
+  it('puts a one-delay upward repeater between S and the first note bank',()=>{
+    const plan=generateEasyBlueprint(project(()=>3,8),instruments,16,'right',false)
+    const source=plan.cells.find(cell=>cell.type==='source')
+    expect(source).toBeDefined()
+    expect(at(plan.cells,source?.x??-1,(source?.y??0)-1)).toMatchObject({type:'repeater',delay:1,direction:'up'})
+    expect(at(plan.cells,source?.x??-1,(source?.y??0)-2)?.type).toBe('note')
+  })
+})
+
+describe('continuous compact layout',()=>{
+  it('keeps the existing layered output as the default',()=>{
+    const input=project(()=>3,180)
+    expect(generateCompactBlueprintRect(input,instruments,16,16,false,'right')).toEqual(
+      generateCompactBlueprintRect(input,instruments,16,16,false,'right',true),
+    )
+  })
+
+  it.each([
+    ['three-note',3],
+    ['six-note',6],
+  ])('places a long %s circuit on one row-limited board',(_,polyphony)=>{
+    const input=project(()=>polyphony,180)
+    const layered=generateCompactBlueprintRect(input,instruments,16,16,false,'right',true)
+    const continuous=generateCompactBlueprintRect(input,instruments,16,16,false,'right',false)
+    expect(layered.layers.length).toBeGreaterThan(1)
+    expect(continuous.layers).toHaveLength(1)
+    expect(continuous.layers[0].height).toBe(16)
+    expect(continuous.layers[0].width).toBeGreaterThan(16)
+    expect(continuous.layers[0].cells.filter(cell=>cell.type==='note')).toHaveLength(polyphony*180)
+    expect(continuous.layers[0].cells.some(cell=>cell.type==='layer-link')).toBe(false)
+    expect(new Set(continuous.layers[0].cells.map(cell=>`${cell.x},${cell.y}`)).size).toBe(continuous.layers[0].cells.length)
   })
 })
 
@@ -117,6 +153,24 @@ describe('mixed six-note PDF geometry',()=>{
   it.each([16,17,21,50,51,96])('keeps fold %i column ends as blocks and the next starts as repeaters',(height)=>{
     const value=generateCompactBlueprintRect(project(()=>6,140),instruments,50,height,false).layers[0]
     expectFoldTopology(value)
+  })
+
+  it.each([1,2,3,4,5,6])('keeps each repeater lane row cycle when the next event has %i notes',(nextPolyphony)=>{
+    const referencePolyphony=nextPolyphony<=3?3:6
+    const reference=generateCompactBlueprintRect(project(step=>step<8?6:referencePolyphony,16),instruments,30,21,false).layers[0]
+    const plan=generateCompactBlueprintRect(project(step=>step<8?6:nextPolyphony,16),instruments,30,21,false).layers[0]
+    const rows=(cells:BlueprintCell[])=>cells.filter(cell=>cell.type==='note'&&cell.step===8).map(cell=>[cell.label,cell.y]).sort(([a],[b])=>String(a).localeCompare(String(b)))
+    const expected=rows(reference.cells).filter(([label])=>Number(label)<nextPolyphony)
+    const actual=rows(plan.cells)
+    expect(actual,`${nextPolyphony}-note lane must keep the full ${referencePolyphony}-note row cycle`).toEqual(expected)
+  })
+
+  it('puts a one-delay upward repeater before each first note bank',()=>{
+    const single=generateCompactBlueprintRect(project(()=>3,8),instruments,30,21,false).layers[0]
+    expect(at(single.cells,2,19)).toMatchObject({type:'repeater',delay:1,direction:'up'})
+    const paired=generateCompactBlueprintRect(project(()=>6,8),instruments,30,21,false).layers[0]
+    expect(at(paired.cells,1,18)).toMatchObject({type:'repeater',delay:1,direction:'up'})
+    expect(at(paired.cells,3,17)).toMatchObject({type:'repeater',delay:1,direction:'up'})
   })
 })
 
@@ -220,6 +274,37 @@ describe('compact routing edge cases',()=>{
     expect(foldBlocks).toHaveLength(1)
   })
 
+  it('folds a nine-delay chain before a sparse bank without advancing a layer',()=>{
+    // Reproduces SONG TITLE-blueprint-layers.pdf: six-note columns fill the
+    // first run, a nine-delay chain crosses the fold, and the following
+    // performance group contains only two notes.  The next group still fits
+    // horizontally, so the long delay must not be mistaken for a layer break.
+    const input=project(step=>step<6?6:step>=15?2:0,20)
+    const compact=generateCompactBlueprintRect(input,instruments,19,19,false)
+    expect(compact.layers).toHaveLength(1)
+    expect(compact.layers[0].runCount).toBe(2)
+    expect(compact.layers[0].cells.filter(cell=>cell.type==='rest'&&cell.groupId==='fold-0')).toHaveLength(1)
+    expect(compact.layers[0].cells.filter(cell=>cell.type==='note')).toHaveLength(46)
+  })
+
+  it('restarts long-delay repeater parity in every three-note run',()=>{
+    // Reproduces SONG TITLE-blueprint-2.pdf.  The 10-delay gap is split by a
+    // fold: one repeater remains in the old run, while two repeaters enter the
+    // new run.  Those two are even locally, so the new run needs its own
+    // placeholder even though the complete delay contains three repeaters.
+    const input=project(step=>step<6?3:step>=15?2:0,20)
+    const compact=generateCompactBlueprintRect(input,instruments,17,17,false)
+    const plan=compact.layers[0]
+    expect(compact.layers).toHaveLength(1)
+    expect(plan.runCount).toBe(2)
+    expect(plan.cells.filter(cell=>cell.type==='rest'&&cell.groupId==='fold-0')).toHaveLength(1)
+    expect(plan.cells.filter(cell=>cell.type==='rest'&&cell.groupId==='delay-5-15-run-parity')).toHaveLength(1)
+    expect(plan.cells.filter(cell=>cell.type==='repeater'&&cell.groupId?.startsWith('delay-5-15-'))).toHaveLength(3)
+    const secondPhrase=plan.cells.filter(cell=>cell.type==='note'&&cell.step===15)
+    const firstPhrase=plan.cells.filter(cell=>cell.type==='note'&&cell.step===0)
+    expect(new Set(secondPhrase.map(cell=>cell.y))).not.toEqual(new Set(firstPhrase.map(cell=>cell.y)))
+  })
+
   it('moves an ordinary boundary repeater without adding a fold block',()=>{
     const compact=generateCompactBlueprintRect(sparseProject([0,4,8,12,16,20,24,28,32,36,40,44,48]),instruments,16,16,false)
     const foldBlocks=compact.layers.flatMap(layer=>layer.cells).filter(cell=>cell.type==='rest'&&cell.groupId?.startsWith('fold-'))
@@ -250,7 +335,8 @@ describe('compact routing edge cases',()=>{
       expect(entry).toMatchObject({step:layer.firstStep,groupId:`source-${index}`})
       expect([0,layer.height-1]).toContain(entry?.y)
       if(index){expect(entry?.direction).toBe(entry?.y===0?'down':'up');expect(entry?.connections).toBeUndefined()}
-      expect(layer.cells.some(cell=>cell.type==='dust'&&cell.groupId===entry?.groupId&&Math.abs(cell.x-(entry?.x??0))+Math.abs(cell.y-(entry?.y??0))===1)).toBe(true)
+      expect(layer.cells.some(cell=>(cell.type==='dust'||cell.type==='repeater')&&cell.groupId===entry?.groupId&&Math.abs(cell.x-(entry?.x??0))+Math.abs(cell.y-(entry?.y??0))===1)).toBe(true)
+      expect(layer.cells.some(cell=>cell.type==='repeater'&&cell.delay===1&&cell.groupId===entry?.groupId)).toBe(true)
       expect(layer.cells.some(cell=>cell.groupId?.startsWith('source-')&&cell.groupId!==`source-${index}`)).toBe(false)
       const outgoing=layer.cells.find(cell=>cell.type==='layer-link'&&cell.targetLayer===index+1)
       if(index===compact.layers.length-1)expect(outgoing).toBeUndefined()

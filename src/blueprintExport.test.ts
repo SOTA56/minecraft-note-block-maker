@@ -31,6 +31,14 @@ describe('blueprint export pagination',()=>{
     ])
   })
 
+  it('splits a continuous packed circuit from left to right like an easy circuit',()=>{
+    const easy=planBlueprintExportPages(plan(190,18),'easy')
+    const packed=planBlueprintExportPages(plan(190,18),'packed-continuous')
+    expect(packed).toEqual(easy)
+    expect(packed.length).toBeGreaterThan(1)
+    expect(packed.every(page=>page.y===0&&page.height===18)).toBe(true)
+  })
+
   it('does not split a circuit that fits on one page',()=>{
     expect(planBlueprintExportPages(plan(24,24),'easy')).toHaveLength(1)
     expect(planBlueprintExportPages(plan(24,24),'fishbone')).toHaveLength(1)

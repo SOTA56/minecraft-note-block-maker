@@ -3,7 +3,7 @@ import type {RepeaterDisplay} from './types'
 
 type Plan=Pick<BlueprintPlan,'cells'|'width'|'height'|'columnCountDirection'>
 export type ExportLegendBlock={texture:string;label:string;name:string}
-export type BlueprintExportKind='easy'|'packed'|'fishbone'
+export type BlueprintExportKind='easy'|'packed'|'packed-continuous'|'fishbone'
 export type BlueprintExportProgress={phase:'preparing'|'rendering'|'encoding'|'downloading';completed:number;total:number}
 export type BlueprintExportOptions={kind?:BlueprintExportKind;onProgress?:(progress:BlueprintExportProgress)=>void}
 type Slice={x:number;y:number;width:number;height:number;index:number;total:number}
@@ -20,7 +20,7 @@ const yieldToBrowser=()=>new Promise<void>(resolve=>requestAnimationFrame(()=>re
 
 function slicesFor(plan:Plan,kind:BlueprintExportKind):Slice[]{
   if(kind==='packed')return[{x:0,y:0,width:plan.width,height:plan.height,index:0,total:1}]
-  if(kind==='easy'){
+  if(kind==='easy'||kind==='packed-continuous'){
     const canvasHeight=AXIS*2+plan.height*CELL+FOOTER
     const pixelSpan=Math.floor((Math.min(MAX_PAGE_EDGE,Math.floor(MAX_PAGE_PIXELS/Math.max(1,canvasHeight)))-AXIS*2-SIDE_WIDTH)/CELL)
     const span=Math.max(1,Math.min(MAX_PAGE_SPAN,pixelSpan)),parts=[] as Omit<Slice,'total'>[]
