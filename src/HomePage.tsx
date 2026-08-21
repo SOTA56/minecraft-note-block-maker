@@ -137,6 +137,8 @@ function HomeTip({id,text,className='',children}:{id:string;text:string;classNam
 
 function MiniRoll(){return <div className="home-roll" aria-hidden="true"><div className="home-keys">{Array.from({length:13},(_,index)=><i key={index} className={[1,3,6,8,10].includes(index)?'black':''}/>)}</div><div className="home-grid">{notes.map((note,index)=><i key={index} style={{'--x':note.x,'--y':note.y,'--c':note.c} as React.CSSProperties}/>)}</div><span className="home-playhead"/></div>}
 
+const relatedVideos=['ZUBghKgFoIg','jy0WojQa3ZA']
+
 const homeLocales:Record<string,string[]>={
   en:['CREATORS','MUSIC MAT MAKER','PLACE THE NOTES.','THE CIRCUIT IS DONE.','Arrange notes with simple controls, then automatically generate a blueprint ready to build in Minecraft. For beginners and experts, children and adults.','START COMPOSING','PIANO ROLL','Intuitive yet fully featured. The mobile layout scrolls vertically to use the screen efficiently.','SEE THE SOUND.\nNEVER GET LOST.','SEE EVERY PITCH AND POSITION','Switch between note names and click counts, and audition every pitch before placing it.','20 TRACKS. 20 TIMBRES.','Layer chords, instruments, volume, PAN, and ghost notes.','FROM NOTES TO BLOCKS','Generate Easy, Compact, or Fishbone construction plans.','CHOOSE A CIRCUIT\nFOR YOUR GOAL.','EASY CIRCUIT','Readable and beginner-friendly.','COMPACT CIRCUIT','Long arrangements in less space.','FISHBONE','Built for a moving performance.','PLACE YOUR\nFIRST NOTE.','OPEN OTO BLOGIC','WATCH & LEARN'],
   es:['CREADORES','ONPU MAT MAKER','COLOCA LAS NOTAS.','EL CIRCUITO ESTÁ LISTO.','Crea una canción con controles sencillos y genera un plano listo para construir en Minecraft. Para principiantes y expertos, niños y adultos.','EMPEZAR A COMPONER','PIANO ROLL','Intuitivo y completo. En móvil, el desplazamiento vertical aprovecha mejor la pantalla.','VE EL SONIDO.\nSIN PERDERTE.','ALTURA Y POSICIÓN VISIBLES','Cambia entre nombres y clics, y escucha cada altura antes de colocarla.','20 PISTAS. 20 TIMBRES.','Combina acordes, instrumentos, volumen, PAN y notas fantasma.','DE NOTAS A BLOQUES','Genera planos Fácil, Compacto o Fishbone.','ELIGE EL CIRCUITO\nSEGÚN TU OBJETIVO.','CIRCUITO FÁCIL','Claro y sencillo de construir.','CIRCUITO COMPACTO','Canciones largas en menos espacio.','FISHBONE','Pensado para escuchar en movimiento.','COLOCA TU\nPRIMERA NOTA.','ABRIR OTO BLOGIC','VÍDEO RELACIONADO'],
@@ -209,7 +211,7 @@ export default function HomePage({language,setLanguage,onStart,onCreators,onReso
 
     <section className="home-video">
       <header><small>RELATED VIDEO</small><h2>{ja?'関連動画':x[24]}</h2></header>
-      <div className="home-video-grid"><div className="home-video-frame home-video-placeholder" aria-label={ja?'関連動画は準備中です':'Related videos are coming soon'}><span>COMING SOON</span></div></div>
+      <div className="home-video-grid">{relatedVideos.map((videoId,index)=><div className="home-video-frame" key={videoId}><iframe src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`} title={ja?`OTO BLOGIC解説動画 ${index+1}`:`OTO BLOGIC tutorial video ${index+1}`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen/></div>)}</div>
     </section>
 
     <aside className="home-unofficial">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</aside>
