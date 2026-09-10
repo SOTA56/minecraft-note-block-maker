@@ -5,7 +5,7 @@ type TimedNote={trackId:string;trackIndex:number;pitch:number;instrument:string;
 type EventFrame={kind:'event';step:number;notes:TimedNote[];groupId:string}
 type DelayFrame={delayId:string;delayTotal:number}
 type RepeaterFrame={kind:'repeater';step:number;delay:number;groupId:string}&DelayFrame
-type RestFrame={kind:'rest';step:number;groupId:string;reason:'parity'|'fold'}&Partial<DelayFrame>
+type RestFrame={kind:'rest';step:number;groupId:string;reason:'parity'|'fold'|'entry'}&Partial<DelayFrame>
 type Frame=EventFrame|RepeaterFrame|RestFrame
 type Phase='a'|'b'
 type Run={frames:Frame[];wide:boolean;lastWideIndex:number;phase:Phase;globalIndex:number}
@@ -102,7 +102,13 @@ function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,
   const runs:Run[]=[]
   let offset=0,phase:Phase='a'
   while(offset<frames.length){
-    const capacity=runs.length===0||(firstRunEvery>0&&runs.length%firstRunEvery===0)?firstCapacity:laterCapacity
+    const firstInLayer=runs.length===0||(firstRunEvery>0&&runs.length%firstRunEvery===0)
+    const capacity=firstInLayer?firstCapacity:laterCapacity
+    // A continuation layer may begin with a timeline repeater. Keep the
+    // first column's note-row parity by supplying its missing entry block;
+    // this consumes space, but adds no musical delay.
+    const entryFrame:RestFrame|undefined=!wideMode&&firstInLayer&&frames[offset].kind==='repeater'
+      ?{kind:'rest',step:frames[offset].step,groupId:`entry-${runs.length}`,reason:'entry'}:undefined
     let consumed=0,slice:Frame[]=[]
     // A locally inserted parity block consumes a real cell.  Search backward
     // for the largest timeline slice whose normalized physical route fits,
@@ -126,12 +132,20 @@ function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,
           candidate.pop();candidateConsumed--
         }
       }else if(splitsLongDelay){
-        const displaced=candidate.pop() as RepeaterFrame
-        candidateConsumed--
-        candidate.push({kind:'rest',step:candidate.at(-1)?.step??displaced.step,groupId:`fold-${runs.length}`,reason:'fold'})
+        // Keep the boundary repeater when its locally normalized chain leaves
+        // room for the solid block that feeds the fold dust. Moving it early
+        // wastes two cells and shifts an otherwise fitting delay into the next run.
+        const used=normalizeRunDelayParity(candidate).length+(entryFrame?1:0)
+        if(used<capacity){
+          candidate.push({kind:'rest',step:boundary.step,groupId:`fold-${runs.length}`,reason:'fold'})
+        }else{
+          const displaced=candidate.pop() as RepeaterFrame
+          candidateConsumed--
+          candidate.push({kind:'rest',step:candidate.at(-1)?.step??displaced.step,groupId:`fold-${runs.length}`,reason:'fold'})
+        }
       }
       if(candidateConsumed<=0)continue
-      const normalized=normalizeRunDelayParity(candidate)
+      const normalized=[...(entryFrame?[entryFrame]:[]),...normalizeRunDelayParity(candidate)]
       if(normalized.length<=capacity){consumed=candidateConsumed;slice=normalized;break}
     }
     if(!slice.length||consumed<=0)throw new Error('The compact circuit area is too small to place a run.')
@@ -407,12 +421,16 @@ function renderMixedLayer(layer:{runs:Run[];positions:RunPosition[]},width:numbe
       for(let x=left;x<=right;x++)path.push({x,y:outerY})
       builder.path(path,step,groupId);builder.arm(path[Math.round(sourceX-left)],{x:sourceX,y:sourceY})
       verticalDust(builder,left,outerY,framePoints[0][0].left as Point,step,groupId);verticalDust(builder,right,outerY,framePoints[0][0].right as Point,step,groupId)
-      replaceLastSourceDustWithRepeater(builder,outerY,framePoints[0][0].left as Point,step,groupId)
-      replaceLastSourceDustWithRepeater(builder,outerY,framePoints[0][0].right as Point,step,groupId)
+      // Only the initial S needs an extra input repeater. Continuation
+      // layers already carry the timeline delay in their first frame.
+      if(layerIndex===0){
+        replaceLastSourceDustWithRepeater(builder,outerY,framePoints[0][0].left as Point,step,groupId)
+        replaceLastSourceDustWithRepeater(builder,outerY,framePoints[0][0].right as Point,step,groupId)
+      }
     }else{
       const x=position.center as number,source={x,y:sourceY};builder.add({...source,type:'source',label:'S',step,groupId})
       verticalDust(builder,x,outerY,framePoints[0][0].carrier,step,groupId);builder.arm({x,y:outerY},source)
-      replaceLastSourceDustWithRepeater(builder,outerY,framePoints[0][0].carrier,step,groupId)
+      if(layerIndex===0)replaceLastSourceDustWithRepeater(builder,outerY,framePoints[0][0].carrier,step,groupId)
     }
   }
   runs.slice(0,-1).forEach((run,index)=>{
