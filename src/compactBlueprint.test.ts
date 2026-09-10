@@ -335,8 +335,8 @@ describe('compact routing edge cases',()=>{
       expect(entry).toMatchObject({step:layer.firstStep,groupId:`source-${index}`})
       expect([0,layer.height-1]).toContain(entry?.y)
       if(index){expect(entry?.direction).toBe(entry?.y===0?'down':'up');expect(entry?.connections).toBeUndefined()}
-      expect(layer.cells.some(cell=>(cell.type==='dust'||cell.type==='repeater')&&cell.groupId===entry?.groupId&&Math.abs(cell.x-(entry?.x??0))+Math.abs(cell.y-(entry?.y??0))===1)).toBe(true)
-      expect(layer.cells.some(cell=>cell.type==='repeater'&&cell.delay===1&&cell.groupId===entry?.groupId)).toBe(index===0||_==='single-line')
+      expect(layer.cells.some(cell=>(cell.type==='dust'||cell.type==='repeater')&&Math.abs(cell.x-(entry?.x??0))+Math.abs(cell.y-(entry?.y??0))===1)).toBe(true)
+      expect(layer.cells.some(cell=>cell.type==='repeater'&&cell.delay===1&&cell.groupId===entry?.groupId)).toBe(index===0)
       expect(layer.cells.some(cell=>cell.groupId?.startsWith('source-')&&cell.groupId!==`source-${index}`)).toBe(false)
       const outgoing=layer.cells.find(cell=>cell.type==='layer-link'&&cell.targetLayer===index+1)
       if(index===compact.layers.length-1)expect(outgoing).toBeUndefined()

@@ -5,7 +5,7 @@ type TimedNote={trackId:string;trackIndex:number;pitch:number;instrument:string;
 type EventFrame={kind:'event';step:number;notes:TimedNote[];groupId:string}
 type DelayFrame={delayId:string;delayTotal:number}
 type RepeaterFrame={kind:'repeater';step:number;delay:number;groupId:string}&DelayFrame
-type RestFrame={kind:'rest';step:number;groupId:string;reason:'parity'|'fold'|'entry'}&Partial<DelayFrame>
+type RestFrame={kind:'rest';step:number;groupId:string;reason:'parity'|'fold'}&Partial<DelayFrame>
 type Frame=EventFrame|RepeaterFrame|RestFrame
 type Phase='a'|'b'
 type Run={frames:Frame[];wide:boolean;lastWideIndex:number;phase:Phase;globalIndex:number}
@@ -98,17 +98,13 @@ function normalizeRunDelayParity(frames:Frame[]){
   return normalized
 }
 
-function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,wideMode:boolean,firstRunEvery=0){
+function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,wideMode:boolean){
   const runs:Run[]=[]
   let offset=0,phase:Phase='a'
   while(offset<frames.length){
-    const firstInLayer=runs.length===0||(firstRunEvery>0&&runs.length%firstRunEvery===0)
-    const capacity=firstInLayer?firstCapacity:laterCapacity
-    // A continuation layer may begin with a timeline repeater. Keep the
-    // first column's note-row parity by supplying its missing entry block;
-    // this consumes space, but adds no musical delay.
-    const entryFrame:RestFrame|undefined=!wideMode&&firstInLayer&&frames[offset].kind==='repeater'
-      ?{kind:'rest',step:frames[offset].step,groupId:`entry-${runs.length}`,reason:'entry'}:undefined
+    // Only the initial S reserves an input repeater. Continuation layers
+    // start directly with the timeline repeater, using the full run capacity.
+    const capacity=runs.length===0?firstCapacity:laterCapacity
     let consumed=0,slice:Frame[]=[]
     // A locally inserted parity block consumes a real cell.  Search backward
     // for the largest timeline slice whose normalized physical route fits,
@@ -135,7 +131,7 @@ function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,
         // Keep the boundary repeater when its locally normalized chain leaves
         // room for the solid block that feeds the fold dust. Moving it early
         // wastes two cells and shifts an otherwise fitting delay into the next run.
-        const used=normalizeRunDelayParity(candidate).length+(entryFrame?1:0)
+        const used=normalizeRunDelayParity(candidate).length
         if(used<capacity){
           candidate.push({kind:'rest',step:boundary.step,groupId:`fold-${runs.length}`,reason:'fold'})
         }else{
@@ -145,7 +141,7 @@ function partitionRuns(frames:Frame[],firstCapacity:number,laterCapacity:number,
         }
       }
       if(candidateConsumed<=0)continue
-      const normalized=[...(entryFrame?[entryFrame]:[]),...normalizeRunDelayParity(candidate)]
+      const normalized=normalizeRunDelayParity(candidate)
       if(normalized.length<=capacity){consumed=candidateConsumed;slice=normalized;break}
     }
     if(!slice.length||consumed<=0)throw new Error('The compact circuit area is too small to place a run.')
@@ -243,16 +239,19 @@ function groupThreeLayers(runs:Run[],width:number){
 function renderThreeLayer(runs:Run[],width:number,height:number,entry:Corner,layerIndex:number,firstStep:number,lastStep:number,instruments:readonly BlueprintInstrument[]){
   const builder=new CellBuilder(width,height),centers=runs.map((_,index)=>2+index*2),framePoints:Point[][]=[]
   runs.forEach((run,runIndex)=>{
-    const up=runIndex%2===0,start=runIndex===0?height-3:up?height-2:1,dy=up?-1:1
+    const up=runIndex%2===0,start=runIndex===0&&layerIndex===0?height-3:up?height-2:1,dy=up?-1:1
     framePoints[runIndex]=run.frames.map((frame,index)=>{
-      const point={x:centers[runIndex],y:start+dy*index};placeSingleFrame(builder,frame,point,up,instruments);return point
+      const point={x:centers[runIndex],y:start+dy*index}
+      placeSingleFrame(builder,frame,point,up,instruments)
+      return point
     })
   })
   if(runs.length){
     const x=centers[0],source={x,y:height-1},input={x,y:height-2},step=runs[0].frames[0]?.step??firstStep
     const groupId=`source-${layerIndex}`
     builder.add({...source,type:'source',label:'S',step,groupId})
-    builder.add({...input,type:'repeater',label:'1',delay:1,direction:'up',step,groupId})
+    if(layerIndex===0)builder.add({...input,type:'repeater',label:'1',delay:1,direction:'up',step,groupId})
+
   }
   runs.slice(0,-1).forEach((run,index)=>{
     const up=index%2===0,current=framePoints[index].at(-1) as Point,next=framePoints[index+1][0],foldY=up?0:height-1,step=run.frames.at(-1)?.step??firstStep,groupId=`fold-${run.globalIndex}`
@@ -476,7 +475,7 @@ function generate(project:Project,instruments:readonly BlueprintInstrument[],wid
   // Treat an odd requested height as the preceding even route and leave the
   // extra board row as breathing room, rather than changing the fold parity.
   const routeHeight=mixed&&height%2===0?height-1:!mixed&&height%2===1?height-1:height
-  const runs=partitionRuns(timeline.frames,mixed?routeHeight-6:routeHeight-3,mixed?routeHeight-5:routeHeight-2,mixed,!mixed&&splitLayers?threeRunsPerLayer(width):0)
+  const runs=partitionRuns(timeline.frames,mixed?routeHeight-6:routeHeight-3,mixed?routeHeight-5:routeHeight-2,mixed)
   const continuousMixed=mixed&&!splitLayers?groupMixedContinuous(runs,routeHeight):null
   const mixedGrouped=mixed?(splitLayers?groupMixedLayers(runs,width,routeHeight):[{runs,positions:continuousMixed?.positions??[]}]):null
   const grouped=mixed?(mixedGrouped as Array<{runs:Run[];positions:RunPosition[]}>).map(item=>item.runs):splitLayers?groupThreeLayers(runs,width):[runs]
