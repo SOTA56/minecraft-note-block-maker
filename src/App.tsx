@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import PianoRollSteps, {type RollHandlers} from './PianoRollSteps'
+import {createRollIndex} from './pianoRollIndex'
 import { playProject, previewTone, stopPlayback } from './audio'
 import type { AudioEdition, Project, Track } from './types'
 import BlueprintView, { type BlueprintViewState } from './BlueprintView'
@@ -307,7 +309,7 @@ function App() {
     project.tracks.forEach(t => t.notes.forEach(n => counts.set(n.step, (counts.get(n.step) ?? 0) + 1)))
     return Math.max(0, ...counts.values())
   }, [project])
-  const polyphonyByStep=useMemo(()=>{const counts=new Map<number,number>();project.tracks.forEach(track=>track.notes.forEach(note=>counts.set(note.step,(counts.get(note.step)??0)+1)));return counts},[project.tracks])
+  const rollIndex=useMemo(()=>createRollIndex(project.tracks,activeId,ghosts),[project.tracks,activeId,ghosts])
 
   const flashPitch=(pitch:number)=>{
     setPreviewPitches(current=>current.includes(pitch)?current:[...current,pitch])
@@ -354,7 +356,7 @@ function App() {
   const updateTrack = (patch: Partial<Track>) => commitProject(p => ({ ...p, tracks: p.tracks.map(t => t.id === activeId ? { ...t, ...patch } : t) }))
   const changeActiveNotes = (change: (notes: Track['notes']) => Track['notes']) => commitProject(p => ({ ...p, tracks: p.tracks.map(track => track.id === activeId ? { ...track, notes: change(track.notes) } : track) }))
   const setDraggedNote = (fromStep: number, fromPitch: number, step: number, pitch: number) => changeActiveNotes(notes => [...notes.filter(n => !(n.step === fromStep && n.pitch === fromPitch) && !(n.step === step && n.pitch === pitch)), { step, pitch }])
-  const normalizedSelection = selection && { minStep: Math.min(selection.startStep, selection.endStep), maxStep: Math.max(selection.startStep, selection.endStep), minPitch: Math.min(selection.startPitch, selection.endPitch), maxPitch: Math.max(selection.startPitch, selection.endPitch) }
+  const normalizedSelection = useMemo(()=>selection && { minStep: Math.min(selection.startStep, selection.endStep), maxStep: Math.max(selection.startStep, selection.endStep), minPitch: Math.min(selection.startPitch, selection.endPitch), maxPitch: Math.max(selection.startPitch, selection.endPitch) },[selection])
   const isSelected = (step: number, pitch: number) => Boolean(normalizedSelection && step >= normalizedSelection.minStep && step <= normalizedSelection.maxStep && pitch >= normalizedSelection.minPitch && pitch <= normalizedSelection.maxPitch)
   const updateSelectionEndAt = (x:number,y:number) => {
     const target = document.elementFromPoint(x,y)?.closest<HTMLElement>('[data-step][data-pitch]')
@@ -399,12 +401,12 @@ function App() {
     // note moves the whole selection. Touch layouts keep the explicit modes so
     // a scroll gesture is never mistaken for a selection.
     if (desktopLayout && selectedNote) {
-      event.currentTarget.setPointerCapture(event.pointerId)
+      rollRef.current?.setPointerCapture(event.pointerId)
       dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseAllNotes:active.notes, baseSelection: selection!, baseProject:project }
       return
     }
     if (!desktopLayout && editMode === 'select') {
-      event.currentTarget.setPointerCapture(event.pointerId)
+      rollRef.current?.setPointerCapture(event.pointerId)
       if (selectedNote) {
         dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed: true, startX:event.clientX, startY:event.clientY, group: true, baseNotes: active.notes.filter(n => isSelected(n.step, n.pitch)), baseAllNotes:active.notes, baseSelection: selection!, baseProject:project }
         return
@@ -415,7 +417,7 @@ function App() {
     }
     if (selection && !(isSelected(step,pitch) && active.notes.some(n=>n.step===step&&n.pitch===pitch))) setSelection(null)
     const existed = active.notes.some(n => n.step === step && n.pitch === pitch)
-    if (existed) event.currentTarget.setPointerCapture(event.pointerId)
+    if (existed) rollRef.current?.setPointerCapture(event.pointerId)
     if(existed)setDragPreview({originStep:step,originPitch:pitch,step,pitch})
     dragRef.current = { originStep: step, originPitch: pitch, step, pitch, moved: false, existed, startX:event.clientX, startY:event.clientY }
   }
@@ -660,6 +662,10 @@ function App() {
     if(Math.abs(event.deltaY)>Math.abs(event.deltaX)){event.preventDefault();event.currentTarget.scrollLeft+=event.deltaY}
   }
   const bpm = Math.round(project.tickRate * 7.5)
+  // Stable dispatch keeps playback-only state updates out of the grid while
+  // retaining the latest edit/selection state in its event handlers.
+  const rollHandlers=useRef<RollHandlers>({pointerDown:handlePointerDown,labelDown:handleLabelDown,labelMove:handleLabelMove,labelUp:handleLabelUp,labelCancel:()=>{labelGestureRef.current=null},labelDoubleClick:(event,step)=>seekFromLabel(event,step,true)})
+  rollHandlers.current={pointerDown:handlePointerDown,labelDown:handleLabelDown,labelMove:handleLabelMove,labelUp:handleLabelUp,labelCancel:()=>{labelGestureRef.current=null},labelDoubleClick:(event,step)=>seekFromLabel(event,step,true)}
 
   useEffect(()=>{
     if(!desktopLayout||view!=='editor')return
@@ -762,24 +768,7 @@ function App() {
       <div ref={rollViewportRef} className="roll-viewport" onWheel={handleRollWheel}>
     <section ref={rollRef} className={`roll ${editMode} ${followRun ? 'is-playing' : ''}`} aria-label={desktopLayout ? '横方向ピアノロール' : '縦方向ピアノロール'} style={{ '--step-height': `${stepHeight}px` } as React.CSSProperties} onPointerDownCapture={handlePlaybackSwipeDown} onPointerMoveCapture={handlePlaybackSwipeMove} onPointerUpCapture={handlePlaybackSwipeEnd} onPointerCancelCapture={handlePlaybackSwipeEnd} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
       {followRun && <div ref={playbackCursorRef} className="playback-cursor" aria-hidden="true" />}
-      {Array.from({ length: project.steps }, (_, step) => step).filter(step=>step%project.delayUnit===0).map(step => {const stepPolyphony=polyphonyByStep.get(step)??0;return <div data-roll-step={step} className={`step ${step === 0 ? 'first-step' : ''} ${(step+project.delayUnit)%16===0 ? 'bar-end' : (step+project.delayUnit)%4===0 ? 'beat-end' : ''} ${stepPolyphony>=7?'poly-over-6':stepPolyphony>=4?'poly-over-3':''} ${playhead === step ? 'playhead' : ''}`} key={step}>
-        {(desktopLayout ? [...PITCHES].reverse() : PITCHES).map(pitch => {
-          const storedOwn = active.notes.some(n => n.step === step && n.pitch === pitch)
-          const previewOrigin=Boolean(dragPreview&&dragPreview.originStep===step&&dragPreview.originPitch===pitch)
-          const previewTarget=Boolean(dragPreview&&dragPreview.step===step&&dragPreview.pitch===pitch)
-          const own = (storedOwn&&!previewOrigin)||previewTarget
-          const ghost = ghosts && project.tracks.find(t => t.id !== activeId && t.ghostEnabled !== false && t.notes.some(n => n.step === step && n.pitch === pitch))
-          const selected = isSelected(step,pitch)
-          const edges = selected && normalizedSelection && !desktopLayout ? `${step === normalizedSelection.minStep ? ' selection-top' : ''}${step === normalizedSelection.maxStep ? ' selection-bottom' : ''}${pitch === normalizedSelection.minPitch ? ' selection-left' : ''}${pitch === normalizedSelection.maxPitch ? ' selection-right' : ''}` : ''
-          return <button key={pitch} data-step={step} data-pitch={pitch} onPointerDown={e => handlePointerDown(e, step, pitch)} className={`${isBlack(pitch) ? 'black-key' : 'white-key'} ${isDo(pitch) ? 'do' : ''} ${own ? 'note' : ghost ? 'ghost' : ''} ${selected ? `selected-cell${edges}` : ''}`} style={own ? { '--note': active.color } as React.CSSProperties : ghost ? { '--note': ghost.color } as React.CSSProperties : undefined} aria-label={`${pitchNames[pitch]}, ${language === 'ja' ? '小節' : 'bar'} ${Math.floor(step / 16) + 1}`} />
-        })}
-        {desktopLayout && normalizedSelection && step >= normalizedSelection.minStep && step <= normalizedSelection.maxStep && <span
-          className={`desktop-selection-outline ${step === normalizedSelection.minStep ? 'selection-start' : ''} ${step === normalizedSelection.maxStep ? 'selection-end' : ''}`}
-          style={{gridRow:`${2 + (24-normalizedSelection.maxPitch)} / ${3 + (24-normalizedSelection.minPitch)}`} as React.CSSProperties}
-          aria-hidden="true"
-        />}
-        <button className="step-label" title={stepPolyphony>=7?(language==='ja'?`${stepPolyphony}音：6和音超`:`${stepPolyphony} notes: over 6`):stepPolyphony>=4?(language==='ja'?`${stepPolyphony}音：3和音超`:`${stepPolyphony} notes: over 3`):undefined} onPointerDown={handleLabelDown} onPointerMove={handleLabelMove} onPointerUp={e=>handleLabelUp(e,step)} onPointerCancel={()=>{labelGestureRef.current=null}} onDoubleClick={e => seekFromLabel(e, step, true)}>{step % 16 === 0 ? `${step / 16 + 1}` : ''}</button>
-      </div>})}
+      <PianoRollSteps steps={project.steps} delayUnit={project.delayUnit} stepHeight={stepHeight} desktop={desktopLayout} language={language} index={rollIndex} color={active.color} selection={normalizedSelection} preview={dragPreview} playhead={playhead} viewport={rollViewportRef} handlers={rollHandlers}/>
     </section>
       </div>
     </div>
