@@ -79,6 +79,7 @@
 .blueprint-layers{display:flex;overflow-x:auto;gap:1px;padding:6px 8px;border-bottom:1px solid #354038;background:#111713;scrollbar-width:thin}.blueprint-layers button{flex:0 0 auto;min-width:92px;height:34px;border:1px solid #38473e;background:#18201b;color:#8e9990;font:9px 'Archivo Black'}.blueprint-layers button.active{border-color:#e4c547;background:#302a12;color:#f0d254}
 @media(max-width:520px){.blueprint-header{grid-template-columns:minmax(0,164px) minmax(78px,1fr) 58px}}
 @media(max-width:520px){.blueprint-header>strong{font-size:13.5px}}
+.blueprint-header{grid-template-columns:minmax(0,250px) minmax(72px,1fr) auto}.blueprint-header-actions{display:flex;align-items:center;gap:8px}.blueprint-header .mp3-open{display:flex;align-items:center;justify-content:center;gap:3px;width:64px;height:42px;border:1px solid #a98931;background:#2c250e;color:#f5d15a;font:11px 'Archivo Black';white-space:nowrap}.blueprint-header .mp3-open span{display:inline;font-size:17px}.blueprint-header .mp3-open:disabled{opacity:.5}.blueprint-header-actions .editor-back{width:52px}.mp3-dialog{max-width:390px}.mp3-option{display:grid;width:100%;gap:4px;margin-top:10px;padding:13px 15px;border:1px solid #396176;background:#14242d;color:#bce4fa;text-align:left}.mp3-option b{font:15px 'Archivo Black'}.mp3-option small{color:#a8b8b1;font:11px 'IBM Plex Mono';line-height:1.5}@media(max-width:520px){.blueprint-header{grid-template-columns:minmax(0,164px) minmax(45px,1fr) auto;gap:6px;padding-inline:7px}.blueprint-header>strong{min-width:0;overflow:hidden;font-size:11px;text-overflow:clip}.blueprint-header-actions{gap:4px}.blueprint-header .mp3-open{width:47px;height:38px;font-size:9px}.blueprint-header .mp3-open span{font-size:13px}.blueprint-header-actions .editor-back{width:32px}}
 .bp-cell.note.copper{border-color:#963247!important}.bp-cell.note.copper b{color:#fff;-webkit-text-stroke:1.5px #963247;text-shadow:0 1px 0 #300812,1px 0 0 #300812,0 -1px 0 #300812,-1px 0 0 #300812}
 .bp-cell.note.copper-exposed{border-color:#8a5427!important}.bp-cell.note.copper-exposed b{color:#fff;-webkit-text-stroke:1.5px #8a5427;text-shadow:0 1px 0 #2d1908,1px 0 0 #2d1908,0 -1px 0 #2d1908,-1px 0 0 #2d1908}
 .bp-cell.note.copper-weathered{border-color:#2f6f67!important}.bp-cell.note.copper-weathered b{color:#fff;-webkit-text-stroke:1.5px #2f6f67;text-shadow:0 1px 0 #092925,1px 0 0 #092925,0 -1px 0 #092925,-1px 0 0 #092925}
@@ -182,3 +183,16 @@ select:has(option[value="id"]:checked){font-size:7px!important;letter-spacing:-.
   .blueprint-export-progress{grid-template-columns:38px 1fr auto;padding:22px 18px 19px;box-shadow:6px 6px 0 #073c5a}
   .blueprint-export-progress h2{font-size:14px}
 }
+
+/* MP3 export lives beside the return-to-editor action without expanding the transport. */
+.blueprint-header{grid-template-columns:minmax(0,250px) minmax(72px,1fr) auto}
+@media(max-width:520px){.blueprint-header{grid-template-columns:minmax(0,164px) minmax(45px,1fr) auto;gap:6px;padding-inline:7px}}
+.mp3-choice{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:7px;margin-top:10px}.mp3-choice .mp3-option{margin-top:0;min-height:50px}.mp3-choice .mp3-info{width:36px;height:50px;border:1px solid #396176;border-radius:0;background:#20333d;color:#a9dafa;font:18px Georgia,serif}.mp3-choice .mp3-info[aria-expanded="true"]{background:#31536a;color:#fff}.mp3-choice .mp3-tip{grid-column:1/-1;margin:0;padding:10px 12px;border-left:2px solid #72bce9;background:#18252b;color:#d9e7e9;font:11px 'IBM Plex Mono';line-height:1.65}
+.mp3-choice .mp3-tip{display:none}.mp3-choice .mp3-tip.open{display:block}
+.blueprint-header .mp3-open span{display:block;flex:0 0 13px;width:13px;height:12px;background:currentColor;clip-path:polygon(31% 0,69% 0,69% 50%,100% 50%,50% 100%,0 50%,31% 50%)}
+.blueprint-header-actions .editor-back img{width:26px;height:26px}
+.mp3-choice .mp3-option{display:flex;align-items:center;justify-content:flex-start}
+.mp3-choice .mp3-info,.mp3-choice .mp3-info[aria-expanded="true"]{display:grid;place-items:center;border:0;background:transparent;color:#a9dafa}
+.mp3-choice .mp3-info span{display:grid;place-items:center;width:22px;height:22px;border:2px solid currentColor;border-radius:50%;font:700 14px Arial,sans-serif;line-height:1}
+.mp3-choice .mp3-info[aria-expanded="true"] span{color:#fff}
+@media(max-width:520px){.blueprint-header .mp3-open span{flex-basis:11px;width:11px;height:11px}.blueprint-header-actions .editor-back img{width:23px;height:23px}}

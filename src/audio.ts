@@ -22,12 +22,12 @@ let appleWebKitPrimed = false
 // it does not alter individual instrument balances at ordinary volumes.
 // A further conservative ~3 dB reduction leaves quiet passages usable while
 // giving dense chords a little more headroom.
-const MASTER_PLAYBACK_GAIN = 0.39
+export const MASTER_PLAYBACK_GAIN = 0.39
 // Bedrock samples are quieter after the shared headroom reduction; bring only
 // this edition up by roughly 3 dB while leaving Java unchanged.
 // Bedrock samples have a little more headroom after the shared limiter; raise
 // them by another ~3 dB to keep perceived level closer to Java.
-const BEDROCK_PLAYBACK_RATIO = 0.599
+export const BEDROCK_PLAYBACK_RATIO = 0.599
 
 const SOUND_FILES: Record<string, string> = {
   Harp: 'harp', Bass: 'bass', 'Bass Drum': 'bd', Snare: 'snare', Hat: 'hat', Guitar: 'guitar',
@@ -35,6 +35,13 @@ const SOUND_FILES: Record<string, string> = {
   'Cow Bell': 'cow_bell', Didgeridoo: 'didgeridoo', Bit: 'bit', Banjo: 'banjo', Pling: 'pling',
   Trumpet: 'trumpet', 'Trumpet Exposed': 'trumpet_exposed', 'Trumpet Weathered': 'trumpet_weathered',
   'Trumpet Oxidized': 'trumpet_oxidized',
+}
+
+export const noteSoundPath = (instrument: string, edition: AudioEdition) => {
+  const file = SOUND_FILES[instrument] ?? SOUND_FILES.Harp
+  return edition === 'bedrock'
+    ? `/assets/note-block-sounds-bedrock/${file}.wav`
+    : `/assets/note-block-sounds/${file}.mp3`
 }
 
 const createContext = () => {
@@ -205,12 +212,9 @@ const loadBuffer = async (ctx: AudioContext, instrument: string, edition:AudioEd
   if (cached) return cached
   const pending = loading.get(cacheKey)
   if (pending) return pending
-  const file = SOUND_FILES[instrument] ?? SOUND_FILES.Harp
-  const path = edition === 'bedrock'
-    ? `/assets/note-block-sounds-bedrock/${file}.wav`
-    : `/assets/note-block-sounds/${file}.mp3`
+  const path = noteSoundPath(instrument, edition)
   const request = fetch(path)
-    .then(response => { if (!response.ok) throw new Error(`Sound load failed: ${file}`); return response.arrayBuffer() })
+    .then(response => { if (!response.ok) throw new Error(`Sound load failed: ${instrument}`); return response.arrayBuffer() })
     .then(data => ctx.decodeAudioData(data))
     .then(buffer => { buffers.set(cacheKey, buffer); loading.delete(cacheKey); return buffer })
     .catch(error => { loading.delete(cacheKey); throw error })
