@@ -78,16 +78,16 @@ const OBG_MAGIC = 'OTO_BLOGIC_OBG\n'
 const LANGUAGE_STORAGE='oto-blogic:language'
 const DISPLAY_MODE_STORAGE='oto-blogic:display-mode'
 const DESKTOP_CAPABILITY_MEDIA='(min-width: 700px) and (hover: hover) and (pointer: fine)'
+const DESKTOP_POINTER_MEDIA='(hover: hover) and (pointer: fine)'
 type DisplayMode='touch'|'pc'
 const desktopDisplayCapable=()=>window.matchMedia(DESKTOP_CAPABILITY_MEDIA).matches
 const initialDisplayMode=():DisplayMode=>{
-  const capable=desktopDisplayCapable()
   try{
     const saved=localStorage.getItem(DISPLAY_MODE_STORAGE)
     if(saved==='touch')return'touch'
-    if(saved==='pc')return capable?'pc':'touch'
-  }catch{/* Use the one-time capability result when storage is unavailable. */}
-  return capable?'pc':'touch'
+    if(saved==='pc')return'pc'
+  }catch{/* Use pointer capability when storage is unavailable. */}
+  return window.matchMedia(DESKTOP_POINTER_MEDIA).matches?'pc':'touch'
 }
 const SUPPORTED_LANGUAGES=['ja','en','es','fr','de','zh','zh-tw','ko','id'] as const
 const initialLanguage=()=>{const saved=localStorage.getItem(LANGUAGE_STORAGE);if(saved&&SUPPORTED_LANGUAGES.includes(saved as typeof SUPPORTED_LANGUAGES[number]))return saved;const browser=navigator.language.toLowerCase();if(browser.startsWith('zh-tw')||browser.startsWith('zh-hk')||browser.startsWith('zh-hant'))return'zh-tw';const base=browser.split('-')[0];return SUPPORTED_LANGUAGES.includes(base as typeof SUPPORTED_LANGUAGES[number])?base:'en'}
@@ -275,7 +275,7 @@ function App() {
   useEffect(()=>{localStorage.setItem(LANGUAGE_STORAGE,language);document.documentElement.lang=language},[language])
   useEffect(()=>{document.body.classList.toggle('desktop-ui',desktopLayout);return()=>document.body.classList.remove('desktop-ui')},[desktopLayout])
   useEffect(()=>{try{localStorage.setItem(DISPLAY_MODE_STORAGE,displayMode)}catch{/* The editor still works when storage is unavailable. */}},[displayMode])
-  useEffect(()=>{const media=window.matchMedia(DESKTOP_CAPABILITY_MEDIA),sync=()=>{setDesktopCapable(media.matches);if(!media.matches)setDisplayMode('touch')};media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
+  useEffect(()=>{const media=window.matchMedia(DESKTOP_CAPABILITY_MEDIA),sync=()=>setDesktopCapable(media.matches);media.addEventListener('change',sync);return()=>media.removeEventListener('change',sync)},[])
   useEffect(()=>{if(desktopLayout){setControlsOpen(true);setPanel(current=>current==='tracks'?null:current)}},[desktopLayout,view])
   useEffect(() => () => stopPlayback(), [])
   useEffect(()=>{barsValueRef.current=project.steps/16;setBarsDraft(String(project.steps/16));rejectedBarsRequestRef.current=null},[project.steps])
@@ -789,7 +789,7 @@ function App() {
     {modeMenuOpen&&<section className="unified-mode-menu" aria-label={modeText.mode}>
       <div className="unified-mode-row"><strong>{modeText.delay}</strong><div>{([1,2,4] as const).map(value=><button key={value} className={project.delayUnit===value?'active':''} onClick={()=>applyDelayMode(value)}>{value}</button>)}</div></div>
       <div className="unified-mode-row"><strong>{modeText.source}</strong><div>{(['java','bedrock'] as const).map(value=><button key={value} className={project.edition===value?'active':''} onClick={()=>applyEdition(value)}>{value==='java'?'JAVA':'BEDROCK'}</button>)}</div></div>
-      <div className="unified-mode-row"><strong>{modeText.display}</strong><div><button className={displayMode==='touch'?'active':''} onClick={()=>applyDisplayMode('touch')}>{modeText.touch}</button><button className={displayMode==='pc'?'active':''} disabled={!desktopCapable} onClick={()=>applyDisplayMode('pc')}>{modeText.pc}</button></div></div>
+      <div className="unified-mode-row"><strong>{modeText.display}</strong><div><button className={!desktopLayout?'active':''} onClick={()=>applyDisplayMode('touch')}>{modeText.touch}</button><button className={desktopLayout?'active':''} disabled={!desktopCapable} onClick={()=>applyDisplayMode('pc')}>{modeText.pc}</button></div></div>
       {!desktopCapable&&<p className="unified-mode-help">{modeText.disabled}</p>}
       {modeNotice&&<p className="unified-mode-notice" role="status">{modeNotice}</p>}
     </section>}
