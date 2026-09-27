@@ -77,14 +77,16 @@ const STORAGE = 'note-block-maker:autosave:v1'
 const OBG_MAGIC = 'OTO_BLOGIC_OBG\n'
 const LANGUAGE_STORAGE='oto-blogic:language'
 const DISPLAY_MODE_STORAGE='oto-blogic:display-mode'
+const DISPLAY_MODE_CHOICE_STORAGE='oto-blogic:display-mode-choice'
 const DESKTOP_CAPABILITY_MEDIA='(min-width: 700px) and (hover: hover) and (pointer: fine)'
 const DESKTOP_POINTER_MEDIA='(hover: hover) and (pointer: fine)'
 type DisplayMode='touch'|'pc'
 const desktopDisplayCapable=()=>window.matchMedia(DESKTOP_CAPABILITY_MEDIA).matches
 const initialDisplayMode=():DisplayMode=>{
   try{
+    const choice=localStorage.getItem(DISPLAY_MODE_CHOICE_STORAGE)
+    if(choice==='touch'||choice==='pc')return choice
     const saved=localStorage.getItem(DISPLAY_MODE_STORAGE)
-    if(saved==='touch')return'touch'
     if(saved==='pc')return'pc'
   }catch{/* Use pointer capability when storage is unavailable. */}
   return window.matchMedia(DESKTOP_POINTER_MEDIA).matches?'pc':'touch'
@@ -637,6 +639,7 @@ function App() {
   }
   const applyDisplayMode=(next:DisplayMode)=>{
     if(next==='pc'&&!desktopCapable)return
+    try{localStorage.setItem(DISPLAY_MODE_CHOICE_STORAGE,next)}catch{/* Keep the selected mode for this session. */}
     setDisplayMode(next)
     setModeNotice('')
     setModeMenuOpen(false)
